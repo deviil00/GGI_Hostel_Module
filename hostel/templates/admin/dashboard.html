@@ -2,6 +2,17 @@
 {% block title %}Dashboard — GGI Hostel ERP{% endblock %}
 {% block page_title %}Admin Dashboard{% endblock %}
 
+{% block extra_css %}
+<style>
+  @media (max-width: 767px) {
+    .stat-card { padding: 14px 14px; }
+    .stat-card .s-number { font-size: 24px; }
+    .stat-card .s-icon { width: 36px; height: 36px; font-size: 15px; }
+    .stat-card .s-label { font-size: 10px; }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 
 <!-- Announcements banner -->
@@ -38,10 +49,10 @@
       {% endif %}
     </p>
   </div>
-  <div class="d-flex gap-2 align-items-center flex-wrap">
+  <div class="d-flex gap-2 align-items-center flex-wrap" style="width:100%">
     {% if not is_warden %}
-    <form method="get" class="d-flex gap-2 align-items-center">
-      <select name="hostel" class="form-select form-select-sm" style="width:180px" onchange="this.form.submit()">
+    <form method="get" class="d-flex gap-2 align-items-center flex-grow-1 flex-md-grow-0">
+      <select name="hostel" class="form-select form-select-sm" style="min-width:140px;flex:1 1 auto;max-width:200px" onchange="this.form.submit()">
         <option value="">All Hostels</option>
         {% for h in all_hostels %}
         <option value="{{ h.pk }}" {% if selected_hostel.pk == h.pk %}selected{% endif %}>{{ h.name }}</option>
@@ -52,14 +63,14 @@
       {% endif %}
     </form>
     {% endif %}
-    <a href="{% url 'outsiders' %}" class="btn btn-outline-primary">
+    <a href="{% url 'outsiders' %}" class="btn btn-outline-primary btn-sm">
       <i class="bi bi-box-arrow-up-right me-1"></i>Outsiders
       {% if stats.students_out > 0 %}
       <span class="badge" style="background:#0891B2;color:#fff;margin-left:4px">{{ stats.students_out }}</span>
       {% endif %}
     </a>
-    <a href="{% url 'mark_attendance' %}?date={{ today|date:'Y-m-d' }}" class="btn btn-primary">
-      <i class="bi bi-calendar2-check me-2"></i>
+    <a href="{% url 'mark_attendance' %}?date={{ today|date:'Y-m-d' }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-calendar2-check me-1"></i>
       {% if stats.attendance_done %}Edit Attendance{% else %}Mark Attendance{% endif %}
     </a>
   </div>
