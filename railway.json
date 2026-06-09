@@ -5,7 +5,7 @@
     "buildCommand": "pip install -r hostel/requirements.txt"
   },
   "deploy": {
-    "startCommand": "cd hostel && python manage.py migrate --no-input && python manage.py collectstatic --no-input && gunicorn hostel_project.wsgi --bind 0.0.0.0:$PORT --workers 2",
+    "startCommand": "cd hostel && python manage.py migrate --no-input && python manage.py create_admin && python manage.py collectstatic --no-input && gunicorn hostel_project.wsgi --bind 0.0.0.0:$PORT --workers 2",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
