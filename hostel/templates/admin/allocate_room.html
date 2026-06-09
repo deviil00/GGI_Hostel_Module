@@ -1,0 +1,74 @@
+{% extends "base/base.html" %}
+{% block title %}Allocate Room{% endblock %}
+{% block page_title %}Allocate Room{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <span>Allocate Room to Student</span>
+        <a href="{% if student %}{% url 'student_detail' student.pk %}{% else %}{% url 'student_list' %}{% endif %}"
+           class="btn btn-outline-secondary btn-sm">← Back</a>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Student</label>
+            {% if student %}
+              <input type="hidden" name="student" value="{{ student.pk }}">
+              <div class="form-control bg-light" style="font-size:13px">
+                {{ student.name }} — {{ student.roll_number }} ({{ student.department }})
+              </div>
+            {% else %}
+              <select name="student" class="form-select" required>
+                <option value="">Select student…</option>
+                {% for s in form.student.field.queryset %}
+                <option value="{{ s.pk }}"
+                  {% if form.student.value == s.pk|stringformat:"s" %}selected{% endif %}>
+                  {{ s.roll_number }} — {{ s.name }}
+                </option>
+                {% endfor %}
+              </select>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Room</label>
+            <select name="room" class="form-select" required id="roomSelect">
+              <option value="">Select a room…</option>
+              {% for r in form.room.field.queryset %}
+              <option value="{{ r.pk }}"
+                {% if form.room.value == r.pk|stringformat:"s" %}selected{% endif %}>
+                {{ r.hostel.name }} — Room {{ r.room_number }}
+                (Floor {{ r.floor }} · {{ r.room_type }} ·
+                {{ r.beds_available }} bed{{ r.beds_available|pluralize }} free)
+              </option>
+              {% endfor %}
+            </select>
+            {% if not form.room.field.queryset %}
+            <div class="text-danger mt-1" style="font-size:12px">No vacant rooms available.</div>
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Check-in Date</label>
+            <input type="date" name="check_in" class="form-control"
+                   value="{{ form.check_in.value|default:'' }}" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Notes <span class="text-muted fw-normal">(optional)</span></label>
+            <textarea name="notes" class="form-control" rows="2"
+                      placeholder="Any remarks…">{{ form.notes.value|default:'' }}</textarea>
+          </div>
+
+          <button type="submit" class="btn btn-dark w-100">Confirm Allocation</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

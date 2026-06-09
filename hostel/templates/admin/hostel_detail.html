@@ -1,0 +1,714 @@
+{% extends 'base/base.html' %}
+{% block title %}{{ hostel.name }}{% endblock %}
+{% block page_title %}{{ hostel.name }}{% endblock %}
+
+{% block content %}
+<style>
+.floor-btn        { cursor:pointer;border:2px solid var(--border);border-radius:10px;padding:10px 20px;text-align:center;transition:.15s;background:var(--bg-1);white-space:nowrap }
+.floor-btn:hover  { border-color:var(--blue);background:#EBF3FF }
+.floor-btn.active { border-color:var(--blue);background:var(--blue);color:#fff }
+.floor-btn.active .fb-label { color:#fff }
+.floor-btn.active .fb-sub   { color:rgba(255,255,255,.8) }
+.fb-label { font-size:14px;font-weight:700;color:var(--text-1);letter-spacing:.2px }
+.fb-sub   { font-size:11px;font-weight:500;color:var(--text-3);margin-top:3px }
+.room-card { border:1.5px solid var(--border);border-radius:12px;background:var(--bg-1);transition:.15s;position:relative }
+.room-card:hover  { border-color:var(--blue);box-shadow:0 2px 12px rgba(21,101,192,.08) }
+.room-card.occupied   { border-left:4px solid #D97706 }
+.room-card.vacant     { border-left:4px solid #059669 }
+.room-card.maintenance{ border-left:4px solid #DC2626 }
+.room-card.reserved   { border-left:4px solid #7C3AED }
+.rstat { display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700 }
+.s-occupied   { background:#FFFBEB;color:#92400E }
+.s-vacant     { background:#ECFDF5;color:#065F46 }
+.s-maintenance{ background:#FEF2F2;color:#991B1B }
+.s-reserved   { background:#F5F3FF;color:#5B21B6 }
+.tab-pill { padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);cursor:pointer;background:var(--bg-1);color:var(--text-2) }
+.tab-pill.active { background:var(--blue);color:#fff;border-color:var(--blue) }
+.section-hidden { display:none }
+</style>
+
+<!-- Header -->
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>{{ hostel.name }}</h4>
+    <p>{{ hostel.get_type_display }} Hostel
+      {% if hostel.warden %}&bull; Warden: <strong>{{ hostel.warden.name }}</strong>{% endif %}
+      &bull; {{ total_floors }} Floor{{ total_floors|pluralize }}
+      &bull; {{ total_rooms }} Room{{ total_rooms|pluralize }}
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'hostel_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    <a href="{% url 'edit_hostel' hostel.pk %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil me-1"></i>Edit Hostel</a>
+    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#bulkAddRoomsModal">
+      <i class="bi bi-stack me-1"></i>Bulk Add Rooms
+    </button>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRoomModal">
+      <i class="bi bi-plus-lg me-1"></i>Add Room
+    </button>
+  </div>
+</div>
+
+{% if not floors_list %}
+<!-- Empty state -->
+<div class="card">
+  <div class="card-body text-center py-5">
+    <i class="bi bi-building-x" style="font-size:48px;color:var(--text-3)"></i>
+    <h5 class="mt-3 fw-700">No rooms yet</h5>
+    <p class="text-muted mb-3">Add rooms to this hostel to get started. Rooms will be grouped by floor automatically.</p>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRoomModal">
+      <i class="bi bi-plus-lg me-1"></i>Add First Room
+    </button>
+  </div>
+</div>
+
+{% else %}
+
+<!-- Floor selector -->
+<div class="card mb-4">
+  <div class="card-body p-3">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <i class="bi bi-layers-fill" style="color:var(--blue)"></i>
+      <span class="fw-700" style="font-size:13px">Select Floor</span>
+      <span class="text-muted" style="font-size:12px">— click a floor to view its rooms</span>
+    </div>
+    <div class="d-flex flex-wrap gap-2" id="floorBtns">
+      {% for f in floors_list %}
+      <div class="floor-btn {% if f.floor == active_floor %}active{% endif %}"
+           onclick="switchFloor({{ f.floor }})" id="fb_{{ f.floor }}">
+        <div class="fb-label"><i class="bi bi-building me-1"></i>Floor {{ f.floor }}</div>
+        <div class="fb-sub">{{ f.total }} room{{ f.total|pluralize }}</div>
+        <div style="margin-top:5px;display:flex;gap:4px;justify-content:center;flex-wrap:wrap">
+          {% if f.vacant %}<span style="font-size:10px;background:rgba(5,150,105,.15);color:#065F46;border-radius:8px;padding:1px 6px;font-weight:600">{{ f.vacant }}V</span>{% endif %}
+          {% if f.occupied %}<span style="font-size:10px;background:rgba(217,119,6,.15);color:#92400E;border-radius:8px;padding:1px 6px;font-weight:600">{{ f.occupied }}O</span>{% endif %}
+          {% if f.maintenance %}<span style="font-size:10px;background:rgba(220,38,38,.15);color:#991B1B;border-radius:8px;padding:1px 6px;font-weight:600">{{ f.maintenance }}M</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Room sections per floor -->
+{% for f in floors_list %}
+<div id="floor_{{ f.floor }}" class="floor-section {% if f.floor != active_floor %}section-hidden{% endif %}">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-3">
+      <div style="background:var(--blue);color:#fff;border-radius:10px;padding:6px 18px;font-size:15px;font-weight:700">
+        <i class="bi bi-building me-1"></i>Floor {{ f.floor }}
+      </div>
+      <span class="text-muted" style="font-size:13px">{{ f.total }} room{{ f.total|pluralize }}</span>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary btn-sm"
+              onclick="setBulkFloor({{ f.floor }})"
+              data-bs-toggle="modal" data-bs-target="#bulkAddRoomsModal">
+        <i class="bi bi-stack me-1"></i>Bulk Add
+      </button>
+      <button class="btn btn-outline-primary btn-sm"
+              onclick="setFloorAndOpen({{ f.floor }})"
+              data-bs-toggle="modal" data-bs-target="#addRoomModal">
+        <i class="bi bi-plus me-1"></i>Add Room
+      </button>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    {% for room in f.rooms %}
+    {% with active_allocs=room.allocations.all %}
+    <div class="col-xl-4 col-lg-6">
+      <div class="room-card {{ room.status }} p-0">
+        <!-- Room card header -->
+        <div class="p-3 pb-0">
+          <div class="d-flex align-items-start justify-content-between">
+            <div>
+              <span class="fw-800" style="font-size:20px">Room {{ room.room_number }}</span>
+              <span class="rstat s-{{ room.status }} ms-2">{{ room.get_status_display }}</span>
+            </div>
+            <div class="d-flex gap-1">
+              <button class="btn btn-xs btn-outline-secondary"
+                      onclick="openEditRoom('{{ room.pk }}','{{ room.room_number }}','{{ room.floor }}','{{ room.wing }}','{{ room.room_type }}','{{ room.capacity }}','{{ room.status }}')"
+                      data-bs-toggle="modal" data-bs-target="#editRoomModal_{{ f.floor }}">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <form method="post" style="display:inline" onsubmit="return confirm('Delete Room {{ room.room_number }}?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_room">
+                <input type="hidden" name="room_id" value="{{ room.pk }}">
+                <button class="btn btn-xs btn-outline-danger"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </div>
+          <div style="font-size:11px;margin-top:3px">
+            <span style="background:{% if room.capacity == 0 %}#FFF8E1{% elif room.capacity >= 4 %}#E8F5E9{% elif room.capacity == 3 %}#EDE7F6{% else %}#FCE4EC{% endif %};
+                         color:{% if room.capacity == 0 %}#E65100{% elif room.capacity >= 4 %}#1B5E20{% elif room.capacity == 3 %}#4A148C{% else %}#B71C1C{% endif %};
+                         padding:1px 7px;border-radius:6px;font-weight:700;font-size:11px">
+              {{ room.room_type|default:"—" }}
+            </span>
+            {% if room.wing %}<span style="color:var(--text-3)">&bull; {{ room.wing }}</span>{% endif %}
+          </div>
+        </div>
+
+        <!-- Occupancy bar -->
+        <div class="px-3 pt-2">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span style="font-size:11.5px;color:var(--text-3)">Occupancy</span>
+            <span style="font-size:12px;font-weight:700;color:var(--text-1)">{{ room.current_occupants }}/{{ room.capacity }}</span>
+          </div>
+          <div style="height:5px;background:#E2E8F0;border-radius:3px;overflow:hidden;margin-bottom:10px">
+            {% if room.capacity %}
+            <div style="height:100%;border-radius:3px;background:{% if room.current_occupants == room.capacity %}#DC2626{% elif room.current_occupants > 0 %}#D97706{% else %}#059669{% endif %};width:{% widthratio room.current_occupants room.capacity 100 %}%"></div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Tabs inside card -->
+        <div class="px-3 pb-1 d-flex gap-1 flex-wrap" id="tabs_{{ room.pk }}">
+          <span class="tab-pill active" onclick="showTab('{{ room.pk }}','students')">
+            <i class="bi bi-people me-1"></i>Students ({{ room.current_occupants }})
+          </span>
+          <span class="tab-pill" onclick="showTab('{{ room.pk }}','beds')">
+            <i class="bi bi-bunk-ladder me-1"></i>Beds ({{ room.beds.count }})
+          </span>
+          <span class="tab-pill" onclick="showTab('{{ room.pk }}','assets')">
+            <i class="bi bi-box-seam me-1"></i>Assets ({{ room.assets.count }})
+          </span>
+        </div>
+
+        <!-- Students panel -->
+        <div id="panel_{{ room.pk }}_students" class="p-3 pt-2">
+          {% for alloc in room.allocations.all %}{% if alloc.status == 'active' %}
+          <div class="d-flex align-items-center gap-2 mb-2 p-2 rounded" style="background:var(--bg-2)">
+            <div class="tbl-avatar av-blue" style="width:28px;height:28px;font-size:11px;flex-shrink:0">{{ alloc.student.name|first|upper }}</div>
+            <div style="min-width:0;flex:1">
+              <div class="fw-600" style="font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ alloc.student.name }}</div>
+              <div style="font-size:11px;color:var(--text-3)">{{ alloc.student.roll_number }} &bull; {{ alloc.student.department }}</div>
+              <div style="font-size:11px;color:var(--text-3)">Yr {{ alloc.student.year }} &bull; {{ alloc.student.phone|default:"—" }}</div>
+            </div>
+            <div class="d-flex flex-column gap-1">
+              <a href="{% url 'student_detail' alloc.student.pk %}" class="btn btn-xs btn-outline-primary"><i class="bi bi-eye"></i></a>
+              <a href="{% url 'checkout_student' alloc.pk %}" class="btn btn-xs btn-outline-danger"><i class="bi bi-box-arrow-right"></i></a>
+            </div>
+          </div>
+          {% endif %}{% endfor %}
+          {% if room.current_occupants == 0 %}
+          <div style="font-size:12px;color:var(--text-3);font-style:italic;padding:6px 0">No students allocated</div>
+          {% endif %}
+          {% if room.beds_available > 0 %}
+          <a href="{% url 'allocate_room_blank' %}" class="btn btn-xs btn-outline-primary mt-1 w-100">
+            <i class="bi bi-person-plus me-1"></i>Allocate Student
+          </a>
+          {% endif %}
+        </div>
+
+        <!-- Beds panel -->
+        <div id="panel_{{ room.pk }}_beds" class="p-3 pt-2 section-hidden">
+          <div class="d-flex flex-wrap gap-2 mb-2">
+            {% for bed in room.beds.all %}
+            <span class="px-2 py-1 rounded fw-700"
+                  style="font-size:12px;background:{% if bed.status == 'occupied' %}#FFFBEB;color:#92400E{% elif bed.status == 'maintenance' %}#FEF2F2;color:#991B1B{% elif bed.status == 'reserved' %}#F5F3FF;color:#5B21B6{% else %}#ECFDF5;color:#065F46{% endif %};border:1px solid currentColor">
+              B{{ bed.bed_number }}&nbsp;<span style="font-size:10px;font-weight:400">{{ bed.get_status_display }}</span>
+            </span>
+            {% empty %}
+            <span style="font-size:12px;color:var(--text-3);font-style:italic">No beds configured</span>
+            {% endfor %}
+          </div>
+          <div class="d-flex gap-2 mt-2">
+            <form method="post" class="d-flex gap-1 flex-grow-1">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="add_bed">
+              <input type="hidden" name="room_id" value="{{ room.pk }}">
+              <input type="text" name="bed_number" class="form-control form-control-sm" placeholder="Bed no e.g. A" style="width:100px">
+              <button class="btn btn-xs btn-primary">Add</button>
+            </form>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="auto_beds">
+              <input type="hidden" name="room_id" value="{{ room.pk }}">
+              <button class="btn btn-xs btn-outline-secondary"><i class="bi bi-lightning me-1"></i>Auto ({{ room.capacity }})</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Assets panel -->
+        <div id="panel_{{ room.pk }}_assets" class="p-3 pt-2 section-hidden">
+          {% for asset in room.assets.all %}
+          <div class="d-flex align-items-center gap-2 mb-1 p-2 rounded" style="background:var(--bg-2)">
+            <div style="flex:1;min-width:0">
+              <span class="fw-600" style="font-size:12.5px">{{ asset.name }}</span>
+              <span class="text-muted" style="font-size:12px"> &times;{{ asset.quantity }}</span>
+              <span class="ms-1 rstat s-{% if asset.condition == 'good' %}vacant{% elif asset.condition == 'damaged' or asset.condition == 'missing' %}maintenance{% else %}occupied{% endif %}"
+                    style="font-size:10px">{{ asset.get_condition_display }}</span>
+              {% if asset.asset_tag %}<div style="font-size:10.5px;color:var(--text-3)">Tag: {{ asset.asset_tag }}</div>{% endif %}
+              {% if asset.notes %}<div style="font-size:10.5px;color:var(--text-3)">{{ asset.notes|truncatechars:40 }}</div>{% endif %}
+            </div>
+            <div class="d-flex gap-1">
+              <button class="btn btn-xs btn-outline-secondary"
+                      onclick="openEditAsset('{{ asset.pk }}','{{ asset.name|escapejs }}',{{ asset.quantity }},'{{ asset.condition }}','{{ asset.asset_tag|escapejs }}','{{ asset.notes|escapejs }}')"
+                      data-bs-toggle="modal" data-bs-target="#editAssetModal">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <form method="post" onsubmit="return confirm('Remove {{ asset.name }}?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_asset">
+                <input type="hidden" name="asset_id" value="{{ asset.pk }}">
+                <button class="btn btn-xs btn-outline-danger"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </div>
+          {% empty %}
+          <div style="font-size:12px;color:var(--text-3);font-style:italic">No assets recorded</div>
+          {% endfor %}
+          <!-- Add asset inline -->
+          <button class="btn btn-xs btn-outline-primary mt-2 w-100"
+                  onclick="openAddAsset('{{ room.pk }}')"
+                  data-bs-toggle="modal" data-bs-target="#addAssetModal">
+            <i class="bi bi-plus me-1"></i>Add Asset
+          </button>
+        </div>
+
+      </div><!-- /room-card -->
+    </div>
+    {% endwith %}
+    {% endfor %}
+  </div><!-- /row -->
+</div><!-- /floor section -->
+{% endfor %}
+{% endif %}
+
+
+<!-- ── Add Room Modal ── -->
+<div class="modal fade" id="addRoomModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_room">
+        <div class="modal-header">
+          <h5 class="modal-title fw-700">Add New Room</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label fw-600">Room Number <span class="text-danger">*</span></label>
+              <input type="text" name="room_number" class="form-control" placeholder="e.g. 101, A-12" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600">Floor <span class="text-danger">*</span></label>
+              <input type="number" name="floor" id="addRoomFloor" class="form-control" value="1" min="0" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600">Wing / Block</label>
+              <input type="text" name="wing" class="form-control" placeholder="e.g. A-Wing">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-600">Room Category <span class="text-danger">*</span></label>
+              <select name="room_type" id="add_room_type" class="form-select"
+                      onchange="catChanged(this,'add_capacity')">
+                <option value="">— Select Category —</option>
+                {% for group_name, cats in room_categories %}
+                <optgroup label="{{ group_name }}">
+                  {% for code, label, cap in cats %}
+                  <option value="{{ code }}" data-cap="{{ cap }}">{{ code }} — {{ label }}</option>
+                  {% endfor %}
+                </optgroup>
+                {% endfor %}
+              </select>
+              <div style="font-size:11px;color:var(--text-3);margin-top:4px">
+                <strong>CWR</strong> = Common Washroom &nbsp;·&nbsp; <strong>WR</strong> = Attached Washroom &nbsp;·&nbsp; <strong>AC</strong> = Air Conditioned
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600">Capacity (beds)</label>
+              <input type="number" name="capacity" id="add_capacity" class="form-control" value="2" min="0" max="20">
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px">Auto-filled from category — override if needed</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Room</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit Room Modals (one per floor to avoid ID clashes) ── -->
+{% for f in floors_list %}
+<div class="modal fade" id="editRoomModal_{{ f.floor }}" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit_room">
+        <input type="hidden" name="room_id" id="er_id_{{ f.floor }}">
+        <div class="modal-header">
+          <h5 class="modal-title fw-700">Edit Room</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label fw-600">Room Number</label>
+              <input type="text" name="room_number" id="er_rn_{{ f.floor }}" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600">Floor</label>
+              <input type="number" name="floor" id="er_fl_{{ f.floor }}" class="form-control" min="0" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600">Wing / Block</label>
+              <input type="text" name="wing" id="er_wing_{{ f.floor }}" class="form-control">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label fw-600">Room Category</label>
+              <select name="room_type" id="er_type_{{ f.floor }}" class="form-select"
+                      onchange="catChanged(this,'er_cap_{{ f.floor }}')">
+                <option value="">— Select Category —</option>
+                {% for group_name, cats in room_categories %}
+                <optgroup label="{{ group_name }}">
+                  {% for code, label, cap in cats %}
+                  <option value="{{ code }}" data-cap="{{ cap }}">{{ code }} — {{ label }}</option>
+                  {% endfor %}
+                </optgroup>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600">Capacity (beds)</label>
+              <input type="number" name="capacity" id="er_cap_{{ f.floor }}" class="form-control" min="0"
+                     oninput="checkCapacity(this, {{ f.floor }})">
+              <div id="er_cap_warn_{{ f.floor }}" class="d-none mt-1 p-2 rounded"
+                   style="background:#FEF3C7;border:1px solid #FCD34D;font-size:11.5px;color:#92400E">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                <span id="er_cap_warn_text_{{ f.floor }}"></span>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600">Status</label>
+              <select name="status" id="er_status_{{ f.floor }}" class="form-select">
+                {% for val, label in status_choices %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          {% if all_amenities %}
+          <div class="mt-3">
+            <label class="form-label fw-600">Amenities</label>
+            <div class="d-flex flex-wrap gap-2">
+              {% for a in all_amenities %}
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" name="amenities" value="{{ a.pk }}" id="ea_{{ f.floor }}_{{ a.pk }}">
+                <label class="form-check-label" for="ea_{{ f.floor }}_{{ a.pk }}" style="font-size:13px">
+                  <i class="bi {{ a.icon }} me-1"></i>{{ a.name }}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check me-1"></i>Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<!-- ── Bulk Add Rooms Modal ── -->
+<div class="modal fade" id="bulkAddRoomsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="bulk_add_rooms">
+        <div class="modal-header" style="background:#F0F9FF;border-bottom:2px solid #BFDBFE">
+          <h5 class="modal-title fw-700">
+            <i class="bi bi-stack me-2" style="color:#2563EB"></i>Bulk Add Rooms to a Floor
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="p-3 mb-3 rounded" style="background:#EFF6FF;border:1px solid #BFDBFE;font-size:12.5px">
+            <i class="bi bi-info-circle me-1" style="color:#2563EB"></i>
+            Rooms will be named as <strong>Prefix + Number</strong>. E.g., prefix <code>1</code>, start <code>01</code>, count <code>10</code> → <strong>101, 102 … 110</strong>. Existing room numbers are automatically skipped.
+          </div>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label fw-600">Floor <span class="text-danger">*</span></label>
+              <input type="number" name="floor" id="bulk_floor" class="form-control" value="1" min="0" required
+                     oninput="updateBulkPreview()">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600">Wing / Block</label>
+              <input type="text" name="wing" class="form-control" placeholder="e.g. A-Wing (optional)">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600">Number of Rooms <span class="text-danger">*</span></label>
+              <input type="number" name="count" id="bulk_count" class="form-control" value="10" min="1" max="50" required
+                     oninput="updateBulkPreview()">
+              <div class="form-text">Max 50 at a time</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600">Room Number Prefix</label>
+              <input type="text" name="prefix" id="bulk_prefix" class="form-control" placeholder="e.g. 1, A, GH-"
+                     oninput="updateBulkPreview()">
+              <div class="form-text">Leave blank for numbers only</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600">Start Number <span class="text-danger">*</span></label>
+              <input type="number" name="start_num" id="bulk_start" class="form-control" value="1" min="1" required
+                     oninput="updateBulkPreview()">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600">Preview</label>
+              <div id="bulk_preview" class="form-control" style="background:var(--bg-2);font-size:12.5px;min-height:38px;color:var(--text-2)">
+                1, 2, 3…
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-600">Room Category <span class="text-danger">*</span></label>
+              <select name="room_type" id="bulk_room_type" class="form-select"
+                      onchange="catChanged(this,'bulk_capacity')">
+                <option value="">— Select Category —</option>
+                {% for group_name, cats in room_categories %}
+                <optgroup label="{{ group_name }}">
+                  {% for code, label, cap in cats %}
+                  <option value="{{ code }}" data-cap="{{ cap }}">{{ code }} — {{ label }}</option>
+                  {% endfor %}
+                </optgroup>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600">Capacity (beds)</label>
+              <input type="number" name="capacity" id="bulk_capacity" class="form-control" value="2" min="0" max="20">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-stack me-1"></i>Create Rooms
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit Asset Modal ── -->
+<div class="modal fade" id="editAssetModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit_asset">
+        <input type="hidden" name="asset_id" id="editAssetId">
+        <div class="modal-header">
+          <h5 class="modal-title fw-700">Edit Asset</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-600">Item Name <span class="text-danger">*</span></label>
+            <input type="text" name="asset_name" id="editAssetName" class="form-control" required>
+          </div>
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label fw-600">Quantity</label>
+              <input type="number" name="asset_qty" id="editAssetQty" class="form-control" min="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-600">Condition</label>
+              <select name="asset_condition" id="editAssetCond" class="form-select">
+                {% for val, label in asset_conditions %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="mb-3 mt-3">
+            <label class="form-label fw-600">Asset Tag / Serial</label>
+            <input type="text" name="asset_tag" id="editAssetTag" class="form-control">
+          </div>
+          <div>
+            <label class="form-label fw-600">Notes</label>
+            <textarea name="asset_notes" id="editAssetNotes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check me-1"></i>Save Asset</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add Asset Modal ── -->
+<div class="modal fade" id="addAssetModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_asset">
+        <input type="hidden" name="room_id" id="assetRoomId">
+        <div class="modal-header">
+          <h5 class="modal-title fw-700">Add Asset to Room</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-600">Item Name <span class="text-danger">*</span></label>
+            <input type="text" name="asset_name" class="form-control" placeholder="e.g. Fan, Cupboard, Table" required>
+          </div>
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label fw-600">Quantity</label>
+              <input type="number" name="asset_qty" class="form-control" value="1" min="1">
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-600">Condition</label>
+              <select name="asset_condition" class="form-select">
+                {% for val, label in asset_conditions %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="mb-3 mt-3">
+            <label class="form-label fw-600">Asset Tag / Serial</label>
+            <input type="text" name="asset_tag" class="form-control" placeholder="Optional">
+          </div>
+          <div>
+            <label class="form-label fw-600">Notes</label>
+            <textarea name="asset_notes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check me-1"></i>Add Asset</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Switch floor display
+function switchFloor(floorNum) {
+  document.querySelectorAll('.floor-section').forEach(s => s.classList.add('section-hidden'));
+  document.querySelectorAll('.floor-btn').forEach(b => b.classList.remove('active'));
+  const sec = document.getElementById('floor_' + floorNum);
+  const btn = document.getElementById('fb_' + floorNum);
+  if (sec) sec.classList.remove('section-hidden');
+  if (btn) btn.classList.add('active');
+}
+
+// Tab switching inside room card
+function showTab(roomPk, tab) {
+  ['students','beds','assets'].forEach(t => {
+    const panel = document.getElementById('panel_' + roomPk + '_' + t);
+    if (panel) panel.classList.toggle('section-hidden', t !== tab);
+  });
+  const tabs = document.querySelectorAll('#tabs_' + roomPk + ' .tab-pill');
+  tabs.forEach(tp => {
+    tp.classList.toggle('active', tp.getAttribute('onclick').includes("'" + tab + "'"));
+  });
+}
+
+// Auto-fill capacity when a category is selected
+function catChanged(selectEl, capFieldId) {
+  const opt = selectEl.options[selectEl.selectedIndex];
+  const cap = opt ? parseInt(opt.getAttribute('data-cap'), 10) : NaN;
+  const capEl = typeof capFieldId === 'string'
+    ? document.getElementById(capFieldId) : capFieldId;
+  if (capEl && !isNaN(cap)) capEl.value = cap;
+}
+
+// Populate edit room modal
+// Pre-fill floor in add room modal
+function setFloorAndOpen(floorNum) {
+  const inp = document.getElementById('addRoomFloor');
+  if (inp) inp.value = floorNum;
+}
+
+// Set room id for add asset modal
+function openAddAsset(roomPk) {
+  document.getElementById('assetRoomId').value = roomPk;
+}
+
+// Open edit asset modal
+function openEditAsset(id, name, qty, cond, tag, notes) {
+  document.getElementById('editAssetId').value    = id;
+  document.getElementById('editAssetName').value  = name;
+  document.getElementById('editAssetQty').value   = qty;
+  document.getElementById('editAssetCond').value  = cond;
+  document.getElementById('editAssetTag').value   = tag;
+  document.getElementById('editAssetNotes').value = notes;
+}
+
+// Bulk add rooms preview
+function updateBulkPreview() {
+  const prefix = document.getElementById('bulk_prefix').value || '';
+  const start  = parseInt(document.getElementById('bulk_start').value) || 1;
+  const count  = parseInt(document.getElementById('bulk_count').value) || 1;
+  const preview = [];
+  for (let i = 0; i < Math.min(count, 5); i++) {
+    preview.push(prefix + (start + i));
+  }
+  const text = preview.join(', ') + (count > 5 ? ` … ${prefix}${start + count - 1}` : '');
+  document.getElementById('bulk_preview').textContent = text;
+}
+
+// Pre-fill bulk floor from floor section button
+function setBulkFloor(floorNum) {
+  document.getElementById('bulk_floor').value = floorNum;
+  updateBulkPreview();
+}
+
+// Occupancy warning when reducing capacity
+const _roomOccupants = {
+  {% for f in floors_list %}{% for room in f.rooms %}'{{ room.pk }}': {{ room.current_occupants }},{% endfor %}{% endfor %}
+};
+let _currentEditRoomPk = '';
+function openEditRoom(id, rn, floor, wing, type, cap, status) {
+  _currentEditRoomPk = id;
+  const suffix = '_' + floor;
+  document.getElementById('er_id'   + suffix).value = id;
+  document.getElementById('er_rn'   + suffix).value = rn;
+  document.getElementById('er_fl'   + suffix).value = floor;
+  document.getElementById('er_wing' + suffix).value = wing;
+  document.getElementById('er_cap'  + suffix).value = cap;
+  const typeSel = document.getElementById('er_type' + suffix);
+  if (typeSel) typeSel.value = type;
+  const statusSel = document.getElementById('er_status' + suffix);
+  if (statusSel) statusSel.value = status;
+  // clear warning on open
+  const warn = document.getElementById('er_cap_warn' + suffix);
+  if (warn) warn.classList.add('d-none');
+}
+function checkCapacity(input, floor) {
+  const suffix = '_' + floor;
+  const roomId = document.getElementById('er_id' + suffix)?.value;
+  const occupants = _roomOccupants[roomId] || 0;
+  const newCap = parseInt(input.value) || 0;
+  const warn     = document.getElementById('er_cap_warn' + suffix);
+  const warnText = document.getElementById('er_cap_warn_text' + suffix);
+  if (!warn) return;
+  if (newCap < occupants) {
+    warnText.textContent = `This room currently has ${occupants} resident${occupants>1?'s':''} — reducing capacity below ${occupants} won't remove allocations but room may appear over-capacity.`;
+    warn.classList.remove('d-none');
+  } else {
+    warn.classList.add('d-none');
+  }
+}
+</script>
+{% endblock %}

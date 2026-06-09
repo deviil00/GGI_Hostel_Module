@@ -1,0 +1,95 @@
+{% extends "base/base.html" %}
+{% block title %}Mark Attendance — Hostel ERP{% endblock %}
+{% block page_title %}Mark Attendance{% endblock %}
+
+{% block content %}
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <!-- Date picker (changes URL on submit via JS) -->
+    <div class="d-flex align-items-center gap-2">
+      <label class="text-muted" style="font-size:13px">Date:</label>
+      <input type="date" id="datePicker" value="{{ selected_date|date:'Y-m-d' }}"
+             class="form-control form-control-sm" style="width:170px"
+             onchange="window.location='{% url 'mark_attendance' %}?date='+this.value">
+    </div>
+    <div class="d-flex gap-2">
+      <!-- Quick-set all buttons -->
+      <button type="button" class="btn btn-sm btn-outline-success" onclick="setAll('present')">All Present</button>
+      <button type="button" class="btn btn-sm btn-outline-danger"  onclick="setAll('absent')">All Absent</button>
+      <button type="submit" class="btn btn-sm btn-dark"><i class="bi bi-check2 me-1"></i>Save Attendance</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header py-3">
+      Marking attendance for {{ selected_date }} — {{ student_data|length }} student(s)
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th class="ps-3">#</th>
+            <th>Roll No.</th>
+            <th>Name</th>
+            <th>Department</th>
+            <th>Year</th>
+            <th style="width:280px">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in student_data %}
+          <tr>
+            <td class="ps-3 text-muted">{{ forloop.counter }}</td>
+            <td>{{ item.student.roll_number }}</td>
+            <td>{{ item.student.name }}</td>
+            <td>{{ item.student.department }}</td>
+            <td>{{ item.student.get_year_display }}</td>
+            <td>
+              <div class="d-flex gap-2">
+                {% for value, label in statuses %}
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input attendance-radio"
+                         type="radio"
+                         name="status_{{ item.student.pk }}"
+                         id="s{{ item.student.pk }}_{{ value }}"
+                         value="{{ value }}"
+                         data-group="{{ item.student.pk }}"
+                         {% if item.record and item.record.status == value %}checked
+                         {% elif not item.record and value == 'present' %}checked{% endif %}>
+                  <label class="form-check-label
+                    {% if value == 'present' %}text-success
+                    {% elif value == 'absent' %}text-danger
+                    {% else %}text-info{% endif %}"
+                    for="s{{ item.student.pk }}_{{ value }}"
+                    style="font-size:13px">{{ label }}</label>
+                </div>
+                {% endfor %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-4">No resident students found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="mt-3 d-flex justify-content-end">
+    <button type="submit" class="btn btn-dark px-4"><i class="bi bi-check2 me-1"></i>Save Attendance</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function setAll(status) {
+  document.querySelectorAll('.attendance-radio').forEach(function(radio) {
+    if (radio.value === status) radio.checked = true;
+  });
+}
+</script>
+{% endblock %}

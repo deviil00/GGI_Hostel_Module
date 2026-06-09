@@ -1,0 +1,203 @@
+{% extends "base/base.html" %}
+{% block title %}Complaints — GGI Hostel ERP{% endblock %}
+{% block page_title %}Complaints{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Complaint Management</h4>
+    <p>Review, verify and track complaints through resolution</p>
+  </div>
+  <a href="{% url 'raise_complaint' %}" class="btn btn-dark btn-sm">
+    <i class="bi bi-plus-circle me-1"></i>Report Issue
+  </a>
+</div>
+
+{# ── Status pill tabs ── #}
+<div class="d-flex gap-2 flex-wrap mb-3">
+  {% with cur=filters.status %}
+  <a href="?status=&category={{ filters.category }}&priority={{ filters.priority }}&q={{ filters.q }}"
+     class="status-tab {% if not cur %}active{% endif %}">
+    All <span class="tab-count">{{ counts.all }}</span>
+  </a>
+  <a href="?status=submitted&category={{ filters.category }}&priority={{ filters.priority }}&q={{ filters.q }}"
+     class="status-tab {% if cur == 'submitted' %}active{% endif %}">
+    Submitted <span class="tab-count">{{ counts.submitted }}</span>
+  </a>
+  <a href="?status=verified&category={{ filters.category }}&priority={{ filters.priority }}&q={{ filters.q }}"
+     class="status-tab {% if cur == 'verified' %}active{% endif %}">
+    Verified <span class="tab-count">{{ counts.verified }}</span>
+  </a>
+  <a href="?status=forwarded&category={{ filters.category }}&priority={{ filters.priority }}&q={{ filters.q }}"
+     class="status-tab {% if cur == 'forwarded' %}active{% endif %}">
+    Forwarded <span class="tab-count">{{ counts.forwarded }}</span>
+  </a>
+  <a href="?status=in_progress&category={{ filters.category }}&priority={{ filters.priority }}&q={{ filters.q }}"
+     class="status-tab {% if cur == 'in_progress' %}active{% endif %}">
+    In Progress <span class="tab-count">{{ counts.in_progress }}</span>
+  </a>
+  <a href="?status=resolved&category={{ filters.category }}&priority={{ filters.priority }}&q={{ filters.q }}"
+     class="status-tab {% if cur == 'resolved' %}active{% endif %}">
+    Resolved <span class="tab-count">{{ counts.resolved }}</span>
+  </a>
+  <a href="?status=closed&category={{ filters.category }}&priority={{ filters.priority }}&q={{ filters.q }}"
+     class="status-tab {% if cur == 'closed' %}active{% endif %}">
+    Closed <span class="tab-count">{{ counts.closed|default:0 }}</span>
+  </a>
+  {% endwith %}
+</div>
+
+{# ── Filter bar ── #}
+<div class="filter-card mb-3">
+  <form method="get" class="row g-2 align-items-end">
+    <input type="hidden" name="status" value="{{ filters.status }}">
+    <div class="col-md-3">
+      <input type="text" name="q" value="{{ filters.q }}" class="form-control form-control-sm"
+             placeholder="Search student, title…">
+    </div>
+    <div class="col-md-2">
+      <select name="category" class="form-select form-select-sm">
+        <option value="">All Categories</option>
+        {% for val, lbl in categories %}
+        <option value="{{ val }}" {% if filters.category == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select name="priority" class="form-select form-select-sm">
+        <option value="">All Priority</option>
+        <option value="urgent" {% if filters.priority == "urgent" %}selected{% endif %}>Urgent</option>
+        <option value="high"   {% if filters.priority == "high" %}selected{% endif %}>High</option>
+        <option value="medium" {% if filters.priority == "medium" %}selected{% endif %}>Medium</option>
+        <option value="low"    {% if filters.priority == "low" %}selected{% endif %}>Low</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary btn-sm px-3">Filter</button>
+    </div>
+    <div class="col-auto">
+      <a href="{% url 'complaint_list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+    </div>
+  </form>
+</div>
+
+{# ── Table ── #}
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Reported By</th>
+        <th>Complaint</th>
+        <th>Category</th>
+        <th>Priority</th>
+        <th>Status</th>
+        <th>Assigned To</th>
+        <th>Raised</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for c in page_obj %}
+    <tr {% if c.is_overdue %}style="background:#FFF5F5"{% endif %}>
+      <td>
+        <div class="d-flex align-items-center gap-2">
+          <div class="tbl-avatar {% if c.is_staff_complaint %}av-amber{% else %}av-purple{% endif %}">
+            {{ c.reporter_name|first|upper }}
+          </div>
+          <div>
+            <div class="tbl-name">{{ c.reporter_name }}</div>
+            <div class="tbl-sub">{{ c.reporter_role }}</div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="fw-600" style="font-size:13px">{{ c.title }}</div>
+        <div class="tbl-sub">{{ c.location_display }}</div>
+      </td>
+      <td style="color:var(--text-2);font-size:12.5px">{{ c.get_category_display }}</td>
+      <td>
+        {% if c.priority %}
+        <span class="badge badge-{{ c.priority }}">{{ c.get_priority_display }}</span>
+        {% else %}
+        <span style="font-size:11px;color:var(--text-3)">—</span>
+        {% endif %}
+      </td>
+      <td>
+        {% include "complaints/_status_chip.html" with status=c.status %}
+        {% if c.is_overdue %}
+        <br><span style="font-size:10px;color:#DC2626;font-weight:600">⚠ OVERDUE</span>
+        {% endif %}
+      </td>
+      <td style="font-size:12.5px;color:var(--text-2)">
+        {% if c.assigned_to %}{{ c.assigned_to.name|default:c.assigned_to.email }}{% else %}—{% endif %}
+      </td>
+      <td style="color:var(--text-3);font-size:12px">{{ c.created_at|date:"d M Y" }}</td>
+      <td>
+        <a href="{% url 'complaint_detail' c.pk %}" class="btn btn-xs btn-outline-primary">View</a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="8">
+        <div class="empty-state">
+          <i class="bi bi-chat-square-text"></i>
+          <p>No complaints found.</p>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-3 d-flex align-items-center justify-content-between">
+  <span style="font-size:12.5px;color:var(--text-3)">
+    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+  </span>
+  <ul class="pagination pagination-sm mb-0">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ filters.status }}&category={{ filters.category }}&priority={{ filters.priority }}&q={{ filters.q }}">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+    {% endif %}
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ filters.status }}&category={{ filters.category }}&priority={{ filters.priority }}&q={{ filters.q }}">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+<style>
+.status-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-2);
+  background: var(--bg-2, #F1F5F9);
+  text-decoration: none;
+  transition: all .15s;
+  border: 1.5px solid transparent;
+}
+.status-tab:hover { background: var(--bg-3, #E2E8F0); color: var(--text-1); }
+.status-tab.active { background: #EDE9FE; color: #6D28D9; border-color: #C4B5FD; }
+.tab-count {
+  background: rgba(0,0,0,.07);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 11px;
+}
+.status-tab.active .tab-count { background: rgba(109,40,217,.15); }
+.btn-xs { padding: 2px 10px; font-size: 11.5px; }
+</style>
+{% endblock %}

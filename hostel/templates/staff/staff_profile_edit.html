@@ -1,0 +1,360 @@
+{% extends "base/base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>My Profile</h4>
+    <p>Keep your profile complete so the administration has accurate records</p>
+  </div>
+</div>
+
+{# ── Completion banner ── #}
+{% with pct=profile.completion_pct %}
+<div class="card mb-4" style="border-left:4px solid {% if pct == 100 %}#059669{% elif pct >= 60 %}#1565C0{% elif pct >= 30 %}#D97706{% else %}#DC2626{% endif %}">
+  <div class="card-body p-3">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <div style="font-weight:700;font-size:13px">
+        Profile Completion —
+        <span style="color:{% if pct == 100 %}#059669{% elif pct >= 60 %}#1565C0{% elif pct >= 30 %}#D97706{% else %}#DC2626{% endif %}">
+          {{ pct }}% ({{ profile.completion_label }})
+        </span>
+      </div>
+      {% if pct < 100 %}
+      <span style="font-size:12px;color:var(--text-3)">Fill all sections below to reach 100%</span>
+      {% endif %}
+    </div>
+    <div style="height:8px;border-radius:6px;background:#F1F5F9;overflow:hidden">
+      <div style="width:{{ pct }}%;height:100%;border-radius:6px;background:{% if pct == 100 %}#059669{% elif pct >= 60 %}#1565C0{% elif pct >= 30 %}#D97706{% else %}#DC2626{% endif %};transition:width .4s"></div>
+    </div>
+  </div>
+</div>
+{% endwith %}
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  {# ── Account info (read-only) ── #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-person-fill" style="color:#1565C0"></i></div>
+        Account Information
+      </div>
+      <span style="font-size:11px;color:var(--text-3)">Managed by Admin 1</span>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label fw-600" style="font-size:12px">Full Name</label>
+          <input class="form-control form-control-sm" value="{{ user.name }}" disabled>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-600" style="font-size:12px">Email</label>
+          <input class="form-control form-control-sm" value="{{ user.email }}" disabled>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-600" style="font-size:12px">Role</label>
+          <input class="form-control form-control-sm" value="{{ user.get_role_display }}" disabled>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-600" style="font-size:12px">Phone</label>
+          <input type="text" name="phone" class="form-control form-control-sm"
+                 value="{{ user.phone }}" placeholder="Mobile number">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Personal details ── #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-person-vcard-fill" style="color:#059669"></i></div>
+        Personal Details
+      </div>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label fw-600" style="font-size:12px">Employee / Staff ID</label>
+          <input type="text" name="employee_id" class="form-control form-control-sm"
+                 value="{{ profile.employee_id }}" placeholder="e.g. GGI-2024-001">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-600" style="font-size:12px">Date of Birth</label>
+          <input type="date" name="date_of_birth" class="form-control form-control-sm"
+                 value="{{ profile.date_of_birth|date:'Y-m-d' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-600" style="font-size:12px">Gender</label>
+          <select name="gender" class="form-select form-select-sm">
+            <option value="">— Select —</option>
+            {% for val, label in profile.GENDER_CHOICES %}
+            <option value="{{ val }}" {% if profile.gender == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-600" style="font-size:12px">Blood Group</label>
+          <select name="blood_group" class="form-select form-select-sm">
+            <option value="">— Select —</option>
+            {% for val, label in profile.BLOOD_GROUPS %}
+            <option value="{{ val }}" {% if profile.blood_group == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-600" style="font-size:12px">Aadhar Number</label>
+          <input type="text" name="aadhar_number" class="form-control form-control-sm"
+                 value="{{ profile.aadhar_number }}" maxlength="12" placeholder="12-digit number"
+                 pattern="\d{12}" title="Enter 12-digit Aadhar number" inputmode="numeric">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-600" style="font-size:12px">College / Employee ID Number</label>
+          <input type="text" name="college_id_number" class="form-control form-control-sm"
+                 value="{{ profile.college_id_number }}" maxlength="50" placeholder="e.g. GGI-2024-001">
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-600" style="font-size:12px">Short Bio / Note</label>
+          <textarea name="bio" class="form-control form-control-sm" rows="2"
+                    maxlength="500" placeholder="Optional — brief introduction about yourself">{{ profile.bio }}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Address ── #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="ch-icon" style="background:#FFFBEB"><i class="bi bi-house-fill" style="color:#D97706"></i></div>
+        Address
+      </div>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label fw-600" style="font-size:12px">Permanent Address</label>
+          <textarea name="address" class="form-control form-control-sm" rows="2"
+                    maxlength="300" placeholder="House / Flat No., Street, Locality">{{ profile.address }}</textarea>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-600" style="font-size:12px">City</label>
+          <input type="text" name="city" class="form-control form-control-sm"
+                 value="{{ profile.city }}" placeholder="City">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-600" style="font-size:12px">State</label>
+          <input type="text" name="state" class="form-control form-control-sm"
+                 value="{{ profile.state }}" placeholder="State">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-600" style="font-size:12px">Pincode</label>
+          <input type="text" name="pincode" class="form-control form-control-sm"
+                 value="{{ profile.pincode }}" maxlength="10" placeholder="000000">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Emergency contact ── #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="ch-icon" style="background:#FEF2F2"><i class="bi bi-telephone-fill" style="color:#DC2626"></i></div>
+        Emergency Contact
+      </div>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label fw-600" style="font-size:12px">Contact Name</label>
+          <input type="text" name="emergency_name" class="form-control form-control-sm"
+                 value="{{ profile.emergency_name }}" placeholder="Full name">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-600" style="font-size:12px">Contact Phone</label>
+          <input type="text" name="emergency_phone" class="form-control form-control-sm"
+                 value="{{ profile.emergency_phone }}" placeholder="Mobile number">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-600" style="font-size:12px">Relation</label>
+          <input type="text" name="emergency_relation" class="form-control form-control-sm"
+                 value="{{ profile.emergency_relation }}" placeholder="e.g. Spouse, Parent, Sibling">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Professional details ── #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="ch-icon" style="background:#F5F3FF"><i class="bi bi-briefcase-fill" style="color:#7C3AED"></i></div>
+        Professional Details
+      </div>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label fw-600" style="font-size:12px">Highest Qualification</label>
+          <input type="text" name="qualification" class="form-control form-control-sm"
+                 value="{{ profile.qualification }}" placeholder="e.g. B.Com, M.Sc, B.Tech">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-600" style="font-size:12px">Department / Wing</label>
+          <input type="text" name="department" class="form-control form-control-sm"
+                 value="{{ profile.department }}" placeholder="e.g. Boys Hostel Block A">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-600" style="font-size:12px">Date of Joining</label>
+          <input type="date" name="date_of_joining" class="form-control form-control-sm"
+                 value="{{ profile.date_of_joining|date:'Y-m-d' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-600" style="font-size:12px">Experience (yrs)</label>
+          <input type="number" name="experience_years" class="form-control form-control-sm"
+                 value="{{ profile.experience_years|default:'' }}" min="0" max="60" placeholder="0">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Official Documents ── #}
+  <div class="card mb-4">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="ch-icon" style="background:#F0F9FF"><i class="bi bi-file-earmark-lock2-fill" style="color:#0891B2"></i></div>
+        Official Documents
+      </div>
+      <span style="font-size:11px;color:var(--text-3)">PDF, JPG, PNG — max 5 MB each</span>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-4">
+
+        {# Aadhar Card #}
+        <div class="col-md-3">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <div style="width:22px;height:22px;border-radius:5px;background:#FEF2F2;display:flex;align-items:center;justify-content:center">
+              <i class="bi bi-credit-card-2-front-fill" style="color:#DC2626;font-size:12px"></i>
+            </div>
+            <label class="form-label fw-600 mb-0" style="font-size:12px">Aadhar Card</label>
+          </div>
+          {% if profile.aadhar_doc %}
+          <div class="d-flex align-items-center gap-2 mb-2 p-2"
+               style="background:#FFF5F5;border:1px solid #FCA5A5;border-radius:6px">
+            <i class="bi bi-file-earmark-fill" style="color:#DC2626;font-size:15px"></i>
+            <a href="{{ profile.aadhar_doc.url }}" target="_blank"
+               style="font-size:11.5px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#991B1B">
+              View Aadhar
+            </a>
+            <label class="d-flex align-items-center gap-1" style="cursor:pointer;font-size:11px;color:#DC2626;white-space:nowrap">
+              <input type="checkbox" name="clear_aadhar_doc" style="accent-color:#DC2626"> Remove
+            </label>
+          </div>
+          {% endif %}
+          <input type="file" name="aadhar_doc" class="form-control form-control-sm"
+                 accept=".pdf,.jpg,.jpeg,.png">
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px">
+            {% if profile.aadhar_doc %}Replace existing Aadhar scan.{% else %}Upload Aadhar card (front side).{% endif %}
+          </div>
+        </div>
+
+        {# College / Institution ID Card #}
+        <div class="col-md-3">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <div style="width:22px;height:22px;border-radius:5px;background:#EBF3FF;display:flex;align-items:center;justify-content:center">
+              <i class="bi bi-person-badge-fill" style="color:#1565C0;font-size:12px"></i>
+            </div>
+            <label class="form-label fw-600 mb-0" style="font-size:12px">College / Institution ID Card</label>
+          </div>
+          {% if profile.college_id_doc %}
+          <div class="d-flex align-items-center gap-2 mb-2 p-2"
+               style="background:#EBF3FF;border:1px solid #93C5FD;border-radius:6px">
+            <i class="bi bi-file-earmark-fill" style="color:#1565C0;font-size:15px"></i>
+            <a href="{{ profile.college_id_doc.url }}" target="_blank"
+               style="font-size:11.5px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#1E40AF">
+              View College ID
+            </a>
+            <label class="d-flex align-items-center gap-1" style="cursor:pointer;font-size:11px;color:#DC2626;white-space:nowrap">
+              <input type="checkbox" name="clear_college_id_doc" style="accent-color:#DC2626"> Remove
+            </label>
+          </div>
+          {% endif %}
+          <input type="file" name="college_id_doc" class="form-control form-control-sm"
+                 accept=".pdf,.jpg,.jpeg,.png">
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px">
+            {% if profile.college_id_doc %}Replace existing ID card.{% else %}Upload institution / employee ID card.{% endif %}
+          </div>
+        </div>
+
+        {# Appointment / Joining Letter #}
+        <div class="col-md-3">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <div style="width:22px;height:22px;border-radius:5px;background:#F5F3FF;display:flex;align-items:center;justify-content:center">
+              <i class="bi bi-file-earmark-text-fill" style="color:#7C3AED;font-size:12px"></i>
+            </div>
+            <label class="form-label fw-600 mb-0" style="font-size:12px">Appointment / Joining Letter</label>
+          </div>
+          {% if profile.appointment_letter %}
+          <div class="d-flex align-items-center gap-2 mb-2 p-2"
+               style="background:#F5F3FF;border:1px solid #C4B5FD;border-radius:6px">
+            <i class="bi bi-file-earmark-text-fill" style="color:#7C3AED;font-size:15px"></i>
+            <a href="{{ profile.appointment_letter.url }}" target="_blank"
+               style="font-size:11.5px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#5B21B6">
+              View Letter
+            </a>
+            <label class="d-flex align-items-center gap-1" style="cursor:pointer;font-size:11px;color:#DC2626;white-space:nowrap">
+              <input type="checkbox" name="clear_appointment_letter" style="accent-color:#DC2626"> Remove
+            </label>
+          </div>
+          {% endif %}
+          <input type="file" name="appointment_letter" class="form-control form-control-sm"
+                 accept=".pdf,.jpg,.jpeg,.png">
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px">
+            {% if profile.appointment_letter %}Replace existing letter.{% else %}Official appointment or offer letter.{% endif %}
+          </div>
+        </div>
+
+        {# Qualification Certificate #}
+        <div class="col-md-3">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <div style="width:22px;height:22px;border-radius:5px;background:#ECFDF5;display:flex;align-items:center;justify-content:center">
+              <i class="bi bi-file-earmark-check-fill" style="color:#059669;font-size:12px"></i>
+            </div>
+            <label class="form-label fw-600 mb-0" style="font-size:12px">Qualification Certificate</label>
+          </div>
+          {% if profile.qualification_doc %}
+          <div class="d-flex align-items-center gap-2 mb-2 p-2"
+               style="background:#ECFDF5;border:1px solid #6EE7B7;border-radius:6px">
+            <i class="bi bi-file-earmark-check-fill" style="color:#059669;font-size:15px"></i>
+            <a href="{{ profile.qualification_doc.url }}" target="_blank"
+               style="font-size:11.5px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#065F46">
+              View Certificate
+            </a>
+            <label class="d-flex align-items-center gap-1" style="cursor:pointer;font-size:11px;color:#DC2626;white-space:nowrap">
+              <input type="checkbox" name="clear_qualification_doc" style="accent-color:#DC2626"> Remove
+            </label>
+          </div>
+          {% endif %}
+          <input type="file" name="qualification_doc" class="form-control form-control-sm"
+                 accept=".pdf,.jpg,.jpeg,.png">
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px">
+            {% if profile.qualification_doc %}Replace existing certificate.{% else %}Degree, diploma or mark sheet.{% endif %}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-3">
+    <button type="submit" class="btn btn-primary px-5">
+      <i class="bi bi-check2-circle me-1"></i>Save Profile
+    </button>
+    <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}

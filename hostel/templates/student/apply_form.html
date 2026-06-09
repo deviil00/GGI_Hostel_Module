@@ -1,0 +1,134 @@
+{% extends "base/base.html" %}
+{% block title %}Apply — {{ form_obj.title }} — GGI Hostel ERP{% endblock %}
+{% block page_title %}Fill Form{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>{{ form_obj.title }}</h4>
+    <p>
+      {% if form_obj.form_category %}
+      <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;
+                   padding:2px 10px;border-radius:8px;
+                   background:{{ form_obj.form_category.color }}18;color:{{ form_obj.form_category.color }}">
+        <i class="bi {{ form_obj.form_category.icon }}"></i>{{ form_obj.form_category.name }}
+      </span>&nbsp;
+      {% endif %}
+      {% if form_obj.deadline %}Deadline: {{ form_obj.deadline|date:"d M Y" }}{% endif %}
+    </p>
+  </div>
+  <a href="{% url 'available_forms' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back
+  </a>
+</div>
+
+{% if form_obj.description %}
+<div class="card mb-4" style="border-color:#C7D2FE;background:#F8F9FF">
+  <div class="card-body p-3" style="font-size:13px;color:#4338CA">
+    <i class="bi bi-info-circle-fill me-2"></i>{{ form_obj.description }}
+  </div>
+</div>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+
+  <!-- ── Custom Fields ── -->
+  {% if fields %}
+  <div class="card mb-4">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="ch-icon" style="background:var(--purple-soft)"><i class="bi bi-ui-checks" style="color:var(--purple)"></i></div>
+        Application Details
+      </div>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+        {% for field in fields %}
+        <div class="{% if field.field_type == 'textarea' %}col-12{% else %}col-md-6{% endif %}">
+          <label class="form-label">
+            {{ field.label }}
+            {% if field.is_required %}<span class="text-danger">*</span>{% endif %}
+          </label>
+
+          {% if field.field_type == 'text' %}
+            <input type="text" name="field_{{ field.pk }}" class="form-control"
+                   {% if field.is_required %}required{% endif %}
+                   placeholder="{{ field.help_text }}">
+
+          {% elif field.field_type == 'textarea' %}
+            <textarea name="field_{{ field.pk }}" class="form-control" rows="3"
+                      {% if field.is_required %}required{% endif %}
+                      placeholder="{{ field.help_text }}"></textarea>
+
+          {% elif field.field_type == 'number' %}
+            <input type="number" name="field_{{ field.pk }}" class="form-control"
+                   {% if field.is_required %}required{% endif %}
+                   placeholder="{{ field.help_text }}">
+
+          {% elif field.field_type == 'email' %}
+            <input type="email" name="field_{{ field.pk }}" class="form-control"
+                   {% if field.is_required %}required{% endif %}
+                   placeholder="{{ field.help_text }}">
+
+          {% elif field.field_type == 'date' %}
+            <input type="date" name="field_{{ field.pk }}" class="form-control"
+                   {% if field.is_required %}required{% endif %}>
+
+          {% elif field.field_type == 'select' %}
+            <select name="field_{{ field.pk }}" class="form-select" {% if field.is_required %}required{% endif %}>
+              <option value="">— Select —</option>
+              {% for opt in field.options %}
+              <option value="{{ opt }}">{{ opt }}</option>
+              {% endfor %}
+            </select>
+
+          {% elif field.field_type == 'radio' %}
+            <div class="mt-1">
+              {% for opt in field.options %}
+              <div class="form-check">
+                <input type="radio" name="field_{{ field.pk }}" value="{{ opt }}"
+                       id="radio_{{ field.pk }}_{{ forloop.counter }}"
+                       class="form-check-input" {% if field.is_required %}required{% endif %}>
+                <label class="form-check-label" for="radio_{{ field.pk }}_{{ forloop.counter }}">{{ opt }}</label>
+              </div>
+              {% endfor %}
+            </div>
+
+          {% elif field.field_type == 'checkbox' %}
+            <div class="mt-1">
+              {% for opt in field.options %}
+              <div class="form-check">
+                <input type="checkbox" name="field_{{ field.pk }}" value="{{ opt }}"
+                       id="chk_{{ field.pk }}_{{ forloop.counter }}" class="form-check-input">
+                <label class="form-check-label" for="chk_{{ field.pk }}_{{ forloop.counter }}">{{ opt }}</label>
+              </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          {% if field.help_text and field.field_type not in 'text,textarea,number,email,date' %}
+          <div class="form-text">{{ field.help_text }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card mb-4" style="border-color:#FDE68A;background:#FFFBEB">
+    <div class="card-body p-3" style="font-size:12.5px;color:#92400E">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      Once submitted, you cannot edit your application. Please review your responses before submitting.
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 justify-content-end mb-5">
+    <a href="{% url 'available_forms' %}" class="btn btn-outline-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary px-4">
+      <i class="bi bi-send me-1"></i>Submit Application
+    </button>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visitor Walk-In — GGI Hostel</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body { background: #F0F9FF; min-height: 100vh; font-family: 'Segoe UI', sans-serif; }
+    .form-card { background: #fff; border-radius: 18px; box-shadow: 0 4px 32px rgba(0,0,0,.08); }
+    .section-header {
+      font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px;
+      color: #0891B2; margin-bottom: 14px; padding-bottom: 8px;
+      border-bottom: 1.5px solid #BAE6FD;
+    }
+    .purpose-chip {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; border-radius: 12px; border: 2px solid #E2E8F0;
+      background: #fff; cursor: pointer; font-size: 13.5px; font-weight: 600;
+      color: #64748B; transition: all .15s; user-select: none;
+    }
+    .purpose-chip.active { border-color: #0891B2; background: #EFF6FF; color: #0891B2; }
+    .purpose-chip:hover { border-color: #0891B2; }
+    .sub-section {
+      background: #F0F9FF; border: 1.5px solid #BAE6FD;
+      border-radius: 12px; padding: 20px 22px; margin-top: 4px;
+    }
+    .required { color: #DC2626; }
+    label { font-size: 12.5px; font-weight: 600; color: #374151; margin-bottom: 4px; }
+    .form-control, .form-select {
+      border-color: #E2E8F0; border-radius: 8px; font-size: 13.5px;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: #0891B2; box-shadow: 0 0 0 3px rgba(8,145,178,.12);
+    }
+    .btn-submit {
+      background: #0891B2; color: #fff; border: none; border-radius: 10px;
+      padding: 13px 0; font-size: 15px; font-weight: 700; width: 100%;
+      transition: background .15s;
+    }
+    .btn-submit:hover { background: #0E7490; }
+  </style>
+</head>
+<body>
+
+<div class="container py-4" style="max-width:680px">
+
+  {# Header #}
+  <div class="text-center mb-4">
+    <div style="width:60px;height:60px;border-radius:18px;background:#0891B2;
+                display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+      <i class="bi bi-person-badge-fill" style="font-size:28px;color:#fff"></i>
+    </div>
+    <h4 style="font-weight:800;color:#0F172A;margin-bottom:4px">Visitor Walk-In</h4>
+    <p style="font-size:13px;color:#64748B;margin-top:6px">
+      Please fill in your details to register your visit.
+    </p>
+  </div>
+
+  {% if error %}
+  <div class="alert alert-danger border-0 rounded-3 mb-3">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="form-card p-4 p-md-5">
+    {% csrf_token %}
+
+    {# ── SECTION 1: Personal Info ── #}
+    <div class="section-header"><i class="bi bi-person-fill me-2"></i>Personal Information</div>
+    <div class="row g-3 mb-4">
+      <div class="col-md-6">
+        <label>Full Name <span class="required">*</span></label>
+        <input type="text" name="visitor_name" class="form-control" placeholder="Your full name" required>
+      </div>
+      <div class="col-md-6">
+        <label>Phone Number <span class="required">*</span></label>
+        <input type="tel" name="phone" class="form-control" placeholder="10-digit mobile" required>
+      </div>
+      <div class="col-md-6">
+        <label>Email Address</label>
+        <input type="email" name="email" class="form-control" placeholder="Optional">
+      </div>
+      <div class="col-md-6">
+        <label>ID Proof Type <span class="required">*</span></label>
+        <select name="id_proof_type" class="form-select" required>
+          <option value="Aadhar">Aadhar Card</option>
+          <option value="PAN">PAN Card</option>
+          <option value="DL">Driving Licence</option>
+          <option value="Passport">Passport</option>
+          <option value="VoterID">Voter ID</option>
+          <option value="CollegeID">College ID Card</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label>ID Number <span class="required">*</span></label>
+        <input type="text" name="id_number" class="form-control" placeholder="ID document number" required>
+      </div>
+      <div class="col-md-6">
+        <label>Upload ID Photo <span class="required">*</span></label>
+        <input type="file" name="id_upload" class="form-control" accept="image/*,.pdf" required>
+      </div>
+    </div>
+
+    {# ── SECTION 2: Time ── #}
+    <div class="section-header"><i class="bi bi-clock me-2"></i>Visit Timing</div>
+    <div class="row g-3 mb-4">
+      <div class="col-md-6">
+        <label>Time In <span class="required">*</span></label>
+        <input type="time" name="time_in" class="form-control" required>
+      </div>
+      <div class="col-md-6">
+        <label>Expected Out Time <span class="required">*</span></label>
+        <input type="time" name="time_out" class="form-control" required>
+      </div>
+    </div>
+
+    {# ── SECTION 3: Purpose ── #}
+    <div class="section-header"><i class="bi bi-ui-checks me-2"></i>Purpose of Visit</div>
+    <div class="d-flex gap-3 flex-wrap mb-3">
+      <label class="purpose-chip" id="chip-admission" onclick="setPurpose('admission')">
+        <input type="radio" name="purpose_type" value="admission" style="display:none" required>
+        <i class="bi bi-building2"></i> Admission
+      </label>
+      <label class="purpose-chip" id="chip-guardian" onclick="setPurpose('guardian')">
+        <input type="radio" name="purpose_type" value="guardian" style="display:none">
+        <i class="bi bi-person-hearts"></i> Guardian / Relative
+      </label>
+      <label class="purpose-chip" id="chip-guest" onclick="setPurpose('guest')">
+        <input type="radio" name="purpose_type" value="guest" style="display:none">
+        <i class="bi bi-people-fill"></i> Guest
+      </label>
+    </div>
+
+    {# ── Admission sub-section ── #}
+    <div id="section-admission" class="sub-section mb-3" style="display:none">
+      <div style="font-size:13.5px;color:#0369A1;font-weight:600;margin-bottom:8px">
+        <i class="bi bi-info-circle me-2"></i>Admission Visit
+      </div>
+      <p style="font-size:13px;color:#0F172A;margin:0">
+        Please proceed to the <strong>Admission Office</strong> upon entry.
+        Security will guide you to the right block.
+      </p>
+    </div>
+
+    {# ── Guardian sub-section ── #}
+    <div id="section-guardian" class="sub-section mb-3" style="display:none">
+      <div style="font-size:13px;font-weight:700;color:#0369A1;margin-bottom:14px">
+        <i class="bi bi-person-hearts me-2"></i>Guardian / Relative Details
+      </div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label>Student Name (Being Visited) <span class="required">*</span></label>
+          <input type="text" name="student_name" class="form-control"
+                 placeholder="Full name of the student">
+        </div>
+        <div class="col-md-6">
+          <label>Hostel <span class="required">*</span></label>
+          <select name="hostel_guardian" class="form-select">
+            <option value="">— Select Hostel —</option>
+            {% for h in all_hostels %}
+            <option value="{{ h.pk }}">{{ h.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label>Relation with Student <span class="required">*</span></label>
+          <select name="relation" class="form-select">
+            <option value="">— Select —</option>
+            {% for val, label in relations %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label>Visit Date</label>
+          <input type="date" name="visit_date_guardian" class="form-control"
+                 value="{{ today|date:'Y-m-d' }}" readonly>
+        </div>
+      </div>
+    </div>
+
+    {# ── Guest sub-section ── #}
+    <div id="section-guest" class="sub-section mb-3" style="display:none">
+      <div style="font-size:13px;font-weight:700;color:#0369A1;margin-bottom:14px">
+        <i class="bi bi-people-fill me-2"></i>Guest Details
+      </div>
+      <div class="row g-3">
+        <div class="col-12">
+          <label>Purpose / Reason for Visit <span class="required">*</span></label>
+          <textarea name="purpose" class="form-control" rows="2"
+                    placeholder="Briefly describe why you are visiting…"></textarea>
+        </div>
+        <div class="col-12">
+          <label>Are you a college student?</label>
+          <div class="d-flex gap-3 mt-1">
+            <label style="font-size:13px;font-weight:500;cursor:pointer">
+              <input type="radio" name="is_college_student" value="yes"
+                     onchange="toggleCollegeId(true)"> &nbsp;Yes
+            </label>
+            <label style="font-size:13px;font-weight:500;cursor:pointer">
+              <input type="radio" name="is_college_student" value="no"
+                     onchange="toggleCollegeId(false)" checked> &nbsp;No
+            </label>
+          </div>
+        </div>
+        <div class="col-md-6" id="college-id-section" style="display:none">
+          <label>Upload College ID Card <span class="required">*</span></label>
+          <input type="file" name="college_id_upload" id="college_id_input"
+                 class="form-control" accept="image/*,.pdf">
+          <div style="font-size:11.5px;color:#64748B;margin-top:4px">
+            JPG, PNG, or PDF — clearly shows name &amp; college
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Submit ── #}
+    <div class="mt-4">
+      <button type="submit" class="btn-submit">
+        <i class="bi bi-send-check-fill me-2"></i>Submit Walk-In
+      </button>
+      <p style="font-size:11.5px;color:#94A3B8;text-align:center;margin-top:10px">
+        <i class="bi bi-shield-check me-1"></i>
+        Your information is collected for hostel security purposes only.
+      </p>
+    </div>
+  </form>
+</div>
+
+<script>
+function setPurpose(type) {
+  ['admission','guardian','guest'].forEach(t => {
+    document.getElementById('section-' + t).style.display = (t === type) ? '' : 'none';
+    document.getElementById('chip-' + t).classList.toggle('active', t === type);
+  });
+  document.querySelector(`input[name="purpose_type"][value="${type}"]`).checked = true;
+
+  // Manage required attrs dynamically
+  const guardianFields = ['student_name', 'relation', 'hostel_guardian'];
+  guardianFields.forEach(n => {
+    const el = document.querySelector(`[name="${n}"]`);
+    if (el) el.required = (type === 'guardian');
+  });
+  const purposeEl = document.querySelector('textarea[name="purpose"]');
+  if (purposeEl) purposeEl.required = (type === 'guest');
+}
+
+function toggleCollegeId(show) {
+  const sec = document.getElementById('college-id-section');
+  const inp = document.getElementById('college_id_input');
+  sec.style.display = show ? '' : 'none';
+  if (inp) inp.required = show;
+}
+</script>
+</body>
+</html>

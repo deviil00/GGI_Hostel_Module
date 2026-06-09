@@ -1,0 +1,387 @@
+{% extends 'base/base.html' %}
+{% block title %}Bulk Upload — Rooms{% endblock %}
+{% block page_title %}Bulk Upload{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Bulk Upload — Hostels &amp; Rooms</h4>
+    <p>Upload a filled Excel file to create multiple hostels and rooms in one shot</p>
+  </div>
+  <a href="{% url 'hostel_list' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Back to Hostels
+  </a>
+</div>
+
+{% if done %}
+<!-- ── Result panel ── -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#059669">
+      <div class="s-top"><div class="s-icon" style="background:#ECFDF5"><i class="bi bi-building-check" style="color:#059669"></i></div></div>
+      <div class="s-number">{{ created_hostels }}</div>
+      <div class="s-label">Hostels Created</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#1565C0">
+      <div class="s-top"><div class="s-icon" style="background:#EBF3FF"><i class="bi bi-door-open-fill" style="color:#1565C0"></i></div></div>
+      <div class="s-number">{{ created_rooms }}</div>
+      <div class="s-label">Rooms Created</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#7C3AED">
+      <div class="s-top"><div class="s-icon" style="background:#F5F3FF"><i class="bi bi-person-workspace" style="color:#7C3AED"></i></div></div>
+      <div class="s-number">{{ created_beds }}</div>
+      <div class="s-label">Beds Created</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:{% if skipped_rows %}#DC2626{% else %}#059669{% endif %}">
+      <div class="s-top"><div class="s-icon" style="background:{% if skipped_rows %}#FEF2F2{% else %}#ECFDF5{% endif %}">
+        <i class="bi bi-{% if skipped_rows %}exclamation-triangle-fill{% else %}check-circle-fill{% endif %}"
+           style="color:{% if skipped_rows %}#DC2626{% else %}#059669{% endif %}"></i>
+      </div></div>
+      <div class="s-number">{{ skipped_rows|length }}</div>
+      <div class="s-label">Rows Skipped</div>
+    </div>
+  </div>
+</div>
+
+{% if skipped_rows %}
+<div class="card mb-4" style="border-color:#FCA5A5">
+  <div class="card-header" style="background:#FEF2F2">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#FEF2F2"><i class="bi bi-exclamation-triangle-fill" style="color:#DC2626"></i></div>
+      <span style="color:#991B1B;font-weight:700">Skipped Rows ({{ skipped_rows|length }})</span>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr><th style="width:80px">Row</th><th>Room / Data</th><th>Reason</th></tr>
+      </thead>
+      <tbody>
+        {% for skip in skipped_rows %}
+        <tr>
+          <td class="fw-600" style="color:#DC2626">{{ skip.row }}</td>
+          <td style="font-size:13px">{{ skip.data }}</td>
+          <td><span style="font-size:12.5px;color:#991B1B">{{ skip.reason }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="d-flex gap-3">
+  <a href="{% url 'hostel_list' %}" class="btn btn-primary">
+    <i class="bi bi-building-fill me-1"></i>View Hostels
+  </a>
+  <a href="{% url 'bulk_upload_rooms' %}" class="btn btn-outline-secondary">
+    <i class="bi bi-upload me-1"></i>Upload Another File
+  </a>
+</div>
+
+{% else %}
+<!-- ── Upload form ── -->
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-file-earmark-excel-fill" style="color:#1565C0"></i></div>
+          Upload Excel File
+        </div>
+      </div>
+      <div class="card-body p-4">
+
+        <!-- Step 1 -->
+        <div class="d-flex gap-3 mb-4 p-3 rounded" style="background:#EBF3FF">
+          <div style="width:32px;height:32px;background:#1565C0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <span style="color:#fff;font-weight:800;font-size:14px">1</span>
+          </div>
+          <div>
+            <div class="fw-700" style="font-size:13.5px;margin-bottom:4px">Download the Sample File</div>
+            <div style="font-size:12.5px;color:var(--text-2);margin-bottom:10px">
+              Download the ready-to-fill sample Excel. It includes sample hostels (BH-1, BH-2) and a detailed Instructions sheet.
+            </div>
+            <a href="{% url 'bulk_upload_sample' %}" class="btn btn-sm btn-primary">
+              <i class="bi bi-download me-1"></i>Download Sample Excel
+            </a>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="d-flex gap-3 mb-4 p-3 rounded" style="background:var(--bg-2)">
+          <div style="width:32px;height:32px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:.5">
+            <span style="color:#fff;font-weight:800;font-size:14px">2</span>
+          </div>
+          <div style="flex:1">
+            <div class="fw-700" style="font-size:13.5px;margin-bottom:4px">Fill in Your Data</div>
+            <div style="font-size:12.5px;color:var(--text-2)">
+              Each floor can have <strong>any number of category rows</strong> — one row per room type
+              (e.g. <code>4S+CWR</code>, <code>3S+WR+AC</code>, <code>2S+CWR</code>).
+              For common facilities (Gym, Mess, etc.) add a separate row with <code>Floor=GF</code> and
+              <code>Start = End</code>. Delete the sample rows, fill yours, and save as <strong>.xlsx</strong>.
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="d-flex gap-3 p-3 rounded" style="background:var(--bg-2)">
+          <div style="width:32px;height:32px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:.5">
+            <span style="color:#fff;font-weight:800;font-size:14px">3</span>
+          </div>
+          <div style="flex:1">
+            <div class="fw-700" style="font-size:13.5px;margin-bottom:10px">Upload Your File</div>
+            <form method="post" enctype="multipart/form-data" id="uploadForm">
+              {% csrf_token %}
+              <div class="mb-3">
+                <label class="form-label fw-600">Select Excel File (.xlsx)</label>
+                <input type="file" name="excel_file" accept=".xlsx,.xls" class="form-control"
+                       id="fileInput" required onchange="showFileName(this)">
+                <div class="form-text" id="fileNameDisplay">Only .xlsx files are supported.</div>
+              </div>
+              <button type="submit" class="btn btn-primary" id="uploadBtn">
+                <i class="bi bi-cloud-upload me-1"></i>Upload &amp; Process
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Right column: column guide + format preview -->
+  <div class="col-lg-5">
+
+    <!-- Column reference -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-table" style="color:#059669"></i></div>
+          Column Reference (A → I)
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0" style="font-size:12px">
+          <thead>
+            <tr>
+              <th style="width:24px">Col</th>
+              <th>Name</th>
+              <th style="width:72px">Required</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background:#EBF3FF">
+              <td class="fw-700" style="color:#1565C0">A</td>
+              <td class="fw-600">Hostel Name</td>
+              <td><span class="badge" style="background:#FEF2F2;color:#DC2626">Yes</span></td>
+              <td style="color:var(--text-2)">BH-1, GH-2</td>
+            </tr>
+            <tr style="background:#EBF3FF">
+              <td class="fw-700" style="color:#1565C0">B</td>
+              <td class="fw-600">Hostel Type</td>
+              <td><span class="badge" style="background:#FEF2F2;color:#DC2626">Yes</span></td>
+              <td style="color:var(--text-2)">boys / girls / staff</td>
+            </tr>
+            <tr style="background:#EBF3FF">
+              <td class="fw-700" style="color:#1565C0">C</td>
+              <td class="fw-600">Number of Floors</td>
+              <td><span class="badge" style="background:#ECFDF5;color:#065F46">No</span></td>
+              <td style="color:var(--text-2)">3, 4 (info only)</td>
+            </tr>
+            <tr style="background:#E8F5E9">
+              <td class="fw-700" style="color:#1B5E20">D</td>
+              <td class="fw-600">Floor</td>
+              <td><span class="badge" style="background:#FEF2F2;color:#DC2626">Yes</span></td>
+              <td style="color:var(--text-2)">F1, F2, GF</td>
+            </tr>
+            <tr style="background:#E8F5E9">
+              <td class="fw-700" style="color:#1B5E20">E</td>
+              <td class="fw-600">Rooms on Floor</td>
+              <td><span class="badge" style="background:#ECFDF5;color:#065F46">No</span></td>
+              <td style="color:var(--text-2)">20 (info only)</td>
+            </tr>
+            <tr style="background:#F9FBE7">
+              <td class="fw-700" style="color:#33691E">F</td>
+              <td class="fw-600">Room Category</td>
+              <td><span class="badge" style="background:#FEF2F2;color:#DC2626">Yes</span></td>
+              <td style="color:var(--text-2)">4S+CWR, 3S+WR+AC, GYM…</td>
+            </tr>
+            <tr style="background:#F9FBE7">
+              <td class="fw-700" style="color:#33691E">G</td>
+              <td class="fw-600">Room Count</td>
+              <td><span class="badge" style="background:#FEF2F2;color:#DC2626">Yes</span></td>
+              <td style="color:var(--text-2)">10, 5, 1</td>
+            </tr>
+            <tr style="background:#F3E5F5">
+              <td class="fw-700" style="color:#6A1B9A">H</td>
+              <td class="fw-600">Room Start No.</td>
+              <td><span class="badge" style="background:#FEF2F2;color:#DC2626">Yes</span></td>
+              <td style="color:var(--text-2)">BH-101 / GYM-GF</td>
+            </tr>
+            <tr style="background:#F3E5F5">
+              <td class="fw-700" style="color:#6A1B9A">I</td>
+              <td class="fw-600">Room End No.</td>
+              <td><span class="badge" style="background:#FEF2F2;color:#DC2626">Yes</span></td>
+              <td style="color:var(--text-2)">BH-120 / GYM-GF</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Category codes quick ref -->
+    <div class="card mb-3" style="border-color:#BBF7D0">
+      <div class="card-header" style="background:#F0FDF4">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#DCFCE7"><i class="bi bi-list-check" style="color:#16A34A"></i></div>
+          <span style="color:#166534;font-weight:700">Room Category Codes</span>
+        </div>
+      </div>
+      <div class="card-body p-3">
+        <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;font-weight:600">STUDENT ROOMS — beds auto-created per capacity</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">
+          <span style="font-size:11px;font-weight:700;background:#E8F5E9;color:#1B5E20;padding:2px 8px;border-radius:6px;border:1px solid #BBF7D0">4S+CWR</span>
+          <span style="font-size:11px;font-weight:700;background:#C8E6C9;color:#1B5E20;padding:2px 8px;border-radius:6px;border:1px solid #A5D6A7">4S+CWR+AC</span>
+          <span style="font-size:11px;font-weight:700;background:#DCEDC8;color:#33691E;padding:2px 8px;border-radius:6px;border:1px solid #C5E1A5">4S+WR</span>
+          <span style="font-size:11px;font-weight:700;background:#F1F8E9;color:#33691E;padding:2px 8px;border-radius:6px;border:1px solid #DCEDC8">4S+WR+AC</span>
+          <span style="font-size:11px;font-weight:700;background:#EDE7F6;color:#4A148C;padding:2px 8px;border-radius:6px;border:1px solid #D1C4E9">3S+CWR</span>
+          <span style="font-size:11px;font-weight:700;background:#D1C4E9;color:#4A148C;padding:2px 8px;border-radius:6px;border:1px solid #B39DDB">3S+CWR+AC</span>
+          <span style="font-size:11px;font-weight:700;background:#E8EAF6;color:#283593;padding:2px 8px;border-radius:6px;border:1px solid #C5CAE9">3S+WR</span>
+          <span style="font-size:11px;font-weight:700;background:#F3E5F5;color:#6A1B9A;padding:2px 8px;border-radius:6px;border:1px solid #E1BEE7">3S+WR+AC</span>
+          <span style="font-size:11px;font-weight:700;background:#FCE4EC;color:#B71C1C;padding:2px 8px;border-radius:6px;border:1px solid #F8BBD0">2S+CWR</span>
+          <span style="font-size:11px;font-weight:700;background:#FFCDD2;color:#B71C1C;padding:2px 8px;border-radius:6px;border:1px solid #EF9A9A">2S+CWR+AC</span>
+          <span style="font-size:11px;font-weight:700;background:#FBE9E7;color:#BF360C;padding:2px 8px;border-radius:6px;border:1px solid #FFAB91">2S+WR</span>
+          <span style="font-size:11px;font-weight:700;background:#FFF3E0;color:#E65100;padding:2px 8px;border-radius:6px;border:1px solid #FFE0B2">2S+WR+AC</span>
+          <span style="font-size:11px;font-weight:700;background:#E0F2F1;color:#004D40;padding:2px 8px;border-radius:6px;border:1px solid #B2DFDB">1S+CWR</span>
+          <span style="font-size:11px;font-weight:700;background:#B2DFDB;color:#004D40;padding:2px 8px;border-radius:6px;border:1px solid #80CBC4">1S+CWR+AC</span>
+          <span style="font-size:11px;font-weight:700;background:#E3F2FD;color:#0D47A1;padding:2px 8px;border-radius:6px;border:1px solid #BBDEFB">1S+WR</span>
+          <span style="font-size:11px;font-weight:700;background:#BBDEFB;color:#0D47A1;padding:2px 8px;border-radius:6px;border:1px solid #90CAF9">1S+WR+AC</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;font-weight:600">COMMON / AMENITY ROOMS — no beds, capacity 0</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          <span style="font-size:11px;font-weight:700;background:#FFF8E1;color:#E65100;padding:2px 8px;border-radius:6px;border:1px solid #FDE68A">GYM</span>
+          <span style="font-size:11px;font-weight:700;background:#E8F5E9;color:#1B5E20;padding:2px 8px;border-radius:6px;border:1px solid #BBF7D0">SPORTS ROOM</span>
+          <span style="font-size:11px;font-weight:700;background:#FCE4EC;color:#C62828;padding:2px 8px;border-radius:6px;border:1px solid #F8BBD0">ENTERTAINMENT</span>
+          <span style="font-size:11px;font-weight:700;background:#E3F2FD;color:#1565C0;padding:2px 8px;border-radius:6px;border:1px solid #BBDEFB">MESS</span>
+          <span style="font-size:11px;font-weight:700;background:#F3E5F5;color:#6A1B9A;padding:2px 8px;border-radius:6px;border:1px solid #E1BEE7">STUDY ROOM</span>
+          <span style="font-size:11px;font-weight:700;background:#FFF3E0;color:#E65100;padding:2px 8px;border-radius:6px;border:1px solid #FFE0B2">SITTING ARENA</span>
+          <span style="font-size:11px;font-weight:700;background:#ECEFF1;color:#37474F;padding:2px 8px;border-radius:6px;border:1px solid #CFD8DC">STORE ROOM</span>
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--text-3)">
+          <strong>CWR</strong> = Common Washroom &nbsp;·&nbsp; <strong>WR</strong> = Attached Washroom &nbsp;·&nbsp; <strong>AC</strong> = Air Conditioned
+        </div>
+      </div>
+    </div>
+
+    <!-- Format preview card -->
+    <div class="card mb-3" style="border-color:#BFDBFE">
+      <div class="card-header" style="background:#EFF6FF">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#DBEAFE"><i class="bi bi-layout-text-window-reverse" style="color:#1565C0"></i></div>
+          <span style="color:#1E40AF;font-weight:700">Floor Structure Preview</span>
+        </div>
+      </div>
+      <div class="card-body p-3">
+        <div style="font-size:11.5px;color:var(--text-2);margin-bottom:8px">
+          Each floor can have <strong>any number of category rows</strong>. Hostel info (A–C) is merged across all rows of that hostel. Floor info (D–E, H–I) is merged across all category rows of that floor.
+        </div>
+        <div class="table-responsive">
+          <table style="width:100%;border-collapse:collapse;font-size:10.5px">
+            <thead>
+              <tr style="background:#1565C0;color:#fff">
+                <th style="padding:4px 5px;border:1px solid #CBD5E1;text-align:center">A–C<br><span style="font-weight:400;font-size:9px">Hostel</span></th>
+                <th style="padding:4px 5px;border:1px solid #CBD5E1;text-align:center">D–E<br><span style="font-weight:400;font-size:9px">Floor</span></th>
+                <th style="padding:4px 5px;border:1px solid #CBD5E1;text-align:center">F<br><span style="font-weight:400;font-size:9px">Category</span></th>
+                <th style="padding:4px 5px;border:1px solid #CBD5E1;text-align:center">G<br><span style="font-weight:400;font-size:9px">Count</span></th>
+                <th style="padding:4px 5px;border:1px solid #CBD5E1;text-align:center">H–I<br><span style="font-weight:400;font-size:9px">Range</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td rowspan="7" style="padding:4px 5px;border:1px solid #CBD5E1;text-align:center;font-weight:700;color:#1565C0;vertical-align:middle;background:#EBF3FF;font-size:10px">BH-1<br><span style="font-weight:400">boys · 3 fl.</span></td>
+                <td rowspan="3" style="padding:4px 5px;border:1px solid #CBD5E1;text-align:center;font-weight:600;color:#0F4C81;vertical-align:middle;background:#E3F2FD;font-size:10px">F1<br>20 rms</td>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;background:#E8F5E9;color:#1B5E20;font-weight:700">4S+CWR</td>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;background:#E8F5E9;font-weight:700">10</td>
+                <td rowspan="3" style="padding:4px 5px;border:1px solid #CBD5E1;text-align:center;color:#6A1B9A;font-size:9.5px;vertical-align:middle;background:#F3E5F5">BH-101<br>BH-120</td>
+              </tr>
+              <tr>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;background:#EDE7F6;color:#4A148C;font-weight:700">3S+WR+AC</td>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;background:#EDE7F6;font-weight:700">5</td>
+              </tr>
+              <tr>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;background:#FCE4EC;color:#B71C1C;font-weight:700">2S+CWR</td>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;background:#FCE4EC;font-weight:700">5</td>
+              </tr>
+              <tr style="background:#FFF3E0">
+                <td rowspan="3" style="padding:4px 5px;border:1px solid #CBD5E1;text-align:center;font-weight:600;color:#0F4C81;vertical-align:middle;background:#FFF3E0;font-size:10px">F2<br>30 rms</td>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;background:#C8E6C9;color:#1B5E20;font-weight:700">4S+WR+AC</td>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;background:#C8E6C9;font-weight:700">15</td>
+                <td rowspan="3" style="padding:4px 5px;border:1px solid #CBD5E1;text-align:center;color:#6A1B9A;font-size:9.5px;vertical-align:middle;background:#F3E5F5">BH-201<br>BH-230</td>
+              </tr>
+              <tr>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;background:#D1C4E9;color:#4A148C;font-weight:700">3S+CWR+AC</td>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;background:#D1C4E9;font-weight:700">8</td>
+              </tr>
+              <tr>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;background:#FFCDD2;color:#B71C1C;font-weight:700">2S+WR</td>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;background:#FFCDD2;font-weight:700">7</td>
+              </tr>
+              <tr style="background:#DBEAFE">
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;font-weight:600;color:#0F4C81;font-size:10px">GF</td>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;background:#FFF8E1;color:#E65100;font-weight:700">GYM</td>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;background:#FFF8E1;font-weight:700">1</td>
+                <td style="padding:3px 5px;border:1px solid #CBD5E1;text-align:center;color:#6A1B9A;font-size:9.5px;background:#F3E5F5">GYM-GF</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:8px;font-size:10.5px;color:var(--text-3)">
+          Common room rows have their own Floor row (GF) with Start = End (e.g. GYM-GF). No beds are created.
+        </div>
+      </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="card" style="border-color:#C4B5FD">
+      <div class="card-body p-3">
+        <div class="fw-700 mb-2" style="font-size:13px;color:#5B21B6"><i class="bi bi-lightbulb-fill me-1"></i>Tips</div>
+        <ul style="font-size:12.5px;color:var(--text-2);padding-left:16px;margin:0">
+          <li><strong>Any number of category rows per floor</strong> — mix and match variants freely.</li>
+          <li><strong>Student room counts must sum to</strong> End No. − Start No. + 1. Mismatch skips the floor.</li>
+          <li>Common rooms (Gym, Mess, etc.) each get their own floor row with <code>Floor=GF, Start=End</code>.</li>
+          <li>Room numbers assigned row by row: 4S+CWR first, then 3S+WR+AC, then 2S+CWR, etc.</li>
+          <li>Beds are auto-created for student rooms only (a 4S+CWR+AC room gets 4 beds, etc.).</li>
+          <li>New hostels are created automatically if they don't already exist.</li>
+          <li>Duplicate room numbers in the same hostel are safely skipped with a note.</li>
+          <li>Use <code>GF</code> as the floor label for Ground Floor (maps to floor 0).</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endif %}
+
+<script>
+function showFileName(input) {
+  const display = document.getElementById('fileNameDisplay');
+  if (input.files && input.files[0]) {
+    display.textContent = '✓ Selected: ' + input.files[0].name;
+    display.style.color = '#059669';
+  }
+}
+document.getElementById('uploadForm') && document.getElementById('uploadForm').addEventListener('submit', function() {
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
+});
+</script>
+{% endblock %}

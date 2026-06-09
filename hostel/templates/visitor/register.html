@@ -1,0 +1,109 @@
+{% extends 'base/base.html' %}
+{% block title %}Register Visitor{% endblock %}
+{% block page_title %}Register a Visitor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Register a Visitor</h4>
+    <p>Fill in visitor details — admin will approve before entry</p>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-person-plus-fill" style="color:#059669"></i></div>
+          Visitor Details
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Visitor Full Name <span class="text-danger">*</span></label>
+              <input type="text" name="visitor_name" class="form-control" placeholder="e.g. Rajesh Kumar" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Relation with Student <span class="text-danger">*</span></label>
+              <select name="relation" class="form-select" required>
+                <option value="">— Select —</option>
+                {% for val, label in relations %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Phone Number <span class="text-danger">*</span></label>
+              <input type="tel" name="phone" class="form-control" placeholder="10-digit mobile" maxlength="15" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Visiting Hostel <span class="text-danger">*</span></label>
+              <select name="hostel" class="form-select" required>
+                <option value="">— Select Hostel —</option>
+                {% for h in hostels %}
+                <option value="{{ h.pk }}">{{ h.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Student Being Visited</label>
+              <select name="student" class="form-select">
+                <option value="">— Select Student (Optional) —</option>
+                {% for s in students %}
+                <option value="{{ s.pk }}">{{ s.name }} ({{ s.roll_number }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Visit Date <span class="text-danger">*</span></label>
+              <input type="date" name="visit_date" class="form-control" value="{{ today }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Expected In Time</label>
+              <input type="time" name="expected_in_time" class="form-control" value="09:00">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Expected Out Time</label>
+              <input type="time" name="expected_out_time" class="form-control" value="18:00">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">ID Proof Type <span class="text-danger">*</span></label>
+              <select name="id_proof_type" class="form-select" required>
+                <option value="Aadhar">Aadhar Card</option>
+                <option value="PAN">PAN Card</option>
+                <option value="DL">Driving Licence</option>
+                <option value="Passport">Passport</option>
+                <option value="VoterID">Voter ID</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">ID Number <span class="text-danger">*</span></label>
+              <input type="text" name="id_number" class="form-control" placeholder="Document number" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Purpose of Visit <span class="text-danger">*</span></label>
+              <textarea name="purpose" class="form-control" rows="2" placeholder="Briefly describe the reason for visiting..." required></textarea>
+            </div>
+          </div>
+
+          <div class="alert alert-info mt-4" style="font-size:12.5px">
+            <i class="bi bi-info-circle me-2"></i>
+            The visitor entry is subject to warden/admin approval. Please carry valid ID proof at the time of visit.
+          </div>
+
+          <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn btn-primary flex-grow-1">
+              <i class="bi bi-send"></i> Submit Visitor Request
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

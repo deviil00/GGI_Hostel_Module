@@ -1,0 +1,153 @@
+{% extends "base/base.html" %}
+{% block title %}Edit {{ student.name }} — GGI Hostel ERP{% endblock %}
+{% block page_title %}Edit Student Profile{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Edit Student Profile</h4>
+    <p>{{ student.roll_number }} &nbsp;·&nbsp; {{ student.department }}</p>
+  </div>
+  <a href="{% url 'student_detail' student.pk %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back
+  </a>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="row g-3">
+
+    <!-- Basic Info -->
+    <div class="col-md-8">
+      <div class="card mb-3">
+        <div class="card-header">
+          <div class="card-header-left">
+            <div class="ch-icon" style="background:var(--blue-soft)"><i class="bi bi-person-fill" style="color:var(--blue)"></i></div>
+            Basic Information
+          </div>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Full Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" value="{{ student.name }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Gender</label>
+              <select name="gender" class="form-select">
+                <option value="">— Select —</option>
+                <option value="male"   {% if student.gender == 'male' %}selected{% endif %}>Male</option>
+                <option value="female" {% if student.gender == 'female' %}selected{% endif %}>Female</option>
+                <option value="other"  {% if student.gender == 'other' %}selected{% endif %}>Other</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-control" value="{{ student.email }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Phone</label>
+              <input type="text" name="phone" class="form-control" value="{{ student.phone }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date of Birth</label>
+              <input type="date" name="date_of_birth" class="form-control"
+                     value="{% if student.date_of_birth %}{{ student.date_of_birth|date:'Y-m-d' }}{% endif %}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Department / Course <span class="text-danger">*</span></label>
+              <input type="text" name="department" class="form-control"
+                     value="{{ student.department }}" required
+                     list="dept-datalist" autocomplete="off"
+                     placeholder="e.g. CSE, ECE — type or pick from list">
+              <datalist id="dept-datalist">
+                {% for d in all_departments %}<option value="{{ d }}">{% endfor %}
+              </datalist>
+              <div class="form-text" style="font-size:11px">
+                <i class="bi bi-info-circle me-1"></i>Courses are managed from
+                <a href="{% url 'student_list' %}?open_courses=1">Student List → Manage Courses</a>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Year</label>
+              <select name="year" class="form-select">
+                {% for val, label in student.Year.choices %}
+                <option value="{{ val }}" {% if student.year == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Semester</label>
+              <select name="semester" class="form-select">
+                {% for s in "12345678" %}
+                <option value="{{ s }}" {% if student.semester|stringformat:"s" == s %}selected{% endif %}>Sem {{ s }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Guardian Info -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <div class="card-header-left">
+            <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-people-fill" style="color:#059669"></i></div>
+            Guardian & Address
+          </div>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Guardian Name</label>
+              <input type="text" name="guardian_name" class="form-control" value="{{ student.guardian_name }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Guardian Phone</label>
+              <input type="text" name="guardian_phone" class="form-control" value="{{ student.guardian_phone }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Home Address</label>
+              <textarea name="address" class="form-control" rows="3">{{ student.address }}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Photo -->
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-left">
+            <div class="ch-icon" style="background:#F5F3FF"><i class="bi bi-camera-fill" style="color:var(--purple)"></i></div>
+            Student Photo
+          </div>
+        </div>
+        <div class="card-body p-4 text-center">
+          {% if student.photo %}
+          <img src="{{ student.photo.url }}" alt="{{ student.name }}"
+               style="width:120px;height:120px;object-fit:cover;border-radius:50%;border:3px solid var(--border);margin-bottom:12px">
+          {% else %}
+          <div style="width:120px;height:120px;border-radius:50%;background:var(--blue);color:#fff;
+                      font-size:42px;font-weight:800;display:flex;align-items:center;justify-content:center;
+                      margin:0 auto 12px">
+            {{ student.name|first|upper }}
+          </div>
+          {% endif %}
+          <input type="file" name="photo" class="form-control form-control-sm" accept="image/*">
+          <div class="form-text mt-1">JPG, PNG, WEBP — max 5 MB</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="d-flex gap-2 justify-content-end mb-5">
+    <a href="{% url 'student_detail' student.pk %}" class="btn btn-outline-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary px-4">
+      <i class="bi bi-check-lg me-1"></i>Save Changes
+    </button>
+  </div>
+</form>
+{% endblock %}

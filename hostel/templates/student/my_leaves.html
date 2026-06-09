@@ -1,0 +1,95 @@
+{% extends 'base/base.html' %}
+{% block title %}My Leave Applications{% endblock %}
+{% block page_title %}My Leave Applications{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>My Leave Applications</h4>
+  </div>
+  <a href="{% url 'apply_leave' %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>New Application
+  </a>
+</div>
+
+{% if leaves %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>From</th>
+          <th>To</th>
+          <th>Category</th>
+          <th>Reason</th>
+          <th>HOD</th>
+          <th>Status</th>
+          <th>Remarks</th>
+          <th>Applied</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for leave in leaves %}
+        <tr>
+          <td>
+            <span class="badge" style="background:#F0FDF4;color:#15803D;font-size:11px;font-weight:700;letter-spacing:.3px">
+              {{ leave.leave_id }}
+            </span>
+          </td>
+          <td>{{ leave.from_date|date:"d M Y" }}</td>
+          <td>{{ leave.to_date|date:"d M Y" }}</td>
+          <td style="font-size:12px;color:var(--text-2)">{{ leave.category.name|default:"—" }}</td>
+          <td>{{ leave.reason|truncatechars:50 }}</td>
+          <td>
+            {% if leave.is_working_day_leave %}
+              {% if leave.hod_status == 'approved' %}
+                <span class="badge" style="background:#D1FAE5;color:#065F46"><i class="bi bi-check-circle-fill"></i></span>
+              {% elif leave.hod_status == 'rejected' %}
+                <span class="badge bg-danger"><i class="bi bi-x-circle-fill"></i></span>
+              {% else %}
+                <span class="badge bg-warning text-dark">Pending</span>
+              {% endif %}
+            {% else %}
+              <span style="font-size:11px;color:var(--text-3)">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if leave.status == 'approved' %}
+              <span class="badge bg-success">Approved</span>
+            {% elif leave.status == 'rejected' %}
+              <span class="badge bg-danger">Rejected</span>
+            {% else %}
+              {% if leave.warden_status == 'approved' %}
+              <span class="badge" style="background:#FEF3C7;color:#92400E">Warden ✓ · Admin Pending</span>
+              {% elif leave.hod_status == 'approved' %}
+              <span class="badge" style="background:#DBEAFE;color:#1E40AF">HOD ✓ · Warden Pending</span>
+              {% else %}
+              <span class="badge bg-warning text-dark">Pending</span>
+              {% endif %}
+            {% endif %}
+          </td>
+          <td style="font-size:12px">{{ leave.admin_remarks|default:"—" }}</td>
+          <td style="font-size:12px;color:var(--text-3)">{{ leave.created_at|date:"d M Y" }}</td>
+          <td>
+            {% if leave.status == 'approved' %}
+            <a href="{% url 'leave_extension_request' leave.pk %}" class="btn btn-xs btn-outline-primary">
+              Extend
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-calendar2-x fs-1 d-block mb-2"></i>
+  No leave applications yet.
+  <a href="{% url 'apply_leave' %}">Apply now</a>.
+</div>
+{% endif %}
+{% endblock %}

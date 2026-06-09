@@ -1,0 +1,107 @@
+{% extends "base/base.html" %}
+{% block title %}Forms — GGI Hostel ERP{% endblock %}
+{% block page_title %}Forms{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+  <div class="page-header-left">
+    <h4>Forms for You</h4>
+    <p>Fill out the applicable form and submit your application</p>
+  </div>
+  <a href="{% url 'my_applications' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-clock-history me-1"></i>My Applications
+  </a>
+</div>
+
+{% if forms %}
+<div class="row g-3">
+  {% for f in forms %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card h-100" style="border-top:3px solid {% if f.form_category %}{{ f.form_category.color }}{% else %}var(--blue){% endif %}">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:{% if f.form_category %}{{ f.form_category.color }}18{% else %}var(--blue-soft){% endif %}">
+            <i class="bi {% if f.form_category %}{{ f.form_category.icon }}{% else %}bi-file-earmark-text-fill{% endif %}"
+               style="color:{% if f.form_category %}{{ f.form_category.color }}{% else %}var(--blue){% endif %}"></i>
+          </div>
+          <div>
+            <div style="font-size:13.5px;font-weight:700;color:var(--text-1)">{{ f.title }}</div>
+            {% if f.form_category %}
+            <div style="font-size:11px;font-weight:600;color:{{ f.form_category.color }}">
+              {{ f.form_category.name }}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% if f.already_applied %}
+        <span class="badge badge-paid"><i class="bi bi-check me-1"></i>Applied</span>
+        {% else %}
+        <span class="badge badge-active">Open</span>
+        {% endif %}
+      </div>
+
+      <div class="card-body p-3">
+        {% if f.description %}
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:12px">{{ f.description }}</p>
+        {% endif %}
+
+        {# Audience info from category #}
+        {% if f.form_category %}
+        <div class="d-flex flex-wrap gap-1 mb-2">
+          {% if f.form_category.target_years %}
+          {% for yr in f.form_category.target_years %}
+          <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:#EFF6FF;color:#1D4ED8;font-weight:600">
+            Year {{ yr }}
+          </span>
+          {% endfor %}
+          {% endif %}
+          {% if f.form_category.target_depts %}
+          {% for dp in f.form_category.target_depts %}
+          <span style="font-size:11px;padding:2px 8px;border-radius:6px;background:#ECFDF5;color:#065F46;font-weight:600">
+            {{ dp }}
+          </span>
+          {% endfor %}
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="d-flex gap-3 flex-wrap" style="font-size:12.5px">
+          <div style="color:var(--text-2)">
+            <i class="bi bi-ui-checks me-1" style="color:var(--blue)"></i>
+            {{ f.fields.count }} field{{ f.fields.count|pluralize }}
+          </div>
+          {% if f.deadline %}
+          <div style="color:{% if f.deadline < today %}#DC2626{% else %}var(--text-2){% endif %}">
+            <i class="bi bi-calendar me-1"></i>
+            Deadline: {{ f.deadline|date:"d M Y" }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card-footer" style="background:var(--surface);border-top:1px solid var(--border);padding:12px 16px;border-radius:0 0 14px 14px">
+        {% if f.already_applied %}
+        <a href="{% url 'my_applications' %}" class="btn btn-sm btn-outline-secondary w-100">
+          <i class="bi bi-eye me-1"></i>View My Application
+        </a>
+        {% else %}
+        <a href="{% url 'apply_form' f.pk %}" class="btn btn-sm btn-primary w-100">
+          <i class="bi bi-pencil-square me-1"></i>Fill & Submit
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state py-5">
+    <i class="bi bi-file-earmark-text" style="font-size:44px;opacity:.3"></i>
+    <p style="margin-top:12px;font-size:14px">No forms are open for you right now.<br>
+      <span style="color:var(--text-3)">Check back later or contact the hostel office.</span>
+    </p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

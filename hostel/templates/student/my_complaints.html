@@ -1,0 +1,163 @@
+{% extends "base/base.html" %}
+{% block title %}My Complaints{% endblock %}
+{% block page_title %}My Complaints{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>My Complaints</h4>
+    <p>Track the status and progress of your complaints</p>
+  </div>
+  <a href="{% url 'raise_complaint' %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i> Raise New Complaint
+  </a>
+</div>
+
+{# ── Status pill tabs ── #}
+<div class="d-flex gap-2 flex-wrap mb-3">
+  {% with cur=filters.status %}
+  <a href="?status=" class="status-tab {% if not cur %}active{% endif %}">
+    All <span class="tab-count">{{ counts.all }}</span>
+  </a>
+  <a href="?status=submitted" class="status-tab {% if cur == 'submitted' %}active{% endif %}">
+    Submitted <span class="tab-count">{{ counts.submitted }}</span>
+  </a>
+  <a href="?status=verified" class="status-tab {% if cur == 'verified' %}active{% endif %}">
+    Verified <span class="tab-count">{{ counts.verified }}</span>
+  </a>
+  <a href="?status=in_progress" class="status-tab {% if cur == 'in_progress' %}active{% endif %}">
+    In Progress <span class="tab-count">{{ counts.in_progress }}</span>
+  </a>
+  <a href="?status=resolved" class="status-tab {% if cur == 'resolved' %}active{% endif %}">
+    Resolved <span class="tab-count">{{ counts.resolved }}</span>
+  </a>
+  <a href="?status=closed" class="status-tab {% if cur == 'closed' %}active{% endif %}">
+    Closed <span class="tab-count">{{ counts.closed|default:0 }}</span>
+  </a>
+  {% endwith %}
+</div>
+
+{% if page_obj %}
+<div class="d-flex flex-column gap-3">
+{% for c in page_obj %}
+<div class="card p-0" style="overflow:hidden">
+  <div class="card-body" style="padding:18px 20px">
+    <div class="d-flex justify-content-between align-items-start gap-3">
+      <div style="flex:1">
+        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+          {% include "complaints/_status_chip.html" with status=c.status %}
+          {% if c.priority %}
+          <span class="badge badge-{{ c.priority }}">{{ c.get_priority_display }}</span>
+          {% endif %}
+          <span style="font-size:11.5px;color:var(--text-3);background:#F1F5F9;padding:2px 8px;border-radius:10px">
+            {{ c.get_category_display }}
+          </span>
+        </div>
+        <div class="fw-700" style="font-size:15px;color:var(--text-1);margin-bottom:4px">{{ c.title }}</div>
+        <div style="font-size:13px;color:var(--text-2);line-height:1.5">{{ c.description|truncatechars:150 }}</div>
+        {% if c.room %}
+        <div style="font-size:11.5px;color:var(--text-3);margin-top:6px">
+          <i class="bi bi-geo-alt me-1"></i>{{ c.room.room_number }} — {{ c.room.hostel.name }}
+        </div>
+        {% endif %}
+      </div>
+      <div class="text-end" style="flex-shrink:0">
+        <div style="font-size:11.5px;color:var(--text-3)">Raised on</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text-2)">{{ c.created_at|date:"d M Y" }}</div>
+        {% if c.resolved_at %}
+        <div style="font-size:11px;color:#059669;margin-top:3px">
+          <i class="bi bi-check-circle me-1"></i>Resolved {{ c.resolved_at|date:"d M" }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Timeline preview #}
+    {% if c.timeline.all %}
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">
+        Latest Update
+      </div>
+      {% with last=c.timeline.all|last %}
+      <div class="d-flex align-items-start gap-2">
+        <div style="width:8px;height:8px;border-radius:50%;background:
+          {% if last.status == 'resolved' %}#059669
+          {% elif last.status == 'in_progress' %}#D97706
+          {% elif last.status == 'forwarded' %}#7C3AED
+          {% elif last.status == 'verified' %}#1565C0
+          {% elif last.status == 'closed' %}#6B7280
+          {% else %}#94A3B8{% endif %};
+          margin-top:5px;flex-shrink:0"></div>
+        <div>
+          {% if last.status %}
+          <span style="font-size:11.5px;font-weight:600;color:var(--text-2)">
+            {% include "complaints/_status_chip.html" with status=last.status %}
+          </span>
+          {% endif %}
+          {% if last.comment %}
+          <div style="font-size:12.5px;color:var(--text-2);margin-top:2px">{{ last.comment|truncatechars:100 }}</div>
+          {% endif %}
+          <div style="font-size:11px;color:var(--text-3);margin-top:2px">{{ last.created_at|date:"d M Y, g:i A" }}</div>
+        </div>
+      </div>
+      {% endwith %}
+    </div>
+    {% endif %}
+
+    <div class="d-flex justify-content-end mt-2">
+      <a href="{% url 'complaint_detail' c.pk %}" class="btn btn-sm btn-outline-primary">
+        View Details & Timeline <i class="bi bi-arrow-right ms-1"></i>
+      </a>
+    </div>
+  </div>
+</div>
+{% endfor %}
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-3 d-flex align-items-center justify-content-between">
+  <span style="font-size:12.5px;color:var(--text-3)">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  <ul class="pagination pagination-sm mb-0">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ filters.status }}">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+    {% endif %}
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ filters.status }}">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <i class="bi bi-chat-square-text"></i>
+    <p>No complaints yet.</p>
+    <a href="{% url 'raise_complaint' %}" class="btn btn-primary btn-sm mt-2">Raise Your First Complaint</a>
+  </div>
+</div>
+{% endif %}
+
+<style>
+.status-tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 20px;
+  font-size: 12.5px; font-weight: 500;
+  color: var(--text-2); background: #F1F5F9;
+  text-decoration: none; transition: all .15s;
+  border: 1.5px solid transparent;
+}
+.status-tab:hover { background: #E2E8F0; color: var(--text-1); }
+.status-tab.active { background: #EDE9FE; color: #6D28D9; border-color: #C4B5FD; }
+.tab-count { background: rgba(0,0,0,.07); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
+.status-tab.active .tab-count { background: rgba(109,40,217,.15); }
+</style>
+{% endblock %}

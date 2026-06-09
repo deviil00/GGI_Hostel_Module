@@ -1,0 +1,399 @@
+{% extends "base/base.html" %}
+{% block title %}{{ hostel.name }} — Attendance{% endblock %}
+{% block page_title %}Attendance{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>{{ hostel.name }}</h4>
+    <p>{{ selected_date }} — tap a student card to mark attendance</p>
+  </div>
+  <div class="d-flex gap-2 align-items-center flex-wrap">
+    <a href="{% url 'attendance_list' %}?date={{ selected_date|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>All Hostels
+    </a>
+    <a href="{% url 'attendance_report' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-bar-chart me-1"></i>Report
+    </a>
+  </div>
+</div>
+
+{# ── Filters ── #}
+<form method="get" class="card mb-4" style="padding:16px 20px">
+  <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+  <div class="d-flex gap-3 flex-wrap align-items-end">
+    <div>
+      <label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">DATE</label>
+      <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}"
+             class="form-control form-control-sm" style="width:160px">
+    </div>
+    <div>
+      <label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">YEAR</label>
+      <select name="year" class="form-select form-select-sm" style="width:130px">
+        <option value="">All Years</option>
+        {% for val, label in years %}
+        <option value="{{ val }}" {% if filter_year == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">DEPARTMENT</label>
+      <select name="dept" class="form-select form-select-sm" style="width:200px">
+        <option value="">All Departments</option>
+        {% for d in departments %}
+        <option value="{{ d }}" {% if filter_dept == d %}selected{% endif %}>{{ d }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="font-size:11px;font-weight:600;color:var(--text-3);display:block;margin-bottom:4px">SEMESTER</label>
+      <select name="sem" class="form-select form-select-sm" style="width:130px">
+        <option value="">All Semesters</option>
+        {% for s in semesters %}
+        <option value="{{ s }}" {% if filter_sem == s|stringformat:"s" %}selected{% endif %}>Sem {{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+      <a href="{% url 'hostel_attendance_detail' hostel.pk %}?date={{ selected_date|date:'Y-m-d' }}"
+         class="btn btn-sm btn-outline-secondary">Reset</a>
+    </div>
+  </div>
+</form>
+
+{# ── Stats bar ── #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md col-lg">
+    <div class="stat-card text-center">
+      <div class="number text-success" id="stat-present">{{ stats.present }}</div>
+      <div class="label">Present ({{ stats.present_pct }}%)</div>
+    </div>
+  </div>
+  <div class="col-6 col-md col-lg">
+    <div class="stat-card text-center">
+      <div class="number text-danger" id="stat-absent">{{ stats.absent }}</div>
+      <div class="label">Absent ({{ stats.absent_pct }}%)</div>
+    </div>
+  </div>
+  <div class="col-6 col-md col-lg">
+    <div class="stat-card text-center">
+      <div class="number" style="color:#7C3AED" id="stat-leave">{{ stats.leave }}</div>
+      <div class="label">On Leave ({{ stats.leave_pct }}%)</div>
+    </div>
+  </div>
+  <div class="col-6 col-md col-lg">
+    <div class="stat-card text-center">
+      <div class="number text-secondary" id="stat-unmarked">{{ stats.unmarked }}</div>
+      <div class="label">Unmarked</div>
+    </div>
+  </div>
+  <div class="col-6 col-md col-lg">
+    <div class="stat-card text-center">
+      <div class="number">{{ stats.total }}</div>
+      <div class="label">Total</div>
+    </div>
+  </div>
+</div>
+
+{# ── Legend ── #}
+<div class="d-flex gap-3 mb-4 flex-wrap" style="font-size:12px">
+  <div style="display:flex;align-items:center;gap:6px">
+    <div style="width:14px;height:14px;border-radius:3px;background:#D1FAE5;border:1.5px solid #6EE7B7"></div>
+    <span style="color:var(--text-2)">Present — tap once</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <div style="width:14px;height:14px;border-radius:3px;background:#FEE2E2;border:1.5px solid #FCA5A5"></div>
+    <span style="color:var(--text-2)">Absent — tap twice</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <div style="width:14px;height:14px;border-radius:3px;background:#EDE9FE;border:1.5px solid #C4B5FD"></div>
+    <span style="color:var(--text-2)">On Leave — tap thrice</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <div style="width:14px;height:14px;border-radius:3px;background:#F1F5F9;border:1.5px solid #CBD5E1"></div>
+    <span style="color:var(--text-2)">Unmarked — tap 4× to reset</span>
+  </div>
+  <div style="width:1px;background:var(--border);margin:0 4px"></div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <i class="bi bi-flag-fill" style="color:#059669;font-size:12px"></i>
+    <span style="color:var(--text-2)">Green flag</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <i class="bi bi-flag-fill" style="color:#D97706;font-size:12px"></i>
+    <span style="color:var(--text-2)">Yellow flag</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px">
+    <i class="bi bi-flag-fill" style="color:#DC2626;font-size:12px"></i>
+    <span style="color:var(--text-2)">Red flag</span>
+  </div>
+</div>
+
+{# ── Floor/Room/Student grid ── #}
+{% if not floors %}
+<div class="card">
+  <div class="empty-state" style="padding:60px">
+    <i class="bi bi-person-x" style="font-size:40px;opacity:.3;display:block;margin-bottom:12px;color:var(--text-3)"></i>
+    <p style="font-size:14px;color:var(--text-2)">No allocated students match the current filters.</p>
+  </div>
+</div>
+{% else %}
+{% for floor_num, rooms in floors.items %}
+<div class="mb-4">
+  {# Floor header #}
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+    <div style="background:linear-gradient(135deg,#0F4C81,#1565C0);color:#fff;
+                padding:6px 18px;border-radius:20px;font-size:13px;font-weight:700">
+      Floor {{ floor_num }}
+    </div>
+    <div style="flex:1;height:1px;background:var(--border)"></div>
+  </div>
+
+  {% for room_key, room_data in rooms.items %}
+  <div style="margin-bottom:20px">
+    {# Room sub-header #}
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div style="background:#F1F5F9;border:1px solid var(--border);
+                  padding:4px 14px;border-radius:16px;font-size:12px;font-weight:700;color:var(--text-2)">
+        <i class="bi bi-door-open me-1"></i>Room {{ room_data.room.room_number }}
+      </div>
+      <span style="font-size:11px;color:var(--text-3)">
+        {{ room_data.students|length }} student{{ room_data.students|length|pluralize }}
+      </span>
+    </div>
+
+    {# Student cards #}
+    <div class="row g-3">
+      {% for item in room_data.students %}
+      <div class="col-6 col-sm-4 col-md-3 col-xl-2">
+        <div class="attendance-card" id="card-{{ item.student.pk }}"
+             data-student-id="{{ item.student.pk }}"
+             data-date="{{ selected_date|date:'Y-m-d' }}"
+             data-status="{{ item.status }}"
+             onclick="tapCard(this)"
+             style="padding:14px 10px;border-radius:12px;text-align:center;cursor:pointer;
+                    transition:all .15s;user-select:none;position:relative;
+                    {% if item.status == 'present' %}
+                      background:#D1FAE5;border:2px solid #34D399;
+                    {% elif item.status == 'absent' %}
+                      background:#FEE2E2;border:2px solid #F87171;
+                    {% elif item.status == 'leave' %}
+                      background:#EDE9FE;border:2px solid #A78BFA;
+                    {% else %}
+                      background:#F8FAFF;border:2px solid #E2E8F0;
+                    {% endif %}">
+
+          {# Flag icon — top-right corner of card #}
+          <i class="bi bi-flag-fill"
+             title="{{ item.student.get_flag_color_display }} flag{% if item.student.flag_note %}: {{ item.student.flag_note }}{% endif %}"
+             style="position:absolute;top:7px;right:8px;font-size:13px;
+                    color:{% if item.student.flag_color == 'red' %}#DC2626{% elif item.student.flag_color == 'yellow' %}#D97706{% else %}#059669{% endif %};
+                    filter:drop-shadow(0 1px 2px rgba(0,0,0,.15))"></i>
+
+          {# Avatar / Photo #}
+          {% if item.student.photo %}
+          <img src="{{ item.student.photo.url }}" alt="{{ item.student.name }}"
+               style="width:52px;height:52px;border-radius:50%;object-fit:cover;margin-bottom:8px;
+                      border:2px solid rgba(255,255,255,.8)">
+          {% else %}
+          <div style="width:52px;height:52px;border-radius:50%;margin:0 auto 8px;
+                      display:flex;align-items:center;justify-content:center;
+                      font-size:20px;font-weight:800;
+                      {% if item.status == 'present' %}background:#059669;color:#fff;
+                      {% elif item.status == 'absent' %}background:#DC2626;color:#fff;
+                      {% elif item.status == 'leave' %}background:#7C3AED;color:#fff;
+                      {% else %}background:#94A3B8;color:#fff;{% endif %}">
+            {{ item.student.name|first|upper }}
+          </div>
+          {% endif %}
+
+          <div style="font-size:12px;font-weight:700;color:var(--text-1);
+                      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px">
+            {{ item.student.name }}
+          </div>
+          <div style="font-size:10px;color:var(--text-3);margin-bottom:6px">
+            {{ item.student.roll_number }}
+          </div>
+          <div style="font-size:10px;color:var(--text-3);margin-bottom:6px">
+            {{ item.student.department|truncatechars:14 }} · Sem {{ item.student.semester }}
+          </div>
+
+          {# Status badge #}
+          <div class="att-badge" id="badge-{{ item.student.pk }}"
+               style="font-size:10px;font-weight:700;padding:2px 10px;border-radius:10px;display:inline-block;
+                      {% if item.status == 'present' %}background:#059669;color:#fff;
+                      {% elif item.status == 'absent' %}background:#DC2626;color:#fff;
+                      {% elif item.status == 'leave' %}background:#7C3AED;color:#fff;
+                      {% else %}background:#94A3B8;color:#fff;{% endif %}">
+            {% if item.status == 'present' %}Present
+            {% elif item.status == 'absent' %}Absent
+            {% elif item.status == 'leave' %}On Leave
+            {% else %}—{% endif %}
+          </div>
+
+          {# Loading spinner (hidden by default) #}
+          <div class="att-spinner" id="spin-{{ item.student.pk }}"
+               style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+                      background:rgba(255,255,255,.85);border-radius:50%;width:36px;height:36px;
+                      display:none;align-items:center;justify-content:center">
+            <div style="width:18px;height:18px;border:2.5px solid #1565C0;border-top-color:transparent;
+                        border-radius:50%;animation:spin .6s linear infinite"></div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+{% endif %}
+
+{# ── Bottom summary ── #}
+{% if floors %}
+<div class="card mt-4" style="background:linear-gradient(135deg,#0F4C81,#1565C0);color:#fff;border:none">
+  <div class="card-body p-4">
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px;opacity:.85">
+      {{ hostel.name }} — {{ selected_date }} Summary
+    </div>
+    <div class="row g-3 text-center">
+      <div class="col">
+        <div style="font-size:28px;font-weight:800" id="footer-present">{{ stats.present }}</div>
+        <div style="font-size:11px;opacity:.7">Present ({{ stats.present_pct }}%)</div>
+      </div>
+      <div class="col">
+        <div style="font-size:28px;font-weight:800;color:#FCA5A5" id="footer-absent">{{ stats.absent }}</div>
+        <div style="font-size:11px;opacity:.7">Absent ({{ stats.absent_pct }}%)</div>
+      </div>
+      <div class="col">
+        <div style="font-size:28px;font-weight:800;color:#C4B5FD" id="footer-leave">{{ stats.leave }}</div>
+        <div style="font-size:11px;opacity:.7">On Leave ({{ stats.leave_pct }}%)</div>
+      </div>
+      <div class="col">
+        <div style="font-size:28px;font-weight:800;color:rgba(255,255,255,.5)" id="footer-unmarked">{{ stats.unmarked }}</div>
+        <div style="font-size:11px;opacity:.7">Unmarked</div>
+      </div>
+      <div class="col">
+        <div style="font-size:28px;font-weight:800">{{ stats.total }}</div>
+        <div style="font-size:11px;opacity:.7">Total</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+.attendance-card:active { transform: scale(.96); }
+</style>
+
+<script>
+const TOGGLE_URL = "{% url 'toggle_attendance' %}";
+const CSRF       = "{{ csrf_token }}";
+
+// Live counters
+const counters = {
+  present:  {{ stats.present }},
+  absent:   {{ stats.absent }},
+  leave:    {{ stats.leave }},
+  unmarked: {{ stats.unmarked }},
+};
+
+function tapCard(card) {
+  if (card.dataset.busy === '1') return;
+  card.dataset.busy = '1';
+
+  const sid    = card.dataset.studentId;
+  const date   = card.dataset.date;
+  const spinner = document.getElementById('spin-' + sid);
+  spinner.style.display = 'flex';
+
+  fetch(TOGGLE_URL, {
+    method:  'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+    body:    JSON.stringify({student_id: sid, date: date}),
+  })
+  .then(r => r.json())
+  .then(data => {
+    spinner.style.display = 'none';
+    card.dataset.busy = '';
+    if (data.error) { alert(data.error); return; }
+
+    const oldStatus = card.dataset.status;
+    const newStatus = data.status;
+    card.dataset.status = newStatus;
+
+    applyCardStyle(card, newStatus);
+    updateBadge(sid, newStatus);
+    updateCounters(oldStatus, newStatus);
+  })
+  .catch(() => {
+    spinner.style.display = 'none';
+    card.dataset.busy = '';
+  });
+}
+
+function applyCardStyle(card, status) {
+  const sid   = card.dataset.studentId;
+  const avatar = card.querySelector('div[style*="border-radius:50%"], img');
+
+  const styles = {
+    present:  {bg:'#D1FAE5', border:'2px solid #34D399', avatarBg:'#059669', badgeBg:'#059669'},
+    absent:   {bg:'#FEE2E2', border:'2px solid #F87171', avatarBg:'#DC2626', badgeBg:'#DC2626'},
+    leave:    {bg:'#EDE9FE', border:'2px solid #A78BFA', avatarBg:'#7C3AED', badgeBg:'#7C3AED'},
+    unmarked: {bg:'#F8FAFF', border:'2px solid #E2E8F0', avatarBg:'#94A3B8', badgeBg:'#94A3B8'},
+  };
+  const s = styles[status] || styles.unmarked;
+  card.style.background = s.bg;
+  card.style.border     = s.border;
+  if (avatar && avatar.tagName !== 'IMG') {
+    avatar.style.background = s.avatarBg;
+  }
+}
+
+function updateBadge(sid, status) {
+  const badge = document.getElementById('badge-' + sid);
+  const labels = {present:'Present', absent:'Absent', leave:'On Leave', unmarked:'—'};
+  const colors = {present:'#059669', absent:'#DC2626', leave:'#7C3AED', unmarked:'#94A3B8'};
+  badge.textContent   = labels[status] || '—';
+  badge.style.background = colors[status] || '#94A3B8';
+  badge.style.color   = '#fff';
+}
+
+function updateCounters(oldStatus, newStatus) {
+  if (oldStatus !== newStatus) {
+    if (counters[oldStatus] !== undefined) counters[oldStatus]--;
+    if (counters[newStatus] !== undefined) counters[newStatus]++;
+  }
+  const total = counters.present + counters.absent + counters.leave + counters.unmarked;
+  const pPct  = total ? Math.round(counters.present  / total * 100) : 0;
+  const aPct  = total ? Math.round(counters.absent   / total * 100) : 0;
+  const lPct  = total ? Math.round(counters.leave    / total * 100) : 0;
+
+  setText('stat-present',  counters.present);
+  setText('stat-absent',   counters.absent);
+  setText('stat-leave',    counters.leave);
+  setText('stat-unmarked', counters.unmarked);
+  setText('footer-present',  counters.present);
+  setText('footer-absent',   counters.absent);
+  setText('footer-leave',    counters.leave);
+  setText('footer-unmarked', counters.unmarked);
+
+  // update percentage labels in stat cards
+  const statCards = document.querySelectorAll('.stat-card .label');
+  const labelMap  = [
+    `Present (${pPct}%)`,
+    `Absent (${aPct}%)`,
+    `On Leave (${lPct}%)`,
+    'Unmarked',
+    `Total`,
+  ];
+  statCards.forEach((el, i) => { if (labelMap[i]) el.textContent = labelMap[i]; });
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+</script>
+{% endblock %}

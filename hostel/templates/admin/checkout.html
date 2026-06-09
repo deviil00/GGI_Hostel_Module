@@ -1,0 +1,53 @@
+{% extends "base/base.html" %}
+{% block title %}Checkout{% endblock %}
+{% block page_title %}Student Checkout{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-header py-3">Confirm Checkout</div>
+      <div class="card-body">
+
+        <div class="p-3 mb-3 rounded" style="background:#f9fafb;border:1px solid #e5e7eb;font-size:13px">
+          <div class="row">
+            <div class="col-6">
+              <div class="text-muted mb-1">Student</div>
+              <div class="fw-semibold">{{ allocation.student.name }}</div>
+              <div class="text-muted">{{ allocation.student.roll_number }}</div>
+            </div>
+            <div class="col-6">
+              <div class="text-muted mb-1">Room</div>
+              <div class="fw-semibold">{{ allocation.room.room_number }}</div>
+              <div class="text-muted">{{ allocation.room.hostel.name }}</div>
+            </div>
+          </div>
+          <div class="mt-2">
+            <span class="text-muted">Check-in:</span>
+            <strong>{{ allocation.check_in }}</strong>
+          </div>
+        </div>
+
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Checkout Date</label>
+            <input type="date" name="check_out" class="form-control"
+                   value="{{ form.check_out.value|default:'' }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Reason / Notes <span class="text-muted fw-normal">(optional)</span></label>
+            <textarea name="notes" class="form-control" rows="2"
+                      placeholder="End of semester, transfer, etc."></textarea>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger flex-fill">Confirm Checkout</button>
+            <a href="{% url 'student_detail' allocation.student.pk %}"
+               class="btn btn-outline-secondary flex-fill">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

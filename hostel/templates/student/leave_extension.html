@@ -1,0 +1,57 @@
+{% extends "base/base.html" %}
+{% block title %}Request Leave Extension{% endblock %}
+{% block page_title %}Leave Extension Request{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-calendar-plus-fill" style="color:#1565C0"></i></div>
+          Request Leave Extension
+        </div>
+        <a href="{% url 'my_leaves' %}" class="btn btn-outline-secondary btn-sm">← Back</a>
+      </div>
+      <div class="card-body p-4">
+        {# Current leave summary #}
+        <div class="p-3 mb-4 rounded" style="background:#F8FAFF;border:1.5px solid #DBEAFE">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#1565C0;margin-bottom:8px">Current Leave</div>
+          <div class="row g-2">
+            <div class="col-6">
+              <div style="font-size:11px;color:var(--text-3)">From</div>
+              <div class="fw-600">{{ leave.from_date|date:"d M Y" }}</div>
+            </div>
+            <div class="col-6">
+              <div style="font-size:11px;color:var(--text-3)">To (Current)</div>
+              <div class="fw-600">{{ leave.to_date|date:"d M Y" }}</div>
+            </div>
+            <div class="col-12">
+              <div style="font-size:11px;color:var(--text-3)">Reason</div>
+              <div style="font-size:13px">{{ leave.reason }}</div>
+            </div>
+          </div>
+        </div>
+
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">New Return Date <span class="text-danger">*</span></label>
+            <input type="date" name="new_to_date" class="form-control" required
+                   min="{{ leave.to_date|date:'Y-m-d' }}">
+            <div class="form-text">Must be after {{ leave.to_date|date:"d M Y" }}.</div>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Reason for Extension <span class="text-danger">*</span></label>
+            <textarea name="reason" class="form-control" rows="4" required
+                      placeholder="Explain why you need more time…"></textarea>
+          </div>
+          <button type="submit" class="btn btn-dark w-100">
+            <i class="bi bi-send-fill me-2"></i>Submit Extension Request
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

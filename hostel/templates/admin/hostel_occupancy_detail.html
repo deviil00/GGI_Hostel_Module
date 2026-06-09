@@ -1,0 +1,352 @@
+{% extends "base/base.html" %}
+{% block title %}{{ hostel.name }} — Occupancy{% endblock %}
+{% block page_title %}Occupancy Report{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>{{ hostel.name }}</h4>
+    <p>Detailed room occupancy — floor-wise breakdown</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'occupancy_report' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>All Hostels
+    </a>
+    <a href="?export=excel" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
+    </a>
+  </div>
+</div>
+
+{# ── Hero summary ── #}
+<div class="card mb-4" style="background:linear-gradient(135deg,#0F4C81,#1565C0);color:#fff;border:none">
+  <div class="card-body p-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-md-3 text-center">
+        <div style="font-size:48px;font-weight:800;line-height:1">{{ stats.pct }}%</div>
+        <div style="font-size:13px;opacity:.75;margin-top:4px">Overall Occupancy</div>
+        <div style="margin-top:10px;height:8px;border-radius:4px;background:rgba(255,255,255,.2);overflow:hidden">
+          <div style="height:100%;border-radius:4px;width:{{ stats.pct }}%;
+                      background:{% if stats.pct >= 90 %}#FCA5A5{% elif stats.pct >= 60 %}#FCD34D{% else %}#6EE7B7{% endif %}"></div>
+        </div>
+      </div>
+      <div class="col-md-9">
+        <div class="row g-3 text-center">
+          <div class="col">
+            <div style="font-size:28px;font-weight:800">{{ stats.total }}</div>
+            <div style="font-size:11px;opacity:.7">Total Rooms</div>
+          </div>
+          <div class="col">
+            <div style="font-size:28px;font-weight:800;color:#FCA5A5">{{ stats.occupied }}</div>
+            <div style="font-size:11px;opacity:.7">Fully Occupied</div>
+          </div>
+          <div class="col">
+            <div style="font-size:28px;font-weight:800;color:#FCD34D">{{ stats.partial }}</div>
+            <div style="font-size:11px;opacity:.7">Partially Occupied</div>
+          </div>
+          <div class="col">
+            <div style="font-size:28px;font-weight:800;color:#6EE7B7">{{ stats.vacant }}</div>
+            <div style="font-size:11px;opacity:.7">Vacant</div>
+          </div>
+          {% if stats.maint %}
+          <div class="col">
+            <div style="font-size:28px;font-weight:800;color:#C4B5FD">{{ stats.maint }}</div>
+            <div style="font-size:11px;opacity:.7">Maintenance</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% if stats.total_beds %}
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.15);
+                display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+      <span style="font-size:12px;opacity:.8">
+        <i class="bi bi-columns-gap me-1"></i>
+        <strong>{{ stats.occupied_beds }}</strong> / {{ stats.total_beds }} beds occupied
+      </span>
+      <span style="font-size:12px;opacity:.8">
+        <i class="bi bi-geo-alt-fill me-1"></i>{{ hostel.get_type_display }} Hostel
+      </span>
+      {% if hostel.location %}
+      <span style="font-size:12px;opacity:.8">
+        <i class="bi bi-pin-map me-1"></i>{{ hostel.location }}
+      </span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Charts row ── #}
+{% if floors %}
+<div class="row g-4 mb-4">
+  {# Floor-wise grouped bar chart #}
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF">
+            <i class="bi bi-bar-chart-fill" style="color:#1565C0"></i>
+          </div>
+          Room Status by Floor
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <canvas id="floorChart" style="max-height:320px"></canvas>
+      </div>
+    </div>
+  </div>
+
+  {# Doughnut — overall breakdown #}
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#F5F3FF">
+            <i class="bi bi-pie-chart-fill" style="color:#7C3AED"></i>
+          </div>
+          Overall Breakdown
+        </div>
+      </div>
+      <div class="card-body p-4 d-flex flex-column align-items-center justify-content-center">
+        <canvas id="donutChart" style="max-height:240px;max-width:240px"></canvas>
+        {# Legend #}
+        <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:10px 18px;justify-content:center">
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+            <div style="width:12px;height:12px;border-radius:3px;background:#DC2626"></div>
+            <span>Fully Occ. ({{ stats.occupied }})</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+            <div style="width:12px;height:12px;border-radius:3px;background:#D97706"></div>
+            <span>Partial ({{ stats.partial }})</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+            <div style="width:12px;height:12px;border-radius:3px;background:#059669"></div>
+            <span>Vacant ({{ stats.vacant }})</span>
+          </div>
+          {% if stats.maint %}
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+            <div style="width:12px;height:12px;border-radius:3px;background:#7C3AED"></div>
+            <span>Maintenance ({{ stats.maint }})</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Floor-by-floor detail table ── #}
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#FFFBEB">
+        <i class="bi bi-table" style="color:#D97706"></i>
+      </div>
+      Floor-wise Breakdown
+    </div>
+    <span style="font-size:12px;color:var(--text-3)">{{ floors|length }} floor{{ floors|length|pluralize }}</span>
+  </div>
+  <div class="card-body p-0">
+    <table class="table mb-0" style="font-size:13px">
+      <thead>
+        <tr>
+          <th class="ps-4">Floor</th>
+          <th>Total Rooms</th>
+          <th>
+            <span style="display:flex;align-items:center;gap:5px">
+              <span style="width:10px;height:10px;border-radius:2px;background:#DC2626;display:inline-block"></span>
+              Fully Occupied
+            </span>
+          </th>
+          <th>
+            <span style="display:flex;align-items:center;gap:5px">
+              <span style="width:10px;height:10px;border-radius:2px;background:#D97706;display:inline-block"></span>
+              Partially Occupied
+            </span>
+          </th>
+          <th>
+            <span style="display:flex;align-items:center;gap:5px">
+              <span style="width:10px;height:10px;border-radius:2px;background:#059669;display:inline-block"></span>
+              Vacant
+            </span>
+          </th>
+          <th>Maintenance</th>
+          <th>Occupancy %</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fl in floors %}
+        {% widthratio fl.occupied|add:fl.partial fl.total 100 as fpct %}
+        <tr>
+          <td class="ps-4 fw-600">Floor {{ fl.floor }}</td>
+          <td>{{ fl.total }}</td>
+          <td>
+            {% if fl.occupied %}
+            <span style="background:#FEE2E2;color:#991B1B;padding:2px 10px;border-radius:10px;
+                         font-size:12px;font-weight:600">{{ fl.occupied }}</span>
+            {% else %}<span style="color:var(--text-3)">—</span>{% endif %}
+          </td>
+          <td>
+            {% if fl.partial %}
+            <span style="background:#FFFBEB;color:#92400E;padding:2px 10px;border-radius:10px;
+                         font-size:12px;font-weight:600;border:1px solid #FCD34D">{{ fl.partial }}</span>
+            {% else %}<span style="color:var(--text-3)">—</span>{% endif %}
+          </td>
+          <td>
+            {% if fl.vacant %}
+            <span style="background:#ECFDF5;color:#065F46;padding:2px 10px;border-radius:10px;
+                         font-size:12px;font-weight:600">{{ fl.vacant }}</span>
+            {% else %}<span style="color:var(--text-3)">—</span>{% endif %}
+          </td>
+          <td>
+            {% if fl.maint %}
+            <span style="background:#F5F3FF;color:#5B21B6;padding:2px 10px;border-radius:10px;
+                         font-size:12px;font-weight:600">{{ fl.maint }}</span>
+            {% else %}<span style="color:var(--text-3)">—</span>{% endif %}
+          </td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="flex:1;height:8px;border-radius:4px;background:#F1F5F9;overflow:hidden;min-width:80px">
+                <div style="height:100%;border-radius:4px;width:{{ fpct }}%;
+                            background:{% if fpct >= 90 %}#DC2626{% elif fpct >= 60 %}#D97706{% else %}#059669{% endif %}"></div>
+              </div>
+              <span style="font-size:12px;font-weight:700;color:
+                {% if fpct >= 90 %}#DC2626{% elif fpct >= 60 %}#D97706{% else %}#059669{% endif %};
+                min-width:36px">{{ fpct }}%</span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:#F8FAFF;font-weight:700">
+          <td class="ps-4">Total</td>
+          <td>{{ stats.total }}</td>
+          <td>{{ stats.occupied }}</td>
+          <td>{{ stats.partial }}</td>
+          <td>{{ stats.vacant }}</td>
+          <td>{% if stats.maint %}{{ stats.maint }}{% else %}—{% endif %}</td>
+          <td>
+            <span style="font-weight:800;color:
+              {% if stats.pct >= 90 %}#DC2626{% elif stats.pct >= 60 %}#D97706{% else %}#059669{% endif %}">
+              {{ stats.pct }}%
+            </span>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state" style="padding:60px">
+    <i class="bi bi-building" style="font-size:40px;opacity:.3;display:block;margin-bottom:12px;color:var(--text-3)"></i>
+    <p style="font-size:14px;color:var(--text-2)">No rooms found for this hostel.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% if floors %}
+<script>
+/* ── Floor-wise grouped bar chart ── */
+new Chart(document.getElementById('floorChart').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: {{ chart_labels|safe }},
+    datasets: [
+      {
+        label: 'Fully Occupied',
+        data:  {{ chart_occupied|safe }},
+        backgroundColor: 'rgba(220,38,38,0.82)',
+        borderRadius: 5,
+      },
+      {
+        label: 'Partially Occupied',
+        data:  {{ chart_partial|safe }},
+        backgroundColor: 'rgba(217,119,6,0.82)',
+        borderRadius: 5,
+      },
+      {
+        label: 'Vacant',
+        data:  {{ chart_vacant|safe }},
+        backgroundColor: 'rgba(5,150,105,0.78)',
+        borderRadius: 5,
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'top' },
+      tooltip: {
+        callbacks: {
+          title: function(items) {
+            return items[0].label + ' — ' + '{{ hostel.name }}';
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        stacked: false,
+        grid: { display: false },
+        title: {
+          display: true,
+          text: 'Floor Number',
+          font: { size: 12, weight: '600' },
+          color: '#64748B',
+          padding: { top: 8 }
+        }
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { stepSize: 1, precision: 0 },
+        title: {
+          display: true,
+          text: 'Number of Rooms',
+          font: { size: 12, weight: '600' },
+          color: '#64748B',
+          padding: { bottom: 8 }
+        }
+      }
+    }
+  }
+});
+
+/* ── Doughnut chart ── */
+new Chart(document.getElementById('donutChart').getContext('2d'), {
+  type: 'doughnut',
+  data: {
+    labels: {{ donut_labels|safe }},
+    datasets: [{
+      data:            {{ donut_data|safe }},
+      backgroundColor: ['#DC2626','#D97706','#059669','#7C3AED'],
+      borderWidth: 2,
+      borderColor: '#fff',
+      hoverOffset: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: '65%',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: function(item) {
+            const total = item.dataset.data.reduce((a, b) => a + b, 0);
+            const pct   = total ? Math.round(item.raw / total * 100) : 0;
+            return ` ${item.label}: ${item.raw} rooms (${pct}%)`;
+          }
+        }
+      }
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

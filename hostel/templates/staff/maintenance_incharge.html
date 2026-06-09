@@ -1,0 +1,210 @@
+{% extends "base/base.html" %}
+{% block title %}Maintenance Dashboard{% endblock %}
+{% block page_title %}Maintenance Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Maintenance Dashboard</h4>
+    <p>Campus-wide complaints assigned for maintenance</p>
+  </div>
+</div>
+
+{# ── Stat cards ── #}
+<div class="row g-3 mb-4">
+  <div class="col-md-2 col-6">
+    <div class="stat-card" style="--stat-color:#1565C0">
+      <div class="s-top">
+        <div class="s-icon" style="background:#EBF3FF;color:#1565C0"><i class="bi bi-tools"></i></div>
+      </div>
+      <div class="s-number">{{ counts.total }}</div>
+      <div class="s-label">Total Assigned</div>
+    </div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="stat-card" style="--stat-color:#7C3AED">
+      <div class="s-top">
+        <div class="s-icon" style="background:#EDE9FE;color:#7C3AED"><i class="bi bi-arrow-right-circle-fill"></i></div>
+      </div>
+      <div class="s-number">{{ counts.forwarded }}</div>
+      <div class="s-label">Forwarded</div>
+    </div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="stat-card" style="--stat-color:#D97706">
+      <div class="s-top">
+        <div class="s-icon" style="background:#FFFBEB;color:#D97706"><i class="bi bi-gear-fill"></i></div>
+      </div>
+      <div class="s-number">{{ counts.in_progress }}</div>
+      <div class="s-label">In Progress</div>
+    </div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="stat-card" style="--stat-color:#059669">
+      <div class="s-top">
+        <div class="s-icon" style="background:#ECFDF5;color:#059669"><i class="bi bi-check-circle-fill"></i></div>
+      </div>
+      <div class="s-number">{{ counts.resolved }}</div>
+      <div class="s-label">Resolved</div>
+    </div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="stat-card" style="--stat-color:#DC2626">
+      <div class="s-top">
+        <div class="s-icon" style="background:#FEF2F2;color:#DC2626"><i class="bi bi-exclamation-triangle-fill"></i></div>
+      </div>
+      <div class="s-number">{{ counts.overdue }}</div>
+      <div class="s-label">Overdue (&gt;24h)</div>
+    </div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="stat-card" style="--stat-color:#0891B2">
+      <div class="s-top">
+        <div class="s-icon" style="background:#F0F9FF;color:#0891B2"><i class="bi bi-calendar-day-fill"></i></div>
+      </div>
+      <div class="s-number">{{ counts.today }}</div>
+      <div class="s-label">Added Today</div>
+    </div>
+  </div>
+</div>
+
+{# ── Status filter tabs ── #}
+<div class="d-flex gap-2 flex-wrap mb-3">
+  {% with cur=filters.status %}
+  <a href="?status=" class="status-tab {% if not cur %}active{% endif %}">
+    All <span class="tab-count">{{ counts.total }}</span>
+  </a>
+  <a href="?status=forwarded" class="status-tab {% if cur == 'forwarded' %}active{% endif %}">
+    Forwarded <span class="tab-count">{{ counts.forwarded }}</span>
+  </a>
+  <a href="?status=in_progress" class="status-tab {% if cur == 'in_progress' %}active{% endif %}">
+    In Progress <span class="tab-count">{{ counts.in_progress }}</span>
+  </a>
+  <a href="?status=resolved" class="status-tab {% if cur == 'resolved' %}active{% endif %}">
+    Resolved <span class="tab-count">{{ counts.resolved }}</span>
+  </a>
+  <a href="?status=overdue" class="status-tab overdue-tab {% if cur == 'overdue' %}active{% endif %}">
+    <i class="bi bi-exclamation-triangle-fill"></i> Overdue <span class="tab-count">{{ counts.overdue }}</span>
+  </a>
+  {% endwith %}
+</div>
+
+{# ── Complaint cards ── #}
+{% if page_obj %}
+<div class="d-flex flex-column gap-3">
+{% for c in page_obj %}
+<div class="card p-0" style="overflow:hidden;{% if c.is_overdue %}border-left:3px solid #DC2626{% endif %}">
+  <div style="padding:18px 20px">
+    <div class="d-flex justify-content-between align-items-start gap-3">
+      <div style="flex:1">
+        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+          {% include "complaints/_status_chip.html" with status=c.status %}
+          {% if c.priority %}
+          <span class="badge badge-{{ c.priority }}">{{ c.get_priority_display }}</span>
+          {% endif %}
+          <span style="font-size:11.5px;color:var(--text-3);background:#F1F5F9;padding:2px 8px;border-radius:10px">
+            {{ c.get_category_display }}
+          </span>
+          {% if c.is_overdue %}
+          <span style="font-size:11px;color:#DC2626;font-weight:700;background:#FEF2F2;padding:2px 8px;border-radius:10px">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>OVERDUE
+          </span>
+          {% endif %}
+        </div>
+
+        <div class="fw-700" style="font-size:15px;color:var(--text-1);margin-bottom:4px">{{ c.title }}</div>
+        <div style="font-size:13px;color:var(--text-2)">{{ c.description|truncatechars:120 }}</div>
+
+        <div class="d-flex gap-3 mt-2 flex-wrap" style="font-size:11.5px;color:var(--text-3)">
+          <span><i class="bi bi-person me-1"></i>{{ c.student.name }} ({{ c.student.roll_number }})</span>
+          {% if c.room %}<span><i class="bi bi-geo-alt me-1"></i>{{ c.room.room_number }} — {{ c.room.hostel.name }}</span>{% endif %}
+          {% if c.forwarded_at %}
+          <span><i class="bi bi-clock me-1"></i>Forwarded {{ c.forwarded_at|date:"d M Y, g:i A" }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="text-end" style="flex-shrink:0;min-width:120px">
+        <div style="font-size:11px;color:var(--text-3)">Raised</div>
+        <div style="font-size:13px;font-weight:600">{{ c.created_at|date:"d M Y" }}</div>
+        <a href="{% url 'complaint_detail' c.pk %}" class="btn btn-sm btn-outline-primary mt-2">
+          View / Update
+        </a>
+      </div>
+    </div>
+
+    {# Inline quick-action form for maintenance role #}
+    {% if user.role == 'maintenance' or user.role == 'superadmin' or user.role == 'admin' %}
+    {% if c.status == 'forwarded' or c.status == 'in_progress' %}
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <form method="post" action="{% url 'complaint_action' c.pk %}" class="d-flex align-items-end gap-2 flex-wrap">
+        {% csrf_token %}
+        <div style="flex:1;min-width:180px">
+          <label class="form-label mb-1" style="font-size:11.5px">Quick comment / remark</label>
+          <input type="text" name="comment" class="form-control form-control-sm" placeholder="Add a remark…">
+        </div>
+        <div>
+          <label class="form-label mb-1" style="font-size:11.5px">Action</label>
+          <select name="action" class="form-select form-select-sm">
+            {% if c.status == 'forwarded' %}<option value="in_progress">Mark In Progress</option>{% endif %}
+            <option value="resolve">Mark Resolved</option>
+            <option value="comment">Add Comment Only</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Update</button>
+      </form>
+    </div>
+    {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-3 d-flex align-items-center justify-content-between">
+  <span style="font-size:12.5px;color:var(--text-3)">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  <ul class="pagination pagination-sm mb-0">
+    {% if page_obj.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ filters.status }}">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+    {% endif %}
+    {% if page_obj.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ filters.status }}">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <i class="bi bi-tools"></i>
+    <p>No complaints assigned yet.</p>
+  </div>
+</div>
+{% endif %}
+
+<style>
+.status-tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 20px;
+  font-size: 12.5px; font-weight: 500;
+  color: var(--text-2); background: #F1F5F9;
+  text-decoration: none; transition: all .15s;
+  border: 1.5px solid transparent;
+}
+.status-tab:hover { background: #E2E8F0; color: var(--text-1); }
+.status-tab.active { background: #EDE9FE; color: #6D28D9; border-color: #C4B5FD; }
+.overdue-tab { color: #DC2626 !important; }
+.overdue-tab.active { background: #FEF2F2; color: #DC2626 !important; border-color: #FCA5A5; }
+.tab-count { background: rgba(0,0,0,.07); border-radius: 10px; padding: 1px 7px; font-size: 11px; }
+</style>
+{% endblock %}

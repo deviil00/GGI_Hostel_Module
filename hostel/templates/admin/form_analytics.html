@@ -1,0 +1,318 @@
+{% extends "base/base.html" %}
+{% block title %}Analytics — {{ form_obj.title }} — GGI Hostel ERP{% endblock %}
+{% block page_title %}Form Analytics{% endblock %}
+
+{% block extra_css %}
+<style>
+.chart-wrap { position:relative; height:240px; }
+.field-section {
+  border:1px solid var(--border);border-radius:14px;
+  padding:20px 22px;background:#fff;margin-bottom:20px;
+}
+.field-section:hover { box-shadow:0 2px 12px rgba(0,0,0,.06); }
+.stat-pill {
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 18px;border-radius:12px;font-size:13px;font-weight:700;
+}
+.resp-chip {
+  display:inline-block;padding:3px 10px;border-radius:8px;
+  font-size:12px;background:#F1F5F9;color:var(--text-2);margin:2px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ── Page header ── #}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>{{ form_obj.title }}</h4>
+    <p>
+      {% if form_obj.form_category %}
+      <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;
+                   padding:2px 10px;border-radius:8px;background:{{ form_obj.form_category.color }}18;
+                   color:{{ form_obj.form_category.color }}">
+        <i class="bi {{ form_obj.form_category.icon }}"></i>{{ form_obj.form_category.name }}
+      </span>
+      {% endif %}
+      &nbsp;Form Analytics &amp; Response Summary
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'export_form_excel' form_obj.pk %}" class="btn btn-sm btn-success">
+      <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
+    </a>
+    <a href="{% url 'form_submissions' form_obj.pk %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-inbox me-1"></i>Submissions
+    </a>
+    <a href="{% url 'registration_form_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+  </div>
+</div>
+
+{# ── Summary stats row ── #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="--stat-color:var(--blue)">
+      <div class="s-top">
+        <div class="s-icon" style="background:var(--blue-soft)">
+          <i class="bi bi-people-fill" style="color:var(--blue)"></i>
+        </div>
+      </div>
+      <div class="s-number">{{ total }}</div>
+      <div class="s-label">Total Responses</div>
+    </div>
+  </div>
+  {% for val, label in status_choices %}
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="--stat-color:{% if val == 'submitted' %}#D97706{% elif val == 'approved' %}#059669{% elif val == 'rejected' %}#DC2626{% elif val == 'waitlisted' %}#7C3AED{% else %}#1565C0{% endif %}">
+      <div class="s-top">
+        <div class="s-icon" style="background:{% if val == 'submitted' %}#FFFBEB{% elif val == 'approved' %}#ECFDF5{% elif val == 'rejected' %}#FEF2F2{% elif val == 'waitlisted' %}#F5F3FF{% else %}var(--blue-soft){% endif %}">
+          <i class="bi bi-{% if val == 'submitted' %}inbox{% elif val == 'approved' %}check-circle-fill{% elif val == 'rejected' %}x-circle-fill{% elif val == 'waitlisted' %}clock-fill{% else %}search{% endif %}"
+             style="color:{% if val == 'submitted' %}#D97706{% elif val == 'approved' %}#059669{% elif val == 'rejected' %}#DC2626{% elif val == 'waitlisted' %}#7C3AED{% else %}#1565C0{% endif %}"></i>
+        </div>
+      </div>
+      <div class="s-number">
+        {% for k, v in status_counts.items %}{% if k == val %}{{ v }}{% endif %}{% endfor %}
+      </div>
+      <div class="s-label">{{ label }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# ── Two-col layout: Timeline + Status Pie ── #}
+<div class="row g-4 mb-4">
+  <div class="col-md-8">
+    <div class="card h-100">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-graph-up" style="color:var(--blue)"></i></div>
+          Submission Timeline
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="chart-wrap"><canvas id="timelineChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-pie-chart-fill" style="color:#059669"></i></div>
+          Status Breakdown
+        </div>
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        {% if total > 0 %}
+        <div style="max-width:240px;width:100%"><canvas id="statusChart"></canvas></div>
+        {% else %}
+        <div style="text-align:center;color:var(--text-3);font-size:13px">
+          <i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:8px;opacity:.4"></i>
+          No submissions yet
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Per-field analysis ── #}
+{% if fields_data %}
+<div class="mb-3 d-flex align-items-center gap-2">
+  <div style="font-size:15px;font-weight:800;color:var(--text-1)">
+    <i class="bi bi-ui-checks me-2" style="color:var(--blue)"></i>Field-by-Field Analysis
+  </div>
+  <div style="flex:1;height:1px;background:var(--border-light)"></div>
+</div>
+
+{% for fd in fields_data %}
+<div class="field-section">
+  <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+    <div>
+      <div style="font-size:14px;font-weight:700;color:var(--text-1)">
+        <span style="display:inline-block;width:26px;height:26px;border-radius:50%;background:var(--blue-soft);
+                     color:var(--blue);font-size:12px;font-weight:800;text-align:center;line-height:26px;margin-right:8px">
+          {{ forloop.counter }}
+        </span>
+        {{ fd.field.label }}
+        {% if fd.field.is_required %}
+        <span style="font-size:11px;color:#DC2626;margin-left:4px">*required</span>
+        {% endif %}
+      </div>
+      {% if fd.field.help_text %}
+      <div style="font-size:12px;color:var(--text-3);margin-top:3px;margin-left:34px">{{ fd.field.help_text }}</div>
+      {% endif %}
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <span style="font-size:11.5px;padding:3px 10px;border-radius:8px;background:#F1F5F9;
+                   color:var(--text-2);font-weight:600">
+        {{ fd.field.get_field_type_display }}
+      </span>
+      <span style="font-size:11.5px;padding:3px 10px;border-radius:8px;background:#EBF3FF;
+                   color:var(--blue);font-weight:700">
+        {{ fd.total_responses }} response{{ fd.total_responses|pluralize }}
+      </span>
+    </div>
+  </div>
+
+  {% if fd.type == 'chart' %}
+  {# Pie + bar + option breakdown #}
+  <div class="row g-3">
+    <div class="col-md-5">
+      <div style="position:relative;height:220px">
+        <canvas id="field-chart-{{ forloop.counter }}"></canvas>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div style="position:relative;height:220px">
+        <canvas id="field-bar-{{ forloop.counter }}"></canvas>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div style="font-size:12.5px;font-weight:700;color:var(--text-3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Option Breakdown</div>
+      {% for opt in fd.options %}
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <div style="flex:1;font-size:13px;color:var(--text-1)">{{ opt.label }}</div>
+        <div style="min-width:32px;text-align:right;font-weight:700;color:var(--blue)">{{ opt.count }}</div>
+        <div style="width:80px">
+          <div style="height:8px;border-radius:4px;background:#E2E8F0;overflow:hidden">
+            <div style="height:100%;border-radius:4px;background:var(--blue);
+                        width:{% if fd.total_responses %}{% widthratio opt.count fd.total_responses 100 %}%{% else %}0%{% endif %}"></div>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div style="font-size:12px;color:var(--text-3)">No responses yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    const PALETTE = ['#1565C0','#059669','#D97706','#DC2626','#7C3AED','#0891B2','#EA580C','#16A34A','#9333EA','#DB2777'];
+    const labels = [{% for opt in fd.options %}'{{ opt.label|escapejs }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+    const data   = [{% for opt in fd.options %}{{ opt.count }}{% if not forloop.last %},{% endif %}{% endfor %}];
+    const colors = labels.map((_,i) => PALETTE[i % PALETTE.length]);
+
+    // Pie
+    new Chart(document.getElementById('field-chart-{{ forloop.counter }}'), {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 8 } } }
+      }
+    });
+    // Bar
+    new Chart(document.getElementById('field-bar-{{ forloop.counter }}'), {
+      type: 'bar',
+      data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 6 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+          y: { grid: { display: false }, ticks: { font: { size: 10 } } }
+        }
+      }
+    });
+  })();
+  </script>
+
+  {% else %}
+  {# Text-type field — most common + sample list #}
+  {% if fd.common %}
+  <div class="mb-3">
+    <div style="font-size:12px;font-weight:700;color:var(--text-3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Most Common Answers</div>
+    <div>
+      {% for val, cnt in fd.common %}
+      <span class="resp-chip">{{ val|truncatechars:40 }} <strong style="color:var(--blue)">({{ cnt }})</strong></span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+  {% if fd.values %}
+  <div>
+    <div style="font-size:12px;font-weight:700;color:var(--text-3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">
+      All Responses {% if fd.values|length == 200 %}<span style="font-weight:400">(showing first 200)</span>{% endif %}
+    </div>
+    <div style="max-height:180px;overflow-y:auto;border:1px solid var(--border-light);border-radius:8px;padding:10px">
+      {% for v in fd.values %}
+      <div style="padding:4px 0;border-bottom:1px solid var(--border-light);font-size:12.5px;color:var(--text-2)">
+        {{ forloop.counter }}. {{ v }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div style="font-size:13px;color:var(--text-3)">No responses yet.</div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<div class="card">
+  <div class="empty-state py-4">
+    <i class="bi bi-ui-checks" style="font-size:36px;opacity:.3"></i>
+    <p style="margin-top:10px;font-size:14px">This form has no custom fields yet.</p>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+/* ── Timeline chart ── */
+(function() {
+  const labels = {{ timeline_labels|safe }};
+  const data   = {{ timeline_counts|safe }};
+  if (!document.getElementById('timelineChart')) return;
+  new Chart(document.getElementById('timelineChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Submissions',
+        data,
+        fill: true,
+        backgroundColor: 'rgba(21,101,192,.10)',
+        borderColor: '#1565C0',
+        tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: '#1565C0',
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } } }
+      }
+    }
+  });
+})();
+
+/* ── Status pie ── */
+(function() {
+  const el = document.getElementById('statusChart');
+  if (!el) return;
+  const labels = [{% for val, label in status_choices %}'{{ label }}'{% if not forloop.last %},{% endif %}{% endfor %}];
+  const data   = [{% for val, label in status_choices %}{% for k, v in status_counts.items %}{% if k == val %}{{ v }}{% endif %}{% endfor %}{% if not forloop.last %},{% endif %}{% endfor %}];
+  const colors = ['#D97706','#1565C0','#059669','#DC2626','#7C3AED'];
+  new Chart(el, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 8 } } }
+    }
+  });
+})();
+</script>
+{% endblock %}

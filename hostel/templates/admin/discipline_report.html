@@ -1,0 +1,243 @@
+{% extends 'base/base.html' %}
+{% block title %}Discipline Reports{% endblock %}
+{% block page_title %}Discipline Reports{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Discipline Reports &amp; Analytics</h4>
+    <p>Overview of incidents, fines, and repeat offenders</p>
+  </div>
+  <a href="{% url 'discipline_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back to Records
+  </a>
+</div>
+
+{# ── Top KPI Cards ──────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#FEE2E2;color:#DC2626"><i class="bi bi-exclamation-triangle-fill"></i></div>
+      <div class="kpi-val">{{ total }}</div>
+      <div class="kpi-lbl">Total Incidents</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#FEF3C7;color:#D97706"><i class="bi bi-hourglass-split"></i></div>
+      <div class="kpi-val">{{ active }}</div>
+      <div class="kpi-lbl">Active (Open)</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#D1FAE5;color:#059669"><i class="bi bi-shield-check"></i></div>
+      <div class="kpi-val">{{ resolved }}</div>
+      <div class="kpi-lbl">Resolved / Closed</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="kpi-card">
+      <div class="kpi-icon" style="background:#FEE2E2;color:#DC2626"><i class="bi bi-cash-coin"></i></div>
+      <div class="kpi-val">{{ unpaid }}</div>
+      <div class="kpi-lbl">Unpaid Fines</div>
+    </div>
+  </div>
+</div>
+
+{# ── Fine Collection Summary ─────────────────────────────────────────── #}
+<div class="card mb-4">
+  <div class="card-header py-3">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#FEE2E2"><i class="bi bi-cash-stack" style="color:#DC2626"></i></div>
+      Fine Collection Summary
+    </div>
+  </div>
+  <div class="card-body p-4">
+    <div class="row g-4 text-center">
+      <div class="col-md-4">
+        <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px">Total Fines Imposed</div>
+        <div style="font-size:28px;font-weight:700;color:#DC2626">₹{{ total_fines }}</div>
+      </div>
+      <div class="col-md-4">
+        <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px">Collected</div>
+        <div style="font-size:28px;font-weight:700;color:#059669">₹{{ collected }}</div>
+      </div>
+      <div class="col-md-4">
+        <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px">Pending Collection</div>
+        <div style="font-size:28px;font-weight:700;color:#D97706">₹{{ pending_fines }}</div>
+      </div>
+    </div>
+    {% if total_fines > 0 %}
+    <div class="mt-3">
+      <div style="height:8px;border-radius:4px;background:var(--bg-2);overflow:hidden">
+        <div style="height:100%;width:{% widthratio collected total_fines 100 %}%;background:#059669;border-radius:4px;transition:width .4s"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:4px;text-align:right">
+        {% widthratio collected total_fines 100 %}% collected
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+
+  {# ── Category Breakdown ─────────────────────────────────────── #}
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EDE9FE"><i class="bi bi-tags" style="color:#7C3AED"></i></div>
+          Incidents by Category
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr><th>Category</th><th>Severity</th><th class="text-end">Count</th></tr>
+          </thead>
+          <tbody>
+            {% for cat in by_category %}
+            <tr>
+              <td style="font-size:13px">{{ cat.name }}</td>
+              <td>
+                <span class="badge" style="background:{{ cat.severity_color }}20;color:{{ cat.severity_color }};border:1px solid {{ cat.severity_color }}40">
+                  {{ cat.get_severity_display }}
+                </span>
+              </td>
+              <td class="text-end fw-bold" style="color:#DC2626">{{ cat.count }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center text-muted py-3">No data</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# ── Hostel Breakdown ───────────────────────────────────────── #}
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#DBEAFE"><i class="bi bi-building" style="color:#2563EB"></i></div>
+          Incidents by Hostel
+        </div>
+      </div>
+      <div class="card-body p-4">
+        {% for row in by_hostel %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1" style="font-size:12.5px">
+            <span>{{ row.hostel_name }}</span>
+            <strong>{{ row.count }}</strong>
+          </div>
+          <div style="height:7px;border-radius:4px;background:var(--bg-2);overflow:hidden">
+            {% with by_hostel|first as top %}
+            <div style="height:100%;width:{% widthratio row.count top.count 100 %}%;background:#2563EB;border-radius:4px"></div>
+            {% endwith %}
+          </div>
+        </div>
+        {% empty %}
+        <div class="text-center text-muted py-3">No hostel data</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  {# ── Repeat Offenders ───────────────────────────────────────── #}
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEE2E2"><i class="bi bi-person-fill-exclamation" style="color:#DC2626"></i></div>
+          Repeat Offenders (2+ incidents)
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr><th>Student</th><th>Roll No.</th><th class="text-end">Incidents</th></tr>
+          </thead>
+          <tbody>
+            {% for s in repeat_offenders %}
+            <tr>
+              <td>
+                <div class="fw-semibold" style="font-size:13px">{{ s.name }}</div>
+                {% if s.course %}<div style="font-size:11px;color:var(--text-3)">{{ s.course }}</div>{% endif %}
+              </td>
+              <td style="font-size:12px;color:var(--text-2)">{{ s.roll_number }}</td>
+              <td class="text-end">
+                <span class="badge bg-danger" style="font-size:13px">{{ s.record_count }}</span>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3">
+              <div class="empty-state py-3">
+                <i class="bi bi-person-check" style="font-size:24px;opacity:.3"></i>
+                <p style="font-size:12.5px">No repeat offenders</p>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# ── Monthly Trend ──────────────────────────────────────────── #}
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#D1FAE5"><i class="bi bi-graph-up" style="color:#059669"></i></div>
+          Monthly Trend
+        </div>
+      </div>
+      <div class="card-body p-4">
+        {% if monthly %}
+        {% with monthly|last as peak %}
+        {% for row in monthly %}
+        {% with monthly|dictsort:"count"|last as max_row %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1" style="font-size:12.5px">
+            <span>{{ row.month|date:"M Y" }}</span>
+            <strong>{{ row.count }} incident{{ row.count|pluralize }}</strong>
+          </div>
+          <div style="height:7px;border-radius:4px;background:var(--bg-2);overflow:hidden">
+            <div style="height:100%;width:{% widthratio row.count max_row.count 100 %}%;background:#059669;border-radius:4px"></div>
+          </div>
+        </div>
+        {% endwith %}
+        {% endfor %}
+        {% endwith %}
+        {% else %}
+        <div class="text-center text-muted py-3">No monthly data available</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<style>
+.kpi-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+}
+.kpi-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; margin: 0 auto 10px;
+}
+.kpi-val { font-size: 28px; font-weight: 700; }
+.kpi-lbl { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+</style>
+{% endblock %}

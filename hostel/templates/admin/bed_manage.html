@@ -1,0 +1,122 @@
+{% extends 'base/base.html' %}
+{% block title %}Bed Management — {{ room }}{% endblock %}
+{% block page_title %}Bed Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Beds — {{ room }}</h4>
+    <p>Capacity: {{ room.capacity }} · Type: {{ room.room_type }}</p>
+  </div>
+  <a href="{% url 'room_list' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i> Back
+  </a>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-hospital" style="color:#1565C0"></i></div>
+          Beds in {{ room }}
+        </div>
+        <span class="text-muted" style="font-size:12px">{{ beds|length }} / {{ room.capacity }} beds</span>
+      </div>
+      {% if beds %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead><tr><th>Bed No.</th><th>Status</th><th>Current Occupant</th><th>Actions</th></tr></thead>
+          <tbody>
+            {% for bed in beds %}
+            <tr>
+              <td class="fw-600">Bed {{ bed.bed_number }}</td>
+              <td>
+                {% if bed.status == 'available' %}<span class="badge badge-paid">Available</span>
+                {% elif bed.status == 'occupied' %}<span class="badge badge-occupied">Occupied</span>
+                {% elif bed.status == 'reserved' %}<span class="badge badge-partial">Reserved</span>
+                {% elif bed.status == 'maintenance' %}<span class="badge badge-maintenance">Maintenance</span>
+                {% endif %}
+              </td>
+              <td>
+                {% with alloc=bed.allocations.first %}
+                {% if alloc and alloc.status == 'active' %}
+                  <div class="tbl-name">{{ alloc.student.name }}</div>
+                  <div class="tbl-sub">{{ alloc.student.roll_number }}</div>
+                {% else %}<span class="text-muted">—</span>{% endif %}
+                {% endwith %}
+              </td>
+              <td>
+                <div class="d-flex gap-1">
+                  <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_status">
+                    <input type="hidden" name="bed_id" value="{{ bed.pk }}">
+                    <select name="new_status" class="form-select form-select-sm d-inline-block" style="width:130px" onchange="this.form.submit()">
+                      {% for val, label in bed_statuses %}
+                      <option value="{{ val }}" {% if bed.status == val %}selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </form>
+                  <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="bed_id" value="{{ bed.pk }}">
+                    <button class="btn btn-xs btn-outline-danger" type="submit"
+                            onclick="return confirm('Remove this bed?')"><i class="bi bi-trash"></i></button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state"><i class="bi bi-hospital"></i><p>No beds added yet.</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-magic" style="color:#059669"></i></div>
+          Auto-Create Beds
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <p style="font-size:13px;color:var(--text-2)">Automatically create {{ room.capacity }} beds (1 to {{ room.capacity }}) based on room capacity.</p>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="auto_create">
+          <button class="btn btn-success w-100" type="submit">
+            <i class="bi bi-magic"></i> Auto-Create {{ room.capacity }} Beds
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-plus-circle-fill" style="color:#1565C0"></i></div>
+          Add Single Bed
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add">
+          <div class="mb-3">
+            <label class="form-label">Bed Number / Label</label>
+            <input type="text" name="bed_number" class="form-control" placeholder="e.g. A, B, 1, 2" required>
+          </div>
+          <button class="btn btn-primary w-100" type="submit"><i class="bi bi-plus-lg"></i> Add Bed</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

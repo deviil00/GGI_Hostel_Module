@@ -1,0 +1,311 @@
+{% extends "base/base.html" %}
+{% block title %}Complaint #{{ complaint.pk|stringformat:"s"|slice:":8"|upper }} — GGI Hostel ERP{% endblock %}
+{% block page_title %}Complaint Detail{% endblock %}
+
+{% block content %}
+<style>
+  .tl-wrap    { position:relative; padding-left:32px; }
+  .tl-wrap::before { content:''; position:absolute; left:11px; top:0; bottom:0; width:2px; background:#E2E8F0; }
+  .tl-item    { position:relative; margin-bottom:20px; }
+  .tl-dot     { position:absolute; left:-32px; top:3px; width:22px; height:22px; border-radius:50%;
+                display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;
+                border:2px solid #fff; box-shadow:0 0 0 2px var(--dot-color, #64748B); z-index:1; }
+  .tl-card    { background:#fff; border:1.5px solid #E2E8F0; border-radius:10px; padding:12px 16px; }
+  .tl-meta    { font-size:11.5px; color:var(--text-3); margin-top:4px; }
+  .status-chip{ font-size:11px; font-weight:700; padding:3px 10px; border-radius:12px; display:inline-block; }
+  .cat-chip   { font-size:11px; font-weight:600; padding:2px 10px; border-radius:10px;
+                background:#EBF3FF; color:#1E3A5F; }
+</style>
+
+<!-- Header -->
+<div class="page-header">
+  <div class="page-header-left">
+    <h4 style="font-size:16px">{{ complaint.title }}</h4>
+    <div class="d-flex align-items-center gap-2 mt-1">
+      <span class="cat-chip">{{ complaint.get_category_display }}</span>
+      {% include "complaints/_status_chip.html" with status=complaint.status %}
+      {% if complaint.priority %}
+      <span class="status-chip" style="background:{% if complaint.priority == 'urgent' %}#FEE2E2;color:#DC2626{% elif complaint.priority == 'high' %}#FEF3C7;color:#D97706{% elif complaint.priority == 'medium' %}#EBF3FF;color:#1565C0{% else %}#F1F5F9;color:#64748B{% endif %}">
+        {{ complaint.get_priority_display }}
+      </span>
+      {% endif %}
+      {% if complaint.is_overdue %}
+      <span class="status-chip" style="background:#FEE2E2;color:#B91C1C">
+        <i class="bi bi-clock-fill me-1"></i>OVERDUE
+      </span>
+      {% endif %}
+    </div>
+  </div>
+  <a href="{% if is_student %}{% url 'my_complaints' %}{% else %}{% url 'complaint_list' %}{% endif %}"
+     class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Back
+  </a>
+</div>
+
+<div class="row g-4">
+
+  <!-- Left: Info + Timeline -->
+  <div class="col-lg-8">
+
+    <!-- Complaint card -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-megaphone-fill" style="color:#1565C0"></i></div>
+          Complaint Details
+        </div>
+        <div style="font-size:12px;color:var(--text-3)">
+          Filed {{ complaint.created_at|date:"d M Y, H:i" }}
+          {% if complaint.resolved_at %}&nbsp;·&nbsp;Resolved {{ complaint.resolved_at|date:"d M Y, H:i" }}{% endif %}
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3 mb-3">
+          <div class="col-sm-4">
+            <div style="font-size:11px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Reported By</div>
+            <div class="fw-600 mt-1">{{ complaint.reporter_name }}</div>
+            <div style="font-size:12px;color:var(--text-2)">{{ complaint.reporter_role }}</div>
+          </div>
+          <div class="col-sm-4">
+            <div style="font-size:11px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Location</div>
+            <div class="fw-600 mt-1">{{ complaint.location_display }}</div>
+          </div>
+          <div class="col-sm-4">
+            <div style="font-size:11px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Assigned To</div>
+            <div class="fw-600 mt-1">{{ complaint.assigned_to.name|default:"—" }}</div>
+            {% if complaint.forwarded_at %}
+            <div style="font-size:11px;color:var(--text-3)">
+              Forwarded {{ complaint.forwarded_at|date:"d M, H:i" }}
+              {% if complaint.hours_since_forwarded %}&nbsp;({{ complaint.hours_since_forwarded }}h){% endif %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        <div style="background:#F8FAFF;border-radius:8px;padding:14px 16px;font-size:13.5px;line-height:1.8;border:1px solid #E2E8F0;">
+          {{ complaint.description }}
+        </div>
+        {% if complaint.warden_remarks %}
+        <div class="mt-3 p-3 rounded" style="background:#FFFBEB;border:1px solid #FDE68A;font-size:13px">
+          <div style="font-size:11px;color:#92400E;font-weight:700;margin-bottom:4px">WARDEN REMARKS</div>
+          {{ complaint.warden_remarks }}
+        </div>
+        {% endif %}
+        {% if complaint.maintenance_remarks %}
+        <div class="mt-3 p-3 rounded" style="background:#F0FDF4;border:1px solid #BBF7D0;font-size:13px">
+          <div style="font-size:11px;color:#166534;font-weight:700;margin-bottom:4px">MAINTENANCE NOTE</div>
+          {{ complaint.maintenance_remarks }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-clock-history" style="color:#1565C0"></i></div>
+          Activity Timeline
+        </div>
+      </div>
+      <div class="card-body p-4">
+        {% if timeline %}
+        <div class="tl-wrap">
+          {% for entry in timeline %}
+          {% with s=entry.status %}
+          <div class="tl-item">
+            <div class="tl-dot"
+                 style="--dot-color:{% if s == 'submitted' %}#64748B{% elif s == 'verified' %}#1565C0{% elif s == 'forwarded' %}#7C3AED{% elif s == 'in_progress' %}#D97706{% elif s == 'resolved' %}#059669{% elif s == 'closed' %}#374151{% else %}#94A3B8{% endif %};
+                        background:{% if s == 'submitted' %}#F1F5F9{% elif s == 'verified' %}#DBEAFE{% elif s == 'forwarded' %}#EDE9FE{% elif s == 'in_progress' %}#FFFBEB{% elif s == 'resolved' %}#DCFCE7{% elif s == 'closed' %}#F1F5F9{% else %}#F8FAFF{% endif %};">
+              <i class="bi {% if s == 'submitted' %}bi-send-fill{% elif s == 'verified' %}bi-check-circle-fill{% elif s == 'forwarded' %}bi-arrow-right-circle-fill{% elif s == 'in_progress' %}bi-tools{% elif s == 'resolved' %}bi-check2-all{% elif s == 'closed' %}bi-x-circle-fill{% else %}bi-chat-fill{% endif %}"
+                 style="font-size:10px;color:{% if s == 'submitted' %}#64748B{% elif s == 'verified' %}#1565C0{% elif s == 'forwarded' %}#7C3AED{% elif s == 'in_progress' %}#D97706{% elif s == 'resolved' %}#059669{% else %}#374151{% endif %}"></i>
+            </div>
+            <div class="tl-card">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  {% if s %}
+                  <span class="fw-700" style="font-size:13px;color:{% if s == 'resolved' %}#059669{% elif s == 'in_progress' %}#D97706{% elif s == 'forwarded' %}#7C3AED{% elif s == 'closed' %}#374151{% elif s == 'verified' %}#1565C0{% else %}#1F2937{% endif %}">
+                    {{ entry.get_status_display }}
+                  </span>
+                  {% endif %}
+                  <div style="font-size:13px;color:#374151;margin-top:4px">{{ entry.comment|default:"" }}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;margin-left:12px">
+                  <div style="font-size:12px;color:var(--text-2);font-weight:600">
+                    {{ entry.updated_by.name|default:"System" }}
+                  </div>
+                  <div style="font-size:11px;color:var(--text-3)">{{ entry.created_at|date:"d M Y, H:i" }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endwith %}
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state py-3">
+          <i class="bi bi-clock-history" style="font-size:28px;opacity:.3"></i>
+          <p style="font-size:13px;margin-top:8px">No timeline entries yet.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right: Action Panel -->
+  {% if not is_student %}
+  <div class="col-lg-4">
+
+    <!-- Warden / Admin / SuperAdmin Actions -->
+    {% if is_warden or is_admin %}
+
+    {% if complaint.status == 'submitted' %}
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#DBEAFE"><i class="bi bi-shield-check" style="color:#1565C0"></i></div>
+          Verify Complaint
+        </div>
+      </div>
+      <div class="card-body p-3">
+        <form method="post" action="{% url 'complaint_action' complaint.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="verify">
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:12px">Set Priority</label>
+            <select name="priority" class="form-select form-select-sm">
+              {% for val, lbl in priorities %}
+              <option value="{{ val }}" {% if val == 'medium' %}selected{% endif %}>{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:12px">Remarks</label>
+            <textarea name="comment" class="form-control form-control-sm" rows="3" placeholder="Verification notes...">{{ complaint.warden_remarks }}</textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100">
+            <i class="bi bi-check-circle me-1"></i>Verify & Set Priority
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if complaint.status == 'submitted' or complaint.status == 'verified' %}
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EDE9FE"><i class="bi bi-arrow-right-circle-fill" style="color:#7C3AED"></i></div>
+          Forward to Maintenance
+        </div>
+      </div>
+      <div class="card-body p-3">
+        <form method="post" action="{% url 'complaint_action' complaint.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="forward">
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:12px">Maintenance Incharge</label>
+            <select name="maintenance_user" class="form-select form-select-sm" required>
+              <option value="">— Select —</option>
+              {% for mi in maintenance_users %}
+              <option value="{{ mi.pk }}" {% if complaint.assigned_to_id == mi.pk %}selected{% endif %}>{{ mi.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:12px">Note to Maintenance</label>
+            <textarea name="comment" class="form-control form-control-sm" rows="2" placeholder="Instructions..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-sm w-100" style="background:#7C3AED;color:#fff">
+            <i class="bi bi-arrow-right-circle me-1"></i>Forward to Maintenance
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if complaint.status == 'resolved' %}
+    <div class="card mb-3">
+      <div class="card-body p-3">
+        <form method="post" action="{% url 'complaint_action' complaint.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="close">
+          <div class="mb-2">
+            <textarea name="comment" class="form-control form-control-sm" rows="2" placeholder="Closing remarks (optional)..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+            <i class="bi bi-x-circle me-1"></i>Close Complaint
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Maintenance Actions -->
+    {% if is_maintenance %}
+
+    {% if complaint.status == 'forwarded' %}
+    <div class="card mb-3">
+      <div class="card-body p-3">
+        <form method="post" action="{% url 'complaint_action' complaint.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="in_progress">
+          <div class="mb-2">
+            <textarea name="comment" class="form-control form-control-sm" rows="2" placeholder="What are you starting with?"></textarea>
+          </div>
+          <button type="submit" class="btn btn-sm w-100" style="background:#D97706;color:#fff">
+            <i class="bi bi-tools me-1"></i>Mark In Progress
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if complaint.status == 'in_progress' %}
+    <div class="card mb-3">
+      <div class="card-body p-3">
+        <form method="post" action="{% url 'complaint_action' complaint.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="resolve">
+          <div class="mb-2">
+            <label class="form-label fw-600" style="font-size:12px">Resolution Note</label>
+            <textarea name="comment" class="form-control form-control-sm" rows="3" placeholder="Describe what was done..." required></textarea>
+          </div>
+          <button type="submit" class="btn btn-sm w-100" style="background:#059669;color:#fff">
+            <i class="bi bi-check2-all me-1"></i>Mark Resolved
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Add Comment (all staff) -->
+    {% if complaint.status not in 'closed' %}
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#F1F5F9"><i class="bi bi-chat-left-text" style="color:#64748B"></i></div>
+          Add Comment
+        </div>
+      </div>
+      <div class="card-body p-3">
+        <form method="post" action="{% url 'complaint_action' complaint.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="comment">
+          <textarea name="comment" class="form-control form-control-sm mb-2" rows="3" placeholder="Internal comment..." required></textarea>
+          <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+            <i class="bi bi-send me-1"></i>Post Comment
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

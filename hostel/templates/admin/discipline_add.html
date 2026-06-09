@@ -1,0 +1,303 @@
+{% extends 'base/base.html' %}
+{% block title %}Report Incident{% endblock %}
+{% block page_title %}Report Discipline Incident{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Report Discipline Incident</h4>
+    <p>File a new discipline record with full incident details</p>
+  </div>
+  <a href="{% url 'discipline_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back to List
+  </a>
+</div>
+
+<form method="post" enctype="multipart/form-data" id="discipline-form">
+{% csrf_token %}
+<div class="row g-4">
+
+  {# ── Student Selection ─────────────────────────────────────────── #}
+  <div class="col-lg-5">
+    <div class="card" style="border-top:3px solid #DC2626">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEE2E2"><i class="bi bi-person-fill" style="color:#DC2626"></i></div>
+          Student Details
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Search Student <span class="text-danger">*</span></label>
+          <input type="text" id="stu-search" class="form-control form-control-sm mb-2"
+                 placeholder="Type name or roll number…" autocomplete="off"
+                 oninput="filterStudents(this.value)">
+          <select name="student_id" id="stu-select" class="form-select" required size="6"
+                  style="height:150px" onchange="showStudentInfo(this)">
+            {% for s in students %}
+            <option value="{{ s.pk }}"
+                    data-name="{{ s.name }}"
+                    data-roll="{{ s.roll_number }}"
+                    data-course="{{ s.course|default:'' }}"
+                    data-year="{{ s.year_of_study|default:'' }}"
+                    data-hostel=""
+                    data-room=""
+                    data-floor=""
+                    data-name-lower="{{ s.name|lower }}"
+                    data-roll-lower="{{ s.roll_number|lower }}"
+                    {% for alloc in s.active_allocs %}
+                    data-hostel="{{ alloc.room.hostel.name }}"
+                    data-room="{{ alloc.room.room_number }}"
+                    data-floor="{{ alloc.room.floor }}"
+                    {% endfor %}>
+              {{ s.name }} — {{ s.roll_number }}
+            </option>
+            {% empty %}
+            <option disabled>No students found</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        {# Student info preview #}
+        <div id="student-info" class="d-none p-3 rounded" style="background:var(--bg-2);border:1px solid var(--border)">
+          <div class="row g-2" style="font-size:12.5px">
+            <div class="col-6">
+              <div style="color:var(--text-3)">Name</div>
+              <div class="fw-semibold" id="si-name">—</div>
+            </div>
+            <div class="col-6">
+              <div style="color:var(--text-3)">Roll Number</div>
+              <div id="si-roll">—</div>
+            </div>
+            <div class="col-6">
+              <div style="color:var(--text-3)">Course</div>
+              <div id="si-course">—</div>
+            </div>
+            <div class="col-6">
+              <div style="color:var(--text-3)">Year</div>
+              <div id="si-year">—</div>
+            </div>
+            <div class="col-4">
+              <div style="color:var(--text-3)">Hostel</div>
+              <div id="si-hostel">—</div>
+            </div>
+            <div class="col-4">
+              <div style="color:var(--text-3)">Room</div>
+              <div id="si-room">—</div>
+            </div>
+            <div class="col-4">
+              <div style="color:var(--text-3)">Floor</div>
+              <div id="si-floor">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Evidence Upload ─────────────────────────────────────────── #}
+    <div class="card mt-4">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#DBEAFE"><i class="bi bi-paperclip" style="color:#2563EB"></i></div>
+          Evidence (Optional)
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <div class="mb-2" style="font-size:12.5px;color:var(--text-2)">
+          Upload images (photos) or documents (PDF, DOC) as evidence.
+        </div>
+        <input type="file" name="evidence" id="evidence-input" class="form-control form-control-sm"
+               multiple accept="image/*,.pdf,.doc,.docx"
+               onchange="previewFiles(this)">
+        <div id="file-preview" class="mt-2 d-flex gap-2 flex-wrap"></div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Incident Details ──────────────────────────────────────────── #}
+  <div class="col-lg-7">
+    <div class="card" style="border-top:3px solid #D97706">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEF3C7"><i class="bi bi-exclamation-triangle-fill" style="color:#D97706"></i></div>
+          Incident Details
+        </div>
+      </div>
+      <div class="card-body p-4">
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Incident Category <span class="text-danger">*</span></label>
+            <select name="category_id" id="cat-select" class="form-select form-select-sm" required
+                    onchange="applyCategoryDefaults(this)">
+              <option value="">— Select Category —</option>
+              {% for cat in categories %}
+              <option value="{{ cat.pk }}"
+                      data-severity="{{ cat.severity }}"
+                      data-warning="{{ cat.default_warning }}"
+                      data-fine="{{ cat.fine_mandatory|lower }}"
+                      data-notify="{{ cat.notify_parent_auto|lower }}">
+                {{ cat.name }} — {{ cat.get_severity_display }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Severity</label>
+            <div id="severity-display" class="form-control form-control-sm d-flex align-items-center" style="background:var(--bg-2);cursor:default">
+              <span id="severity-badge" class="badge me-2">—</span>
+              <span id="severity-text" style="font-size:12px;color:var(--text-2)">Select a category</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Incident Date <span class="text-danger">*</span></label>
+            <input type="date" name="incident_date" class="form-control form-control-sm" required
+                   value="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Incident Time</label>
+            <input type="time" name="incident_time" class="form-control form-control-sm">
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
+          <textarea name="description" class="form-control form-control-sm" rows="5" required
+                    placeholder="Describe the incident in detail — what happened, where, who was involved, witnesses…"></textarea>
+          <div class="form-text">Be specific. This will be part of the official record.</div>
+        </div>
+      </div>
+    </div>
+
+    {# ── Warning & Fine ────────────────────────────────────────────── #}
+    <div class="card mt-4">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEF3C7"><i class="bi bi-shield-exclamation" style="color:#D97706"></i></div>
+          Warning & Fine
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Warning Type</label>
+            <select name="warning_type" id="warning-select" class="form-select form-select-sm">
+              {% for val, lbl in warning_choices %}
+              <option value="{{ val }}">{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Fine Amount (₹)</label>
+            <input type="number" name="fine_amount" id="fine-amount" class="form-control form-control-sm"
+                   min="0" step="0.01" value="0">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Fine Due Date</label>
+            <input type="date" name="fine_due_date" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-6 d-flex align-items-end">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="notify_parent" id="notify-parent-cb">
+              <label class="form-check-label fw-semibold" for="notify-parent-cb">
+                <i class="bi bi-telephone me-1"></i>Notify Parent / Guardian
+              </label>
+              <div class="form-text">Check to record that parent was informed</div>
+            </div>
+          </div>
+        </div>
+
+        {# Category info banner #}
+        <div id="cat-info-banner" class="d-none mt-3 p-3 rounded" style="background:#FEF3C7;border:1px solid #FCD34D;font-size:12.5px">
+          <i class="bi bi-info-circle me-1" style="color:#D97706"></i>
+          <span id="cat-info-text"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-3 justify-content-end">
+      <a href="{% url 'discipline_list' %}" class="btn btn-outline-secondary">Cancel</a>
+      <button type="submit" class="btn btn-danger" onclick="return confirm('Submit this discipline record?')">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>File Incident Report
+      </button>
+    </div>
+  </div>
+
+</div>
+</form>
+
+<script>
+const severityColors = {
+  low:      {bg:'#05996920', color:'#059669', text:'Low Severity'},
+  medium:   {bg:'#D9770620', color:'#D97706', text:'Medium Severity'},
+  high:     {bg:'#DC262620', color:'#DC2626', text:'High Severity'},
+  critical: {bg:'#7C3AED20', color:'#7C3AED', text:'Critical Severity'},
+};
+
+function filterStudents(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('#stu-select option').forEach(opt => {
+    const match = !q || opt.dataset.nameLower.includes(q) || opt.dataset.rollLower.includes(q);
+    opt.style.display = match ? '' : 'none';
+  });
+}
+
+function showStudentInfo(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+  document.getElementById('student-info').classList.remove('d-none');
+  document.getElementById('si-name').textContent    = opt.dataset.name    || '—';
+  document.getElementById('si-roll').textContent    = opt.dataset.roll    || '—';
+  document.getElementById('si-course').textContent  = opt.dataset.course  || '—';
+  document.getElementById('si-year').textContent    = opt.dataset.year    || '—';
+  document.getElementById('si-hostel').textContent  = opt.dataset.hostel  || 'Unallocated';
+  document.getElementById('si-room').textContent    = opt.dataset.room    || '—';
+  document.getElementById('si-floor').textContent   = opt.dataset.floor   || '—';
+}
+
+function applyCategoryDefaults(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+  const sv = opt.dataset.severity;
+  const sc = severityColors[sv] || {};
+  const badge = document.getElementById('severity-badge');
+  badge.style.background = sc.bg || '#94A3B820';
+  badge.style.color      = sc.color || '#94A3B8';
+  badge.textContent      = sc.text || sv;
+  document.getElementById('severity-text').textContent = opt.text.split('—')[1]?.trim() || '';
+
+  // Auto-fill warning
+  if (opt.dataset.warning) document.getElementById('warning-select').value = opt.dataset.warning;
+
+  // Fine mandatory banner
+  const banner = document.getElementById('cat-info-banner');
+  const msgs = [];
+  if (opt.dataset.fine === 'true') msgs.push('This category requires a fine.');
+  if (opt.dataset.notify === 'true') {
+    msgs.push('Parent notification is recommended for this category.');
+    document.getElementById('notify-parent-cb').checked = true;
+  }
+  if (msgs.length) {
+    document.getElementById('cat-info-text').textContent = msgs.join(' ');
+    banner.classList.remove('d-none');
+  } else {
+    banner.classList.add('d-none');
+  }
+}
+
+function previewFiles(input) {
+  const preview = document.getElementById('file-preview');
+  preview.innerHTML = '';
+  for (const f of input.files) {
+    const pill = document.createElement('span');
+    pill.className = 'badge bg-secondary';
+    pill.style.fontSize = '11.5px';
+    pill.innerHTML = `<i class="bi bi-paperclip me-1"></i>${f.name}`;
+    preview.appendChild(pill);
+  }
+}
+</script>
+{% endblock %}

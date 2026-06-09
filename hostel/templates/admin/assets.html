@@ -1,0 +1,204 @@
+{% extends "base/base.html" %}
+{% block title %}Assets — GGI Hostel ERP{% endblock %}
+{% block page_title %}Asset Management{% endblock %}
+
+{% block content %}
+<style>
+  .cond-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
+  .filter-card{background:#fff;border-radius:12px;padding:14px 18px;border:1.5px solid #E2E8F0;margin-bottom:16px}
+  .status-tab{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:12.5px;
+    font-weight:500;color:var(--text-2);background:var(--bg-2,#F1F5F9);text-decoration:none;transition:all .15s;
+    border:1.5px solid transparent}
+  .status-tab:hover{background:var(--bg-3,#E2E8F0);color:var(--text-1)}
+  .status-tab.active{background:#EDE9FE;color:#6D28D9;border-color:#C4B5FD}
+</style>
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Assets Management</h4>
+    <p>Centralized asset inventory across all hostels</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'asset_bulk_upload' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-upload me-1"></i>Bulk Import
+    </a>
+    <a href="{% url 'asset_type_list' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-tags me-1"></i>Asset Types
+    </a>
+    <a href="{% url 'asset_create' %}" class="btn btn-dark btn-sm">
+      <i class="bi bi-plus-circle me-1"></i>Add Asset
+    </a>
+  </div>
+</div>
+
+{# Stat cards #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-2">
+    <div class="stat-card text-center py-3" style="--stat-color:#1565C0">
+      <div class="s-number">{{ counts.total }}</div>
+      <div class="s-label">Total Assets</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=active" class="text-decoration-none">
+      <div class="stat-card text-center py-3" style="--stat-color:#059669">
+        <div class="s-number" style="color:#059669">{{ counts.active }}</div>
+        <div class="s-label">Active</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-2">
+    <a href="?condition=damaged" class="text-decoration-none">
+      <div class="stat-card text-center py-3" style="--stat-color:#DC2626">
+        <div class="s-number" style="color:#DC2626">{{ counts.damaged }}</div>
+        <div class="s-label">Damaged</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-2">
+    <a href="?condition=under_maintenance" class="text-decoration-none">
+      <div class="stat-card text-center py-3" style="--stat-color:#7C3AED">
+        <div class="s-number" style="color:#7C3AED">{{ counts.maintenance }}</div>
+        <div class="s-label">Maintenance</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=lost" class="text-decoration-none">
+      <div class="stat-card text-center py-3" style="--stat-color:#374151">
+        <div class="s-number" style="color:#374151">{{ counts.lost }}</div>
+        <div class="s-label">Lost</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=pending_transfers" class="text-decoration-none">
+      <div class="stat-card text-center py-3" style="--stat-color:#D97706">
+        <div class="s-number" style="color:#D97706">{{ counts.pending_transfers }}</div>
+        <div class="s-label">Pending Transfers</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+{# Filters #}
+<div class="filter-card">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <input type="text" name="q" value="{{ filters.q }}" class="form-control form-control-sm"
+             placeholder="Search name, code, vendor…">
+    </div>
+    <div class="col-md-2">
+      <select name="hostel" class="form-select form-select-sm">
+        <option value="">All Hostels</option>
+        {% for h in hostels %}
+        <option value="{{ h.pk }}" {% if filters.hostel == h.pk|stringformat:"s" %}selected{% endif %}>{{ h.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select name="asset_type" class="form-select form-select-sm">
+        <option value="">All Types</option>
+        {% for t in asset_types %}
+        <option value="{{ t.pk }}" {% if filters.asset_type == t.pk|stringformat:"s" %}selected{% endif %}>{{ t.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select name="condition" class="form-select form-select-sm">
+        <option value="">All Conditions</option>
+        {% for val, lbl in conditions %}
+        <option value="{{ val }}" {% if filters.condition == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-1">
+      <select name="status" class="form-select form-select-sm">
+        <option value="">All Status</option>
+        {% for val, lbl in statuses %}
+        <option value="{{ val }}" {% if filters.status == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto d-flex gap-1">
+      <button type="submit" class="btn btn-primary btn-sm px-3">Filter</button>
+      <a href="{% url 'asset_dashboard' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+    </div>
+  </form>
+</div>
+
+{# Table #}
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Asset</th>
+        <th>Code / Tag</th>
+        <th>Type</th>
+        <th>Location</th>
+        <th>Condition</th>
+        <th>Status</th>
+        <th>Vendor</th>
+        <th>Added</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for asset in page_obj %}
+    <tr>
+      <td>
+        <div class="fw-600" style="font-size:13px">{{ asset.name }}</div>
+        {% if asset.notes %}<div class="tbl-sub">{{ asset.notes|truncatechars:40 }}</div>{% endif %}
+      </td>
+      <td><code style="font-size:11.5px;background:#F1F5F9;padding:2px 6px;border-radius:4px">{{ asset.asset_code }}</code></td>
+      <td style="font-size:12.5px;color:var(--text-2)">{{ asset.asset_type.name|default:"—" }}</td>
+      <td style="font-size:12.5px">{{ asset.location_display }}</td>
+      <td>
+        <span style="font-size:12px;font-weight:600;color:{{ asset.condition_color }}">
+          <span class="cond-dot" style="background:{{ asset.condition_color }}"></span>
+          {{ asset.get_condition_display }}
+        </span>
+      </td>
+      <td>
+        {% if asset.status == 'active' %}
+        <span class="badge" style="background:#DCFCE7;color:#166534">Active</span>
+        {% elif asset.status == 'discarded' %}
+        <span class="badge" style="background:#F1F5F9;color:#64748B">Discarded</span>
+        {% elif asset.status == 'lost' %}
+        <span class="badge" style="background:#FEF3C7;color:#92400E">Lost</span>
+        {% else %}
+        <span class="badge" style="background:#EDE9FE;color:#6D28D9">{{ asset.get_status_display }}</span>
+        {% endif %}
+      </td>
+      <td style="font-size:12px;color:var(--text-2)">{{ asset.vendor_name|default:"—" }}</td>
+      <td style="font-size:11.5px;color:var(--text-3)">{{ asset.created_at|date:"d M Y" }}</td>
+      <td>
+        <a href="{% url 'asset_detail' asset.pk %}" class="btn btn-xs btn-outline-primary">View</a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="9">
+      <div class="empty-state"><i class="bi bi-box-seam" style="font-size:32px;opacity:.3"></i>
+        <p>No assets found. <a href="{% url 'asset_create' %}">Add the first asset</a></p></div>
+    </td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-3 d-flex align-items-center justify-content-between">
+  <span style="font-size:12.5px;color:var(--text-3)">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  <ul class="pagination pagination-sm mb-0">
+    {% if page_obj.has_previous %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&hostel={{ filters.hostel }}&asset_type={{ filters.asset_type }}&condition={{ filters.condition }}&status={{ filters.status }}&q={{ filters.q }}"><i class="bi bi-chevron-left"></i></a></li>
+    {% endif %}
+    {% if page_obj.has_next %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&hostel={{ filters.hostel }}&asset_type={{ filters.asset_type }}&condition={{ filters.condition }}&status={{ filters.status }}&q={{ filters.q }}"><i class="bi bi-chevron-right"></i></a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+<style>.btn-xs{padding:2px 10px;font-size:11.5px}</style>
+{% endblock %}

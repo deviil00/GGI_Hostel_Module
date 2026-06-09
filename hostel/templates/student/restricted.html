@@ -1,0 +1,51 @@
+{% extends 'base/base.html' %}
+{% block title %}Access Restricted{% endblock %}
+{% block page_title %}Access Restricted{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card" style="border-left:4px solid #DC2626">
+      <div class="card-body p-5 text-center">
+        <div style="width:72px;height:72px;border-radius:50%;background:#FEE2E2;display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+          <i class="bi bi-slash-circle-fill" style="font-size:32px;color:#DC2626"></i>
+        </div>
+        <h5 class="fw-700 mb-1" style="color:#DC2626">You cannot {{ action }}</h5>
+        <p class="text-muted mb-4" style="font-size:13.5px">
+          Your hostel administration has placed a restriction on your account.
+        </p>
+
+        <div class="p-4 rounded text-start mb-4" style="background:#FEF2F2;border:1.5px solid #FECACA">
+          <div class="row g-3">
+            <div class="col-6">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#991B1B;margin-bottom:4px">Restriction Type</div>
+              <div class="fw-700" style="font-size:14px">{{ restriction.get_restriction_type_display }}</div>
+            </div>
+            <div class="col-6">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#991B1B;margin-bottom:4px">Restricted On</div>
+              <div class="fw-600" style="font-size:14px">{{ restriction.restricted_at|date:"d M Y" }}</div>
+            </div>
+            <div class="col-12">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#991B1B;margin-bottom:4px">Reason</div>
+              <div style="font-size:13.5px">{{ restriction.reason }}</div>
+            </div>
+            {% if restriction.restricted_by %}
+            <div class="col-12">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#991B1B;margin-bottom:4px">Restricted By</div>
+              <div style="font-size:13px">{{ restriction.restricted_by.name }}</div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <p style="font-size:12.5px;color:var(--text-2)">
+          Please contact your hostel warden or administration to resolve this restriction.
+        </p>
+        <a href="{% url 'student_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

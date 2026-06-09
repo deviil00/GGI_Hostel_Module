@@ -1,0 +1,54 @@
+{% extends 'base/base.html' %}
+{% block title %}Quota Exceeded{% endblock %}
+{% block page_title %}Application Blocked{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-center" style="min-height:60vh">
+  <div class="text-center" style="max-width:480px">
+    <div style="width:80px;height:80px;border-radius:50%;background:#FEF3C7;display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+      <i class="bi bi-hourglass-split" style="font-size:36px;color:#D97706"></i>
+    </div>
+    <h4 class="fw-700 mb-2">{{ action|capfirst }} Quota Reached</h4>
+    <p class="text-muted mb-4" style="font-size:14px">
+      You have used all your allowed {{ action }} applications for this {{ quota.period|lower }}.
+    </p>
+
+    <div class="card mb-4" style="border-top:3px solid #D97706">
+      <div class="card-body p-4">
+        <div class="row g-3 text-center">
+          <div class="col-4">
+            <div style="font-size:11px;color:var(--text-3);text-transform:uppercase">Limit</div>
+            <div style="font-size:28px;font-weight:800;color:#D97706">{{ quota.limit }}</div>
+            <div style="font-size:11px;color:var(--text-3)">{{ quota.period }}</div>
+          </div>
+          <div class="col-4">
+            <div style="font-size:11px;color:var(--text-3);text-transform:uppercase">Used</div>
+            <div style="font-size:28px;font-weight:800;color:#DC2626">{{ quota.used }}</div>
+            <div style="font-size:11px;color:var(--text-3)">applications</div>
+          </div>
+          <div class="col-4">
+            <div style="font-size:11px;color:var(--text-3);text-transform:uppercase">Remaining</div>
+            <div style="font-size:28px;font-weight:800;color:#64748B">0</div>
+            <div style="font-size:11px;color:var(--text-3)">left</div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div style="height:8px;border-radius:4px;background:#F1F5F9;overflow:hidden">
+            <div style="height:100%;width:100%;background:#DC2626;border-radius:4px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-3 rounded mb-4" style="background:#FEF3C7;border:1px solid #FCD34D;font-size:13px;text-align:left">
+      <i class="bi bi-info-circle me-2" style="color:#D97706"></i>
+      Your quota resets at the start of the next <strong>{{ quota.period|lower }}</strong>.
+      If you need urgent access, please contact your warden or hostel admin.
+    </div>
+
+    <a href="{% url back_url %}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Back to My {{ action|capfirst }}s
+    </a>
+  </div>
+</div>
+{% endblock %}

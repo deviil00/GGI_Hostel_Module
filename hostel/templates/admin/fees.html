@@ -1,0 +1,139 @@
+{% extends "base/base.html" %}
+{% block title %}Fees — GGI Hostel ERP{% endblock %}
+{% block page_title %}Fee Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Fee Records</h4>
+    <p>Track and manage student fee payments</p>
+  </div>
+  <a href="{% url 'generate_fees' %}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Generate Fees
+  </a>
+</div>
+
+{% if summary.total %}
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:var(--blue)">
+      <div class="s-top"><div class="s-icon" style="background:var(--blue-soft)"><i class="bi bi-receipt" style="color:var(--blue)"></i></div></div>
+      <div class="s-number" style="font-size:22px">₹{{ summary.total|floatformat:0 }}</div>
+      <div class="s-label">Total Billed</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#059669">
+      <div class="s-top"><div class="s-icon" style="background:#ECFDF5"><i class="bi bi-cash-stack" style="color:#059669"></i></div></div>
+      <div class="s-number" style="font-size:22px">₹{{ summary.collected|floatformat:0 }}</div>
+      <div class="s-label">Total Collected</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="filter-card">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-white border-end-0" style="border-color:var(--border)">
+          <i class="bi bi-search" style="color:var(--text-3)"></i>
+        </span>
+        <input type="text" name="q" value="{{ filters.q }}" class="form-control border-start-0" style="border-color:var(--border)" placeholder="Roll no or name…">
+      </div>
+    </div>
+    <div class="col-md-2">
+      <select name="status" class="form-select form-select-sm">
+        <option value="">All Status</option>
+        <option value="pending" {% if filters.status == "pending" %}selected{% endif %}>Pending</option>
+        <option value="partial" {% if filters.status == "partial" %}selected{% endif %}>Partial</option>
+        <option value="paid"    {% if filters.status == "paid" %}selected{% endif %}>Paid</option>
+        <option value="waived"  {% if filters.status == "waived" %}selected{% endif %}>Waived</option>
+      </select>
+    </div>
+    <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm px-3">Filter</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <table class="table">
+    <thead><tr>
+      <th>Student</th><th>Semester</th><th>Total</th><th>Paid</th><th>Balance</th><th>Due Date</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for f in page_obj %}
+    <tr>
+      <td>
+        <div class="d-flex align-items-center gap-2">
+          <div class="tbl-avatar av-green">{{ f.student.name|first|upper }}</div>
+          <div>
+            <div class="tbl-name">{{ f.student.name }}</div>
+            <div class="tbl-sub">{{ f.student.roll_number }}</div>
+          </div>
+        </div>
+      </td>
+      <td style="color:var(--text-2)">{{ f.fee_structure.name }}</td>
+      <td>₹{{ f.total_amount }}</td>
+      <td style="color:#059669">₹{{ f.amount_paid }}</td>
+      <td><span class="fw-600" style="color:{% if f.balance > 0 %}#DC2626{% else %}#059669{% endif %}">₹{{ f.balance }}</span></td>
+      <td style="color:var(--text-3)">{{ f.fee_structure.due_date }}</td>
+      <td><span class="badge badge-{{ f.status }}">{{ f.get_status_display }}</span></td>
+      <td>
+        <button class="btn btn-xs btn-outline-primary" data-bs-toggle="modal" data-bs-target="#payModal{{ f.pk|slugify }}">Update</button>
+      </td>
+    </tr>
+    <div class="modal fade" id="payModal{{ f.pk|slugify }}" tabindex="-1">
+      <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h6 class="modal-title"><i class="bi bi-cash-coin me-2" style="color:var(--blue)"></i>Record Payment</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <form method="post" action="{% url 'update_fee' f.pk %}">
+            {% csrf_token %}
+            <div class="modal-body">
+              <div class="p-2 rounded mb-3" style="background:var(--blue-soft);font-size:12px">
+                <strong>{{ f.student.name }}</strong> — {{ f.fee_structure.name }}<br>
+                <span style="color:var(--text-3)">Outstanding: ₹{{ f.balance }}</span>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Amount Paid (₹)</label>
+                <input type="number" name="amount_paid" class="form-control form-control-sm" value="{{ f.amount_paid }}" step="0.01" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Payment Mode</label>
+                <select name="payment_mode" class="form-select form-select-sm">
+                  <option value="cash">Cash</option><option value="online">Online</option>
+                  <option value="upi">UPI</option><option value="dd">DD</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label">Transaction Ref</label>
+                <input type="text" name="transaction_ref" class="form-control form-control-sm" value="{{ f.transaction_ref }}" placeholder="Optional">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-sm btn-primary">Save Payment</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <tr><td colspan="8"><div class="empty-state"><i class="bi bi-receipt"></i><p>No fee records found.</p></div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-3 d-flex align-items-center justify-content-between">
+  <span style="font-size:12.5px;color:var(--text-3)">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  <ul class="pagination pagination-sm mb-0">
+    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ filters.status }}&q={{ filters.q }}"><i class="bi bi-chevron-left"></i></a></li>{% endif %}
+    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ filters.status }}&q={{ filters.q }}"><i class="bi bi-chevron-right"></i></a></li>{% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

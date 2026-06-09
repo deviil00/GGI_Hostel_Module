@@ -1,0 +1,446 @@
+{% extends "base/base.html" %}
+{% block title %}Mess Management — Admin 1{% endblock %}
+{% block page_title %}Mess Management{% endblock %}
+
+{% block content %}
+<style>
+  .star-filled  { color:#F59E0B; }
+  .star-empty   { color:#E2E8F0; }
+  .rating-bar   { height:6px;border-radius:3px;background:#E2E8F0;overflow:hidden; }
+  .rating-bar-fill { height:100%;border-radius:3px;background:#F59E0B; }
+  .tab-pill     { padding:8px 20px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text-2); }
+  .tab-pill.active { background:#1565C0;color:#fff; }
+</style>
+
+<!-- Page header -->
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Mess Management</h4>
+    <p>Menu upload, student feedback, and wastage monitoring</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'mess_bulk_upload' %}" class="btn btn-primary btn-sm">
+      <i class="bi bi-upload me-1"></i>Upload Monthly Menu
+    </a>
+    <a href="{% url 'mess_menu_admin' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-calendar-week me-1"></i>Weekly Menu
+    </a>
+  </div>
+</div>
+
+<!-- Hostel filter -->
+<div class="d-flex align-items-center gap-3 mb-4">
+  <form method="get" class="d-flex gap-2 align-items-center">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <label style="font-size:13px;color:var(--text-2);white-space:nowrap">Filter by Hostel:</label>
+    <select name="hostel" class="form-select form-select-sm" style="width:200px" onchange="this.form.submit()">
+      <option value="">All Hostels</option>
+      {% for h in hostels %}
+      <option value="{{ h.pk }}" {% if hostel and hostel.pk == h.pk %}selected{% endif %}>{{ h.name }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+<!-- Top stat cards (always visible) -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#059669">
+      <div class="s-top"><div class="s-icon" style="background:#ECFDF5"><i class="bi bi-star-fill" style="color:#059669"></i></div></div>
+      <div class="s-number">{{ fb_count }}</div>
+      <div class="s-label">Feedback This Month</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#F59E0B">
+      <div class="s-top"><div class="s-icon" style="background:#FFFBEB"><i class="bi bi-star-half" style="color:#F59E0B"></i></div></div>
+      <div class="s-number">{{ fb_avg }}<small style="font-size:16px"> / 5</small></div>
+      <div class="s-label">Avg Rating This Month</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#DC2626">
+      <div class="s-top"><div class="s-icon" style="background:#FEF2F2"><i class="bi bi-trash3-fill" style="color:#DC2626"></i></div></div>
+      <div class="s-number">{{ total_wastage_kg }}<small style="font-size:16px"> kg</small></div>
+      <div class="s-label">Wastage This Month</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#1565C0">
+      <div class="s-top"><div class="s-icon" style="background:#EBF3FF"><i class="bi bi-calendar-check-fill" style="color:#1565C0"></i></div></div>
+      <div class="s-number">{{ today_daily|length }}</div>
+      <div class="s-label">Today's Menu Entries</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab navigation -->
+<div class="d-flex gap-2 mb-4" style="background:var(--bg-2);padding:6px;border-radius:24px;display:inline-flex">
+  {% for tab_key, tab_label in  'overview,Overview|feedback,Feedback|wastage,Wastage'|split:'|'|dictsort:'0' %}
+  {% endfor %}
+  <a href="?tab=overview{% if hostel %}&hostel={{ hostel.pk }}{% endif %}"
+     class="tab-pill {% if tab == 'overview' %}active{% endif %}">
+    <i class="bi bi-grid-1x2-fill me-1"></i>Overview
+  </a>
+  <a href="?tab=feedback{% if hostel %}&hostel={{ hostel.pk }}{% endif %}"
+     class="tab-pill {% if tab == 'feedback' %}active{% endif %}">
+    <i class="bi bi-chat-left-quote-fill me-1"></i>Feedback
+  </a>
+  <a href="?tab=wastage{% if hostel %}&hostel={{ hostel.pk }}{% endif %}"
+     class="tab-pill {% if tab == 'wastage' %}active{% endif %}">
+    <i class="bi bi-trash3-fill me-1"></i>Wastage Records
+  </a>
+</div>
+
+<!-- ═══════════════ TAB: OVERVIEW ═══════════════ -->
+{% if tab == 'overview' %}
+<div class="row g-4">
+
+  <!-- Today's menu -->
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FFFBEB"><i class="bi bi-egg-fried" style="color:#D97706"></i></div>
+          Today's Daily Menu
+          <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:11px">{{ today|date:"d M Y" }}</span>
+        </div>
+        <a href="{% url 'mess_bulk_upload' %}" class="btn btn-xs btn-outline-primary">
+          <i class="bi bi-upload me-1"></i>Upload
+        </a>
+      </div>
+      {% if today_daily %}
+      <div class="table-responsive">
+        <table class="table mb-0" style="font-size:12.5px">
+          <thead><tr><th>Hostel</th><th>Meal</th><th>Items</th></tr></thead>
+          <tbody>
+            {% for dm in today_daily %}
+            <tr>
+              <td>{{ dm.hostel.name|default:"All" }}</td>
+              <td>
+                <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;
+                  background:{% if dm.meal_type == 'breakfast' %}#FFFBEB{% elif dm.meal_type == 'lunch' %}#EBF3FF{% elif dm.meal_type == 'snacks' %}#E3F2FD{% else %}#E8EEF9{% endif %};
+                  color:{% if dm.meal_type == 'breakfast' %}#92400E{% else %}#1E3A5F{% endif %}">
+                  {{ dm.get_meal_type_display }}
+                </span>
+                {% if dm.is_overridden %}
+                <span style="font-size:10px;color:#D97706;margin-left:4px" title="Manually edited"><i class="bi bi-pencil-fill"></i></span>
+                {% endif %}
+              </td>
+              <td style="color:var(--text-2)">{{ dm.items|truncatechars:60 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body">
+        <div class="empty-state py-3">
+          <i class="bi bi-calendar-x" style="font-size:24px;opacity:.3"></i>
+          <p style="font-size:13px;margin-top:8px">No daily menu uploaded for today.</p>
+          <a href="{% url 'mess_menu_admin' %}" class="btn btn-sm btn-outline-primary mt-1">Use Weekly Menu</a>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Last wastage updates per hostel -->
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEF2F2"><i class="bi bi-clock-history" style="color:#DC2626"></i></div>
+          Latest Wastage Updates
+        </div>
+        <a href="?tab=wastage{% if hostel %}&hostel={{ hostel.pk }}{% endif %}" class="btn btn-xs btn-outline-secondary">
+          View All
+        </a>
+      </div>
+      {% if last_wastage %}
+      <div class="table-responsive">
+        <table class="table mb-0" style="font-size:12.5px">
+          <thead><tr><th>Hostel</th><th>Last Updated</th></tr></thead>
+          <tbody>
+            {% for row in last_wastage %}
+            <tr>
+              <td class="fw-600">{{ row.hostel__name }}</td>
+              <td style="color:var(--text-2)">{{ row.last_updated|date:"d M Y, H:i" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body">
+        <div class="empty-state py-3">
+          <i class="bi bi-inbox" style="font-size:24px;opacity:.3"></i>
+          <p style="font-size:13px;margin-top:8px">No wastage records yet.</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════ TAB: FEEDBACK ═══════════════ -->
+{% elif tab == 'feedback' %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-funnel-fill" style="color:#1565C0"></i></div>
+          Filter Feedback
+        </div>
+      </div>
+      <div class="card-body p-3">
+        <form method="get" class="row g-2">
+          <input type="hidden" name="tab" value="feedback">
+          {% if hostel %}<input type="hidden" name="hostel" value="{{ hostel.pk }}">{% endif %}
+          <div class="col-md-3">
+            <label class="form-label" style="font-size:12px">From Date</label>
+            <input type="date" name="date_from" value="{{ request.GET.date_from }}" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" style="font-size:12px">To Date</label>
+            <input type="date" name="date_to" value="{{ request.GET.date_to }}" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" style="font-size:12px">Meal</label>
+            <select name="meal" class="form-select form-select-sm">
+              <option value="">All Meals</option>
+              {% for code, label in meals %}
+              <option value="{{ code }}" {% if request.GET.meal == code %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" class="btn btn-sm btn-primary w-100">Apply Filter</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-chat-left-quote-fill" style="color:#1565C0"></i></div>
+          Student Feedback ({{ fb_page.paginator.count }} total)
+        </div>
+      </div>
+      {% if fb_page.object_list %}
+      <div class="table-responsive">
+        <table class="table mb-0" style="font-size:12.5px">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Student</th>
+              <th>Hostel</th>
+              <th>Meal</th>
+              <th>Rating</th>
+              <th>Comment</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for fb in fb_page %}
+            <tr>
+              <td class="fw-600">{{ fb.date|date:"d M" }}</td>
+              <td>
+                <div style="font-weight:600">{{ fb.student.name }}</div>
+                <div style="font-size:11px;color:var(--text-3)">{{ fb.student.roll_number }}</div>
+              </td>
+              <td>{{ fb.hostel.name }}</td>
+              <td>
+                <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;
+                  background:{% if fb.meal_type == 'breakfast' %}#FFFBEB{% elif fb.meal_type == 'lunch' %}#EBF3FF{% elif fb.meal_type == 'snacks' %}#E3F2FD{% else %}#E8EEF9{% endif %};
+                  color:{% if fb.meal_type == 'breakfast' %}#92400E{% else %}#1E3A5F{% endif %}">
+                  {{ fb.get_meal_type_display }}
+                </span>
+              </td>
+              <td>
+                <div class="d-flex gap-1">
+                  {% for i in "12345" %}
+                  <i class="bi bi-star{% if forloop.counter <= fb.rating %}-fill star-filled{% else %} star-empty{% endif %}"
+                     style="font-size:13px"></i>
+                  {% endfor %}
+                </div>
+              </td>
+              <td style="color:var(--text-2);max-width:200px">{{ fb.comment|default:"—"|truncatechars:80 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if fb_page.has_other_pages %}
+      <div class="card-body py-2 d-flex justify-content-center gap-2">
+        {% if fb_page.has_previous %}
+        <a href="?tab=feedback&page={{ fb_page.previous_page_number }}{% if hostel %}&hostel={{ hostel.pk }}{% endif %}" class="btn btn-sm btn-outline-secondary">‹ Prev</a>
+        {% endif %}
+        <span style="font-size:13px;align-self:center">Page {{ fb_page.number }} of {{ fb_page.paginator.num_pages }}</span>
+        {% if fb_page.has_next %}
+        <a href="?tab=feedback&page={{ fb_page.next_page_number }}{% if hostel %}&hostel={{ hostel.pk }}{% endif %}" class="btn btn-sm btn-outline-secondary">Next ›</a>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="card-body">
+        <div class="empty-state py-4">
+          <i class="bi bi-chat-left" style="font-size:28px;opacity:.3"></i>
+          <p style="margin-top:10px;font-size:13px">No feedback found for the selected filters.</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Right: Rating summary by meal -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FFFBEB"><i class="bi bi-bar-chart-fill" style="color:#D97706"></i></div>
+          Rating Summary by Meal
+        </div>
+      </div>
+      <div class="card-body p-4">
+        {% if fb_page.paginator.count %}
+        <!-- Use avg_by_meal from context — not page-filtered -->
+        <p style="font-size:12px;color:var(--text-3);margin-bottom:12px">Overall (all time, all filters)</p>
+        <div class="d-flex align-items-center gap-3 mb-2" style="font-size:12.5px">
+          <div style="flex:1">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <span class="fw-600">Overall Avg</span>
+              <span class="fw-700" style="color:#F59E0B">{{ fb_avg }} ★</span>
+            </div>
+            <div class="rating-bar"><div class="rating-bar-fill" style="width:{{ fb_avg|floatformat:0|add:'0' }}0%"></div></div>
+          </div>
+        </div>
+        <hr style="border-color:#F1F5F9;margin:12px 0">
+        {% for stat in fb_page %}{% endfor %}
+        <p style="font-size:12px;color:var(--text-3);margin-bottom:12px">This month: {{ fb_count }} responses</p>
+        <div style="font-size:36px;font-weight:800;color:#1565C0;text-align:center;margin:8px 0">
+          {{ fb_avg }} <span style="font-size:18px;color:#F59E0B">★</span>
+        </div>
+        <div style="text-align:center;font-size:12px;color:var(--text-3)">Average rating</div>
+        {% else %}
+        <div class="empty-state py-3">
+          <i class="bi bi-star" style="font-size:24px;opacity:.3"></i>
+          <p style="font-size:12px;margin-top:8px">No feedback yet.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB: WASTAGE ═══════════════ -->
+{% elif tab == 'wastage' %}
+<div class="row g-4">
+  <div class="col-12">
+
+    <!-- Filter -->
+    <div class="card mb-3">
+      <div class="card-body p-3">
+        <form method="get" class="row g-2">
+          <input type="hidden" name="tab" value="wastage">
+          {% if hostel %}<input type="hidden" name="hostel" value="{{ hostel.pk }}">{% endif %}
+          <div class="col-md-3">
+            <label class="form-label" style="font-size:12px">From Date</label>
+            <input type="date" name="wdate_from" value="{{ request.GET.wdate_from }}" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" style="font-size:12px">To Date</label>
+            <input type="date" name="wdate_to" value="{{ request.GET.wdate_to }}" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" class="btn btn-sm btn-primary w-100">Apply Filter</button>
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <a href="{% url 'mess_incharge_dashboard' %}" class="btn btn-sm btn-outline-secondary w-100">
+              <i class="bi bi-pencil-square me-1"></i>Enter Wastage
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEF2F2"><i class="bi bi-trash3-fill" style="color:#DC2626"></i></div>
+          Wastage Records ({{ w_page.paginator.count }} total)
+        </div>
+      </div>
+      {% if w_page.object_list %}
+      <div class="table-responsive">
+        <table class="table mb-0" style="font-size:12.5px">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Hostel</th>
+              <th>Meal</th>
+              <th>Wastage (kg)</th>
+              <th>Notes</th>
+              <th>Filled By</th>
+              <th>Last Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for wr in w_page %}
+            <tr>
+              <td class="fw-600">{{ wr.date|date:"d M Y" }}</td>
+              <td>{{ wr.hostel.name }}</td>
+              <td>
+                <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;
+                  background:{% if wr.meal_type == 'breakfast' %}#FFFBEB{% elif wr.meal_type == 'lunch' %}#EBF3FF{% elif wr.meal_type == 'snacks' %}#E3F2FD{% else %}#E8EEF9{% endif %};
+                  color:{% if wr.meal_type == 'breakfast' %}#92400E{% else %}#1E3A5F{% endif %}">
+                  {{ wr.get_meal_type_display }}
+                </span>
+              </td>
+              <td>
+                <span class="fw-700" style="color:{% if wr.wastage_kg > 5 %}#DC2626{% elif wr.wastage_kg > 2 %}#D97706{% else %}#059669{% endif %}">
+                  {{ wr.wastage_kg }} kg
+                </span>
+              </td>
+              <td style="color:var(--text-2)">{{ wr.notes|default:"—"|truncatechars:60 }}</td>
+              <td>{{ wr.filled_by.name|default:"—" }}</td>
+              <td>
+                <div style="font-size:12px;color:var(--text-2)">{{ wr.updated_at|date:"d M Y" }}</div>
+                <div style="font-size:11px;color:var(--text-3)">{{ wr.updated_at|date:"H:i" }}</div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if w_page.has_other_pages %}
+      <div class="card-body py-2 d-flex justify-content-center gap-2">
+        {% if w_page.has_previous %}
+        <a href="?tab=wastage&wpage={{ w_page.previous_page_number }}{% if hostel %}&hostel={{ hostel.pk }}{% endif %}" class="btn btn-sm btn-outline-secondary">‹ Prev</a>
+        {% endif %}
+        <span style="font-size:13px;align-self:center">Page {{ w_page.number }} of {{ w_page.paginator.num_pages }}</span>
+        {% if w_page.has_next %}
+        <a href="?tab=wastage&wpage={{ w_page.next_page_number }}{% if hostel %}&hostel={{ hostel.pk }}{% endif %}" class="btn btn-sm btn-outline-secondary">Next ›</a>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="card-body">
+        <div class="empty-state py-4">
+          <i class="bi bi-trash3" style="font-size:28px;opacity:.3"></i>
+          <p style="margin-top:10px;font-size:13px">No wastage records found.</p>
+          <a href="{% url 'mess_incharge_dashboard' %}" class="btn btn-sm btn-outline-primary mt-1">
+            <i class="bi bi-pencil-square me-1"></i>Enter Today's Wastage
+          </a>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

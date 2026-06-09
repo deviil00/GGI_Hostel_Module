@@ -1,0 +1,193 @@
+{% extends 'base/base.html' %}
+{% block title %}Verify QR — {{ qr_type|title|default:"Invalid" }}{% endblock %}
+{% block page_title %}Verify QR Code{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>QR Verification</h4>
+    <p>Review student details before confirming</p>
+  </div>
+  <a href="{% url 'scan_qr' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Scan Another
+  </a>
+</div>
+
+{% if error %}
+<!-- ── Error state ── -->
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card" style="border-color:#FCA5A5">
+      <div class="card-body p-5 text-center">
+        <div style="width:72px;height:72px;background:#FEF2F2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+          <i class="bi bi-x-circle-fill" style="font-size:32px;color:#DC2626"></i>
+        </div>
+        <h5 class="fw-700 mb-2" style="color:#991B1B">Verification Failed</h5>
+        <p style="color:#DC2626;font-size:14px;margin-bottom:24px">{{ error }}</p>
+        <a href="{% url 'scan_qr' %}" class="btn btn-primary me-2">
+          <i class="bi bi-qr-code-scan me-1"></i>Scan Again
+        </a>
+        <a href="{% url 'security_dashboard' %}" class="btn btn-outline-secondary">
+          <i class="bi bi-shield-fill-check me-1"></i>Dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<!-- ── Success: show student details ── -->
+{% with s=gp.student %}
+<div class="row g-4">
+  <!-- Student card -->
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-body p-4">
+        <!-- Type badge -->
+        <div class="text-center mb-4">
+          {% if qr_type == 'exit' %}
+          <span style="display:inline-flex;align-items:center;gap:8px;padding:8px 20px;background:#FEF2F2;border-radius:30px;font-weight:700;font-size:13px;color:#991B1B">
+            <i class="bi bi-box-arrow-right" style="font-size:18px"></i>EXIT QR
+          </span>
+          {% else %}
+          <span style="display:inline-flex;align-items:center;gap:8px;padding:8px 20px;background:#ECFDF5;border-radius:30px;font-weight:700;font-size:13px;color:#065F46">
+            <i class="bi bi-box-arrow-in-left" style="font-size:18px"></i>ENTRY QR
+          </span>
+          {% endif %}
+        </div>
+
+        <!-- Avatar + name -->
+        <div class="text-center mb-4">
+          <div style="width:72px;height:72px;border-radius:50%;background:#1565C0;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px;font-weight:700;color:#fff">
+            {{ s.name|first|upper }}
+          </div>
+          <div class="fw-700" style="font-size:17px">{{ s.name }}</div>
+          <div style="font-size:13px;color:var(--text-2)">{{ s.roll_number }}</div>
+        </div>
+
+        <!-- Details -->
+        <div style="border-top:1px solid var(--border);padding-top:16px">
+          <div class="row g-2" style="font-size:13px">
+            <div class="col-6">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);font-weight:700;margin-bottom:2px">Course</div>
+              <div class="fw-600">{{ s.course|default:"—" }}</div>
+            </div>
+            <div class="col-6">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);font-weight:700;margin-bottom:2px">Year</div>
+              <div class="fw-600">{{ s.year|default:"—" }}</div>
+            </div>
+            {% if allocation %}
+            <div class="col-6 mt-2">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);font-weight:700;margin-bottom:2px">Room</div>
+              <div class="fw-600">{{ allocation.room.room_number }} — {{ allocation.room.hostel.name }}</div>
+            </div>
+            {% endif %}
+            <div class="col-6 mt-2">
+              <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);font-weight:700;margin-bottom:2px">Phone</div>
+              <div class="fw-600">{{ s.phone|default:"—" }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gate pass details + action -->
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-pass-fill" style="color:#1565C0"></i></div>
+          Gate Pass Details
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3" style="font-size:13.5px">
+          <div class="col-sm-6">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);font-weight:700;margin-bottom:4px">Reason</div>
+            <div class="fw-600">{{ gp.reason }}</div>
+          </div>
+          <div class="col-sm-6">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);font-weight:700;margin-bottom:4px">Destination</div>
+            <div class="fw-600">{{ gp.destination|default:"Not specified" }}</div>
+          </div>
+          <div class="col-sm-6">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);font-weight:700;margin-bottom:4px">Expected Return</div>
+            <div class="fw-600">{{ gp.expected_return_date|date:"d M Y" }}, {{ gp.expected_return_time|time:"h:i A" }}</div>
+          </div>
+          <div class="col-sm-6">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);font-weight:700;margin-bottom:4px">Approved By</div>
+            <div class="fw-600">{{ gp.approved_by.name|default:"—" }}</div>
+          </div>
+          {% if gp.exit_time %}
+          <div class="col-sm-6">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);font-weight:700;margin-bottom:4px">Exit Recorded At</div>
+            <div class="fw-600" style="color:#DC2626">{{ gp.exit_time|date:"d M Y, h:i A" }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Action card -->
+    {% if qr_type == 'exit' %}
+    <div class="card" style="border-color:#BBF7D0">
+      <div class="card-body p-4">
+        <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:20px">
+          <div style="width:48px;height:48px;background:#ECFDF5;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="bi bi-box-arrow-right" style="font-size:22px;color:#059669"></i>
+          </div>
+          <div>
+            <div class="fw-700" style="font-size:15px;color:#065F46">Allow Exit</div>
+            <div style="font-size:13px;color:var(--text-2);margin-top:4px">
+              Tapping confirm will record <strong>{{ s.name }}</strong>'s exit and notify the warden.
+            </div>
+          </div>
+        </div>
+        <form method="post" action="{% url 'guard_allow_exit' %}" id="actionForm">
+          {% csrf_token %}
+          <input type="hidden" name="token" value="{{ token }}">
+          <button type="submit" class="btn btn-success w-100 fw-700" style="font-size:15px;padding:12px"
+                  onclick="this.disabled=true;this.textContent='Processing…';this.form.submit()">
+            <i class="bi bi-check-circle-fill me-2"></i>Confirm Exit
+          </button>
+        </form>
+        <div class="mt-3 text-center">
+          <a href="{% url 'scan_qr' %}" class="btn btn-sm btn-outline-secondary">Cancel</a>
+        </div>
+      </div>
+    </div>
+
+    {% else %}
+    <div class="card" style="border-color:#BFDBFE">
+      <div class="card-body p-4">
+        <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:20px">
+          <div style="width:48px;height:48px;background:#EBF3FF;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <i class="bi bi-box-arrow-in-left" style="font-size:22px;color:#1565C0"></i>
+          </div>
+          <div>
+            <div class="fw-700" style="font-size:15px;color:#1E3A8A">Mark Entry</div>
+            <div style="font-size:13px;color:var(--text-2);margin-top:4px">
+              Tapping confirm will record <strong>{{ s.name }}</strong>'s return and close the gate pass.
+            </div>
+          </div>
+        </div>
+        <form method="post" action="{% url 'guard_mark_entry' %}" id="actionForm">
+          {% csrf_token %}
+          <input type="hidden" name="token" value="{{ token }}">
+          <button type="submit" class="btn btn-primary w-100 fw-700" style="font-size:15px;padding:12px"
+                  onclick="this.disabled=true;this.textContent='Processing…';this.form.submit()">
+            <i class="bi bi-check-circle-fill me-2"></i>Confirm Entry
+          </button>
+        </form>
+        <div class="mt-3 text-center">
+          <a href="{% url 'scan_qr' %}" class="btn btn-sm btn-outline-secondary">Cancel</a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endwith %}
+{% endif %}
+{% endblock %}

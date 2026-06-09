@@ -1,0 +1,111 @@
+{% extends 'base/base.html' %}
+{% block title %}Floor {{ floor_num }} — {{ hostel.name }}{% endblock %}
+{% block page_title %}Floor {{ floor_num }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Floor {{ floor_num }} — {{ hostel.name }}</h4>
+    <p>{{ rooms|length }} room{{ rooms|length|pluralize }} on this floor</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'hostel_detail' hostel.pk %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Back to Floors
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+  {% for room in rooms %}
+  {% with allocs=room.allocations.all %}
+  {% with active_allocs=room.allocations.all %}
+  <div class="col-xl-4 col-md-6">
+    <div class="card h-100" style="border-left:4px solid {% if room.status == 'occupied' %}#D97706{% elif room.status == 'maintenance' %}#DC2626{% elif room.status == 'reserved' %}#7C3AED{% else %}#059669{% endif %}">
+      <div class="card-body p-4">
+
+        <!-- Room header -->
+        <div class="d-flex align-items-start justify-content-between mb-3">
+          <div>
+            <div class="fw-800" style="font-size:18px">Room {{ room.room_number }}</div>
+            <div style="font-size:12px;color:var(--text-3)">
+              {{ room.room_type }}{% if room.wing %} &bull; {{ room.wing }}{% endif %}
+            </div>
+          </div>
+          <div class="d-flex gap-1 align-items-center">
+            <span class="badge" style="font-size:11px;background:{% if room.status == 'occupied' %}#FFFBEB;color:#92400E{% elif room.status == 'maintenance' %}#FEF2F2;color:#991B1B{% elif room.status == 'reserved' %}#F5F3FF;color:#5B21B6{% else %}#ECFDF5;color:#065F46{% endif %}">
+              {{ room.get_status_display }}
+            </span>
+            <a href="{% url 'room_detail' room.pk %}" class="btn btn-xs btn-outline-secondary">
+              <i class="bi bi-eye"></i>
+            </a>
+          </div>
+        </div>
+
+        <!-- Room stats -->
+        <div class="row g-2 mb-3">
+          <div class="col-4 text-center p-2 rounded" style="background:var(--bg-2)">
+            <div class="fw-700" style="font-size:16px">{{ room.capacity }}</div>
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;font-weight:600">Capacity</div>
+          </div>
+          <div class="col-4 text-center p-2 rounded" style="background:var(--bg-2)">
+            <div class="fw-700" style="font-size:16px;color:#059669">{{ room.current_occupants }}</div>
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;font-weight:600">Occupied</div>
+          </div>
+          <div class="col-4 text-center p-2 rounded" style="background:var(--bg-2)">
+            <div class="fw-700" style="font-size:16px;color:#1565C0">{{ room.beds.count }}</div>
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;font-weight:600">Beds</div>
+          </div>
+        </div>
+
+        <!-- Allocated students -->
+        {% for alloc in room.allocations.all %}
+        {% if alloc.status == 'active' %}
+        <div class="d-flex align-items-center gap-2 mb-2 p-2 rounded" style="background:var(--bg-2)">
+          <div class="tbl-avatar av-blue" style="width:28px;height:28px;font-size:11px;flex-shrink:0">
+            {{ alloc.student.name|first|upper }}
+          </div>
+          <div style="min-width:0;flex:1">
+            <div class="fw-600" style="font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              {{ alloc.student.name }}
+            </div>
+            <div style="font-size:11px;color:var(--text-3)">{{ alloc.student.roll_number }} &bull; {{ alloc.student.department }}</div>
+          </div>
+          <a href="{% url 'student_detail' alloc.student.pk %}" class="flex-shrink-0" style="font-size:12px;color:var(--blue)">
+            <i class="bi bi-arrow-up-right-square"></i>
+          </a>
+        </div>
+        {% endif %}
+        {% empty %}
+        <div style="font-size:12.5px;color:var(--text-3);font-style:italic">No students allocated</div>
+        {% endfor %}
+
+        <!-- Amenities -->
+        {% if room.amenities.all %}
+        <div class="d-flex flex-wrap gap-1 mt-2">
+          {% for a in room.amenities.all %}
+          <span style="font-size:10.5px;background:var(--bg-2);padding:2px 8px;border-radius:20px;color:var(--text-2)">
+            <i class="bi {{ a.icon }} me-1"></i>{{ a.name }}
+          </span>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+  {% endwith %}
+  {% endwith %}
+  {% empty %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <div class="empty-state">
+          <i class="bi bi-building-x"></i>
+          <p>No rooms on Floor {{ floor_num }}.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

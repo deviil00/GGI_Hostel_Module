@@ -1,0 +1,210 @@
+{% extends 'base/base.html' %}
+{% block title %}Discipline Categories{% endblock %}
+{% block page_title %}Discipline Categories{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Discipline Categories</h4>
+    <p>Manage incident categories, severity levels, and default actions</p>
+  </div>
+  <a href="{% url 'discipline_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back to Discipline
+  </a>
+</div>
+
+<div class="row g-4">
+
+  {# ── Left: Create / Edit form ────────────────────────────────── #}
+  <div class="col-lg-4">
+    <div class="card" id="cat-form-card" style="border-top:3px solid #7C3AED">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EDE9FE"><i class="bi bi-tag-fill" style="color:#7C3AED"></i></div>
+          <span id="form-heading">Add Category</span>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" id="cat-form">
+          {% csrf_token %}
+          <input type="hidden" name="action" id="form-action" value="create">
+          <input type="hidden" name="pk"     id="form-pk"     value="">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Category Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" id="f-name" class="form-control form-control-sm" required
+                   placeholder="e.g. Fighting, Substance Abuse…">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Description</label>
+            <textarea name="description" id="f-desc" class="form-control form-control-sm" rows="2"
+                      placeholder="Brief description of this violation type"></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Severity <span class="text-danger">*</span></label>
+            <select name="severity" id="f-severity" class="form-select form-select-sm">
+              {% for val, lbl in severity_choices %}
+              <option value="{{ val }}">{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Default Warning</label>
+            <select name="default_warning" id="f-warning" class="form-select form-select-sm">
+              {% for val, lbl in warning_choices %}
+              <option value="{{ val }}">{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3 d-flex gap-4 flex-wrap">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="fine_mandatory" id="f-fine" value="1">
+              <label class="form-check-label" for="f-fine">Fine Mandatory</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="notify_parent_auto" id="f-notify" value="1">
+              <label class="form-check-label" for="f-notify">Suggest Parent Notification</label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="is_active" id="f-active" value="1" checked>
+              <label class="form-check-label" for="f-active">Active</label>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary w-100" id="submit-btn">
+              <i class="bi bi-plus-lg me-1"></i><span id="submit-label">Add Category</span>
+            </button>
+            <button type="button" class="btn btn-outline-secondary d-none" id="cancel-edit-btn" onclick="resetForm()">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ── Right: Categories list ───────────────────────────────────── #}
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EDE9FE"><i class="bi bi-tags" style="color:#7C3AED"></i></div>
+          All Categories
+        </div>
+        <span class="text-muted" style="font-size:12px">{{ categories|length }} total</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Severity</th>
+              <th>Default Warning</th>
+              <th>Options</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cat in categories %}
+            <tr>
+              <td>
+                <div class="fw-semibold" style="font-size:13.5px">{{ cat.name }}</div>
+                {% if cat.description %}
+                <div style="font-size:11.5px;color:var(--text-3)">{{ cat.description|truncatechars:60 }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge" style="background:{{ cat.severity_color }}20;color:{{ cat.severity_color }};border:1px solid {{ cat.severity_color }}40">
+                  {{ cat.get_severity_display }}
+                </span>
+              </td>
+              <td style="font-size:12.5px">{{ cat.get_default_warning_display }}</td>
+              <td style="font-size:12px">
+                {% if cat.fine_mandatory %}<span class="badge bg-warning text-dark me-1">Fine Req.</span>{% endif %}
+                {% if cat.notify_parent_auto %}<span class="badge" style="background:#DBEAFE;color:#1E40AF">Notify Parent</span>{% endif %}
+              </td>
+              <td>
+                {% if cat.is_active %}
+                <span class="badge bg-success">Active</span>
+                {% else %}
+                <span class="badge bg-secondary">Inactive</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex gap-1">
+                  <button class="btn btn-sm btn-outline-primary" title="Edit"
+                          onclick="editCategory('{{ cat.pk }}','{{ cat.name|escapejs }}','{{ cat.description|escapejs }}','{{ cat.severity }}','{{ cat.default_warning }}',{{ cat.fine_mandatory|lower }},{{ cat.notify_parent_auto|lower }},{{ cat.is_active|lower }})">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <form method="post" style="display:inline"
+                        onsubmit="return confirm('Delete category \'{{ cat.name }}\'? This cannot be undone.')">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="pk"     value="{{ cat.pk }}">
+                    <input type="hidden" name="name"   value="{{ cat.name }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6">
+              <div class="empty-state py-4">
+                <i class="bi bi-tags" style="font-size:28px;opacity:.3"></i>
+                <p>No categories yet. Add your first one.</p>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {# Severity guide #}
+    <div class="card mt-3">
+      <div class="card-body p-3">
+        <div class="fw-semibold mb-2" style="font-size:13px">Severity Guide</div>
+        <div class="d-flex gap-3 flex-wrap">
+          <div><span class="badge" style="background:#05996920;color:#059669;border:1px solid #05996940">Low</span> <span style="font-size:11.5px">Minor issues, verbal warning</span></div>
+          <div><span class="badge" style="background:#D9770620;color:#D97706;border:1px solid #D9770640">Medium</span> <span style="font-size:11.5px">Written warning, possible fine</span></div>
+          <div><span class="badge" style="background:#DC262620;color:#DC2626;border:1px solid #DC262640">High</span> <span style="font-size:11.5px">Final warning, fine, parent notification</span></div>
+          <div><span class="badge" style="background:#7C3AED20;color:#7C3AED;border:1px solid #7C3AED40">Critical</span> <span style="font-size:11.5px">Restriction / expulsion possible</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function editCategory(pk, name, desc, severity, warning, fine, notify, active) {
+  document.getElementById('form-heading').textContent  = 'Edit Category';
+  document.getElementById('submit-label').textContent  = 'Save Changes';
+  document.getElementById('form-action').value = 'edit';
+  document.getElementById('form-pk').value     = pk;
+  document.getElementById('f-name').value      = name;
+  document.getElementById('f-desc').value      = desc;
+  document.getElementById('f-severity').value  = severity;
+  document.getElementById('f-warning').value   = warning;
+  document.getElementById('f-fine').checked    = fine;
+  document.getElementById('f-notify').checked  = notify;
+  document.getElementById('f-active').checked  = active;
+  document.getElementById('cancel-edit-btn').classList.remove('d-none');
+  document.getElementById('cat-form-card').scrollIntoView({behavior:'smooth'});
+}
+function resetForm() {
+  document.getElementById('cat-form').reset();
+  document.getElementById('form-heading').textContent = 'Add Category';
+  document.getElementById('submit-label').textContent = 'Add Category';
+  document.getElementById('form-action').value = 'create';
+  document.getElementById('form-pk').value     = '';
+  document.getElementById('f-active').checked  = true;
+  document.getElementById('cancel-edit-btn').classList.add('d-none');
+}
+</script>
+{% endblock %}

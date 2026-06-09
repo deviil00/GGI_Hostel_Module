@@ -1,0 +1,178 @@
+{% extends "base/base.html" %}
+{% block title %}Edit Room {{ room.room_number }} — GGI Hostel ERP{% endblock %}
+{% block page_title %}Edit Room{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Edit Room {{ room.room_number }}</h4>
+    <p>{{ room.hostel.name }} &nbsp;·&nbsp; Floor {{ room.floor }} &nbsp;·&nbsp; {{ room.room_type }}</p>
+  </div>
+  <a href="{% url 'room_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back to Rooms
+  </a>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="row g-3">
+
+    <!-- Room Details -->
+    <div class="col-md-7">
+      <div class="card mb-3">
+        <div class="card-header">
+          <div class="card-header-left">
+            <div class="ch-icon" style="background:var(--blue-soft)"><i class="bi bi-door-open-fill" style="color:var(--blue)"></i></div>
+            Room Details
+          </div>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Hostel <span class="text-danger">*</span></label>
+              <select name="hostel" class="form-select" required>
+                {% for h in hostels %}
+                <option value="{{ h.pk }}" {% if h.pk == room.hostel.pk %}selected{% endif %}>{{ h.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Room Number <span class="text-danger">*</span></label>
+              <input type="text" name="room_number" class="form-control"
+                     value="{{ room.room_number }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Floor</label>
+              <input type="number" name="floor" class="form-control" value="{{ room.floor }}" min="0">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">Room Category <span class="text-danger">*</span></label>
+              <select name="room_type" id="edit_room_type" class="form-select"
+                      onchange="catChanged(this, document.getElementById('edit_capacity'))">
+                <option value="">— Select Category —</option>
+                {% for group_name, cats in room_categories %}
+                <optgroup label="{{ group_name }}">
+                  {% for code, label, cap in cats %}
+                  <option value="{{ code }}" data-cap="{{ cap }}"
+                    {% if room.room_type == code %}selected{% endif %}>
+                    {{ code }} — {{ label }}
+                  </option>
+                  {% endfor %}
+                </optgroup>
+                {% endfor %}
+              </select>
+              <div style="font-size:11px;color:var(--text-3);margin-top:3px">
+                <strong>CWR</strong> = Common Washroom &nbsp;·&nbsp; <strong>WR</strong> = Attached Washroom &nbsp;·&nbsp; <strong>AC</strong> = Air Conditioned
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Capacity (beds)</label>
+              <input type="number" name="capacity" id="edit_capacity" class="form-control"
+                     value="{{ room.capacity }}" min="0" max="20">
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px">Auto-filled from category — override if needed</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Status</label>
+              <select name="status" class="form-select">
+                {% for val, label in status_choices %}
+                <option value="{{ val }}" {% if room.status == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Amenities -->
+    <div class="col-md-5">
+      <div class="card mb-3">
+        <div class="card-header">
+          <div class="card-header-left">
+            <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-stars" style="color:#059669"></i></div>
+            Amenities & Features
+          </div>
+          <a href="{% url 'amenity_list' %}" class="btn btn-xs btn-outline-secondary">
+            <i class="bi bi-plus me-1"></i>Manage
+          </a>
+        </div>
+        <div class="card-body p-3">
+          {% if amenities %}
+          <div class="row g-2">
+            {% for amenity in amenities %}
+            <div class="col-6">
+              <label class="d-flex align-items-center gap-2 p-2 rounded cursor-pointer"
+                     style="border:1.5px solid {% if amenity.pk|stringformat:'s' in selected_amenities|join:',' %}var(--blue){% else %}var(--border){% endif %};
+                            background:{% if amenity.pk|stringformat:'s' in selected_amenities|join:',' %}var(--blue-soft){% else %}var(--surface){% endif %};
+                            cursor:pointer;transition:all .15s"
+                     id="label_{{ amenity.pk }}">
+                <input type="checkbox" name="amenities" value="{{ amenity.pk }}"
+                       class="form-check-input m-0"
+                       {% if amenity.pk in selected_amenities %}checked{% endif %}
+                       onchange="toggleLabel(this,'label_{{ amenity.pk }}')">
+                <i class="bi {{ amenity.icon }}" style="color:var(--blue);font-size:14px"></i>
+                <span style="font-size:12.5px;font-weight:500">{{ amenity.name }}</span>
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="empty-state py-3">
+            <i class="bi bi-tags" style="font-size:24px;opacity:.3"></i>
+            <p style="font-size:12px;margin-top:6px">No amenities defined yet.</p>
+            <a href="{% url 'amenity_list' %}" class="btn btn-xs btn-outline-primary mt-1">Add Amenities</a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Current occupants info -->
+      <div class="card" style="border-color:#E0E7FF;background:#F8F9FF">
+        <div class="card-body p-3" style="font-size:13px">
+          <div class="d-flex justify-content-between mb-1">
+            <span style="color:var(--text-2)">Current Occupants</span>
+            <span class="fw-600">{{ room.current_occupants }} / {{ room.capacity }}</span>
+          </div>
+          <div style="height:6px;background:#E2E8F0;border-radius:3px">
+            {% if room.capacity > 0 %}
+            <div style="width:{% widthratio room.current_occupants room.capacity 100 %}%;height:100%;border-radius:3px;
+                        background:{% if room.current_occupants == room.capacity %}#DC2626{% elif room.current_occupants > 0 %}#D97706{% else %}#059669{% endif %}"></div>
+            {% endif %}
+          </div>
+          <div style="font-size:11.5px;color:var(--text-3);margin-top:6px">
+            {{ room.beds_available }} bed{{ room.beds_available|pluralize }} available
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="d-flex gap-2 justify-content-end mb-5">
+    <a href="{% url 'room_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary px-4">
+      <i class="bi bi-check-lg me-1"></i>Save Changes
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function catChanged(selectEl, capEl) {
+  const opt = selectEl.options[selectEl.selectedIndex];
+  const cap = opt ? parseInt(opt.getAttribute('data-cap'), 10) : NaN;
+  if (capEl && !isNaN(cap)) capEl.value = cap;
+}
+function toggleLabel(cb, labelId) {
+  const label = document.getElementById(labelId);
+  if (cb.checked) {
+    label.style.borderColor = 'var(--blue)';
+    label.style.background  = 'var(--blue-soft)';
+  } else {
+    label.style.borderColor = 'var(--border)';
+    label.style.background  = 'var(--surface)';
+  }
+}
+</script>
+{% endblock %}

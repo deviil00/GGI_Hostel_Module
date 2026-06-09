@@ -1,0 +1,153 @@
+{% extends "base/base.html" %}
+{% block title %}Mess Feedback — GGI Hostel ERP{% endblock %}
+{% block page_title %}Mess Feedback{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Student Mess Feedback</h4>
+    <p>All feedback submitted by students for each meal</p>
+  </div>
+  <a href="{% url 'mess_menu_admin' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Back to Menu
+  </a>
+</div>
+
+<!-- Rating summary cards -->
+{% if avg_by_meal %}
+<div class="row g-3 mb-4">
+  {% for stat in avg_by_meal %}
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:{% if stat.meal_type == 'breakfast' %}#F59E0B{% elif stat.meal_type == 'lunch' %}#1565C0{% elif stat.meal_type == 'snacks' %}#1976D2{% else %}#0D47A1{% endif %}">
+      <div class="s-top">
+        <div class="s-icon" style="background:{% if stat.meal_type == 'breakfast' %}#FFFBEB{% else %}#EBF3FF{% endif %}">
+          <i class="bi {% if stat.meal_type == 'breakfast' %}bi-brightness-high-fill{% elif stat.meal_type == 'lunch' %}bi-sun-fill{% elif stat.meal_type == 'snacks' %}bi-cup-hot-fill{% else %}bi-moon-stars-fill{% endif %}"
+             style="color:{% if stat.meal_type == 'breakfast' %}#F59E0B{% elif stat.meal_type == 'lunch' %}#1565C0{% elif stat.meal_type == 'snacks' %}#1976D2{% else %}#0D47A1{% endif %}"></i>
+        </div>
+      </div>
+      <div class="s-number">{{ stat.avg|floatformat:1 }} <small style="font-size:14px">★</small></div>
+      <div class="s-label">{{ stat.meal_type|capfirst }} &mdash; {{ stat.count }} responses</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Filters -->
+<div class="card mb-3">
+  <div class="card-body p-3">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label" style="font-size:12px">Hostel</label>
+        <select name="hostel" class="form-select form-select-sm">
+          <option value="">All Hostels</option>
+          {% for h in hostels %}
+          <option value="{{ h.pk }}" {% if selected_hostel == h.pk|stringformat:'s' %}selected{% endif %}>{{ h.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label" style="font-size:12px">Meal</label>
+        <select name="meal" class="form-select form-select-sm">
+          <option value="">All Meals</option>
+          {% for code, label in meals %}
+          <option value="{{ code }}" {% if selected_meal == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label" style="font-size:12px">Rating</label>
+        <select name="rating" class="form-select form-select-sm">
+          <option value="">Any Rating</option>
+          {% for r in "54321" %}
+          <option value="{{ r }}" {% if selected_rating == r %}selected{% endif %}>{{ r }} ★</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-sm btn-primary w-100">Filter</button>
+      </div>
+      <div class="col-md-2">
+        <a href="{% url 'mess_feedback_list' %}" class="btn btn-sm btn-outline-secondary w-100">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Feedback table -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-chat-left-quote-fill" style="color:#1565C0"></i></div>
+      Feedback Records ({{ page.paginator.count }})
+    </div>
+  </div>
+  {% if page.object_list %}
+  <div class="table-responsive">
+    <table class="table mb-0" style="font-size:13px">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Student</th>
+          <th>Hostel</th>
+          <th>Meal</th>
+          <th>Rating</th>
+          <th>Comment</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fb in page %}
+        <tr>
+          <td class="fw-600">{{ fb.date|date:"d M Y" }}</td>
+          <td>
+            <div class="fw-600">{{ fb.student.name }}</div>
+            <div style="font-size:11px;color:var(--text-3)">{{ fb.student.roll_number }}</div>
+          </td>
+          <td>{{ fb.hostel.name }}</td>
+          <td>
+            <span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px;
+              background:{% if fb.meal_type == 'breakfast' %}#FFFBEB{% elif fb.meal_type == 'lunch' %}#EBF3FF{% elif fb.meal_type == 'snacks' %}#E3F2FD{% else %}#E8EEF9{% endif %};
+              color:{% if fb.meal_type == 'breakfast' %}#92400E{% else %}#1E3A5F{% endif %}">
+              {{ fb.get_meal_type_display }}
+            </span>
+          </td>
+          <td>
+            <div class="d-flex gap-1 align-items-center">
+              {% for i in "12345" %}
+              <i class="bi bi-star{% if forloop.counter <= fb.rating %}-fill{% endif %}"
+                 style="font-size:13px;color:{% if forloop.counter <= fb.rating %}#F59E0B{% else %}#E2E8F0{% endif %}"></i>
+              {% endfor %}
+              <span style="font-size:12px;color:var(--text-2);margin-left:4px">({{ fb.rating }})</span>
+            </div>
+          </td>
+          <td style="color:var(--text-2);max-width:240px">{{ fb.comment|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page.has_other_pages %}
+  <div class="card-body py-3 d-flex justify-content-center gap-2">
+    {% if page.has_previous %}
+    <a href="?page={{ page.previous_page_number }}&hostel={{ selected_hostel }}&meal={{ selected_meal }}&rating={{ selected_rating }}" class="btn btn-sm btn-outline-secondary">‹ Previous</a>
+    {% endif %}
+    <span style="font-size:13px;align-self:center;color:var(--text-2)">
+      Page {{ page.number }} of {{ page.paginator.num_pages }}
+    </span>
+    {% if page.has_next %}
+    <a href="?page={{ page.next_page_number }}&hostel={{ selected_hostel }}&meal={{ selected_meal }}&rating={{ selected_rating }}" class="btn btn-sm btn-outline-secondary">Next ›</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="card-body">
+    <div class="empty-state py-5">
+      <i class="bi bi-chat-left" style="font-size:32px;opacity:.3"></i>
+      <p style="margin-top:12px;font-size:13px;color:var(--text-3)">No feedback matches the selected filters.</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

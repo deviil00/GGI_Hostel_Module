@@ -1,0 +1,133 @@
+{% extends "base/base.html" %}
+{% block title %}Staff Directory{% endblock %}
+{% block page_title %}Staff Directory{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Staff Directory</h4>
+    <p>View full profiles of all staff members</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'staff_accounts' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-people-fill me-1"></i>Staff Accounts
+    </a>
+    <a href="{% url 'superadmin_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Dashboard
+    </a>
+  </div>
+</div>
+
+{# ── Summary stats ── #}
+{% with total=staff_list|length %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="--stat-color:#1565C0">
+      <div class="s-top"><div class="s-icon" style="background:#EBF3FF"><i class="bi bi-people-fill" style="color:#1565C0"></i></div></div>
+      <div class="s-number">{{ total }}</div>
+      <div class="s-label">Total Staff</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="--stat-color:#059669">
+      <div class="s-top"><div class="s-icon" style="background:#ECFDF5"><i class="bi bi-check-circle-fill" style="color:#059669"></i></div></div>
+      <div class="s-number">{% with c=0 %}{% for s in staff_list %}{% if s.pct == 100 %}{% with c=c|add:1 %}{% endwith %}{% endif %}{% endfor %}{{ staff_list|length }}{% endwith %}</div>
+      <div class="s-label">Profiles Submitted</div>
+    </div>
+  </div>
+</div>
+{% endwith %}
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-person-lines-fill" style="color:#1565C0"></i></div>
+      All Staff Members
+    </div>
+    <span style="font-size:12px;color:var(--text-3)">{{ staff_list|length }} member{{ staff_list|length|pluralize }}</span>
+  </div>
+
+  {% if staff_list %}
+  <div class="table-responsive">
+    <table class="table mb-0" style="font-size:13px">
+      <thead>
+        <tr>
+          <th>Staff Member</th>
+          <th>Role</th>
+          <th>Phone</th>
+          <th>Employee ID</th>
+          <th>Joined</th>
+          <th>Profile</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in staff_list %}
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-3">
+              <div class="tbl-avatar"
+                   style="background:{% cycle '#1565C0' '#059669' '#7C3AED' '#D97706' '#0891B2' '#DC2626' %}">
+                {{ s.user.name|first|upper }}
+              </div>
+              <div>
+                <div class="tbl-name">{{ s.user.name }}</div>
+                <div class="tbl-sub">{{ s.user.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            {% if s.user.role == 'admin' %}
+              <span class="badge" style="background:#EBF3FF;color:#1565C0">Admin 2</span>
+            {% elif s.user.role == 'warden' %}
+              <span class="badge" style="background:#ECFDF5;color:#059669">Warden</span>
+            {% elif s.user.role == 'security' %}
+              <span class="badge" style="background:#FEF2F2;color:#DC2626">Security</span>
+            {% elif s.user.role == 'maintenance' %}
+              <span class="badge" style="background:#FFFBEB;color:#D97706">Maintenance</span>
+            {% elif s.user.role == 'mess' %}
+              <span class="badge" style="background:#F5F3FF;color:#7C3AED">Mess Mgmt</span>
+            {% else %}
+              <span class="badge" style="background:#EDE9FE;color:#6D28D9">{{ s.user.role|title }}</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--text-2)">{{ s.user.phone|default:"—" }}</td>
+          <td style="color:var(--text-2)">
+            {% if s.profile and s.profile.employee_id %}{{ s.profile.employee_id }}{% else %}—{% endif %}
+          </td>
+          <td style="color:var(--text-2)">
+            {% if s.profile and s.profile.date_of_joining %}{{ s.profile.date_of_joining|date:"d M Y" }}{% else %}—{% endif %}
+          </td>
+          <td>
+            {% if not s.profile %}
+              <span class="badge" style="background:#FEF2F2;color:#DC2626">No Profile</span>
+            {% else %}
+              <div style="display:flex;align-items:center;gap:6px">
+                <div style="flex:1;height:6px;border-radius:3px;background:#F1F5F9;overflow:hidden;min-width:60px">
+                  <div style="width:{{ s.pct }}%;height:100%;background:{% if s.pct == 100 %}#059669{% elif s.pct >= 60 %}#1565C0{% elif s.pct >= 30 %}#D97706{% else %}#DC2626{% endif %}"></div>
+                </div>
+                <span style="font-size:11px;font-weight:700;color:{% if s.pct == 100 %}#059669{% elif s.pct >= 60 %}#1565C0{% else %}#D97706{% endif %}">
+                  {{ s.pct }}%
+                </span>
+              </div>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'staff_profile_detail' s.user.pk %}"
+               class="btn btn-xs btn-outline-primary">
+              <i class="bi bi-eye-fill me-1"></i>View Profile
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-people"></i>
+    <p>No staff accounts found.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

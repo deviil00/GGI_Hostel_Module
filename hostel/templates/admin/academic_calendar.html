@@ -1,0 +1,318 @@
+{% extends "base/base.html" %}
+{% load hostel_tags %}
+{% block title %}Academic Calendar{% endblock %}
+{% block page_title %}Academic Calendar{% endblock %}
+
+{% block content %}
+<style>
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal-header{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+  .cal-day-name{text-align:center;font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;padding:6px 0}
+  .cal-cell{min-height:72px;border-radius:8px;border:1.5px solid #E2E8F0;padding:6px;background:#fff;position:relative;cursor:pointer;transition:all .15s}
+  .cal-cell:hover{border-color:#C4B5FD;background:#FAFAFF}
+  .cal-cell.today{border-color:#7C3AED;background:#FAFAFF}
+  .cal-cell.empty{background:transparent;border-color:transparent;cursor:default}
+  .cal-cell.has-event{background:var(--evt-bg,#F0FDF4);border-color:var(--evt-border,#BBF7D0)}
+  .cal-num{font-size:13px;font-weight:700;color:var(--text-1)}
+  .cal-cell.today .cal-num{color:#7C3AED}
+  .evt-badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;display:inline-block;margin-top:4px}
+  .legend-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .tab-pill{padding:5px 14px;border-radius:20px;font-size:12.5px;font-weight:600;cursor:pointer;border:1.5px solid #E2E8F0;background:#fff;transition:all .15s}
+  .tab-pill.active{background:#1E293B;color:#fff;border-color:#1E293B}
+</style>
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Academic Calendar</h4>
+    <p>Mark working days, holidays, exams — drives HOD leave routing</p>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  {# ── Left: Calendar grid ─────────────────────────────────────── #}
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header py-3 flex-wrap gap-2">
+        <div class="card-header-left">
+          <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+          <span class="fw-700 mx-3" style="font-size:16px">{{ month_name }} {{ year }}</span>
+          <a href="?year={{ next_year }}&month={{ next_month }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+        </div>
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+          {% for val, lbl in event_types %}
+          <span style="font-size:11px;display:flex;align-items:center;gap:4px">
+            <span class="legend-dot" style="background:{% if val == 'working' %}#059669{% elif val == 'sunday' %}#94A3B8{% elif val == 'holiday' %}#D97706{% elif val == 'emergency_holiday' %}#DC2626{% elif val == 'exam' %}#7C3AED{% else %}#0891B2{% endif %}"></span>
+            {{ lbl }}
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card-body p-3">
+        <div class="cal-header">
+          {% for d in "Mon,Tue,Wed,Thu,Fri,Sat,Sun"|split_items %}
+          <div class="cal-day-name">{{ d }}</div>
+          {% endfor %}
+        </div>
+        <div class="cal-grid">
+          {% for week in cal %}
+          {% for day in week %}
+          {% if day == 0 %}
+          <div class="cal-cell empty"></div>
+          {% else %}
+          {% with evt=events_by_date|get_item:day %}
+          <div class="cal-cell {% if evt %}has-event{% endif %} {% if today.day == day and today.month == month and today.year == year %}today{% endif %}"
+               {% if evt %}style="--evt-bg:{{ evt.badge_color }}18;--evt-border:{{ evt.badge_color }}44"{% endif %}
+               onclick="fillSingle('{{ year }}-{{ month|stringformat:"02d" }}-{{ day|stringformat:"02d" }}','{% if evt %}{{ evt.event_type }}{% else %}holiday{% endif %}','{% if evt %}{{ evt.title|escapejs }}{% endif %}','{% if evt %}{{ evt.pk }}{% endif %}')">
+            <div class="cal-num">{{ day }}</div>
+            {% if evt %}
+            <span class="evt-badge" style="background:{{ evt.badge_color }}22;color:{{ evt.badge_color }}">
+              {{ evt.title|truncatechars:14 }}
+            </span>
+            {% endif %}
+          </div>
+          {% endwith %}
+          {% endif %}
+          {% endfor %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {# ── HOD Routing info banner ──────────────────────────────────── #}
+    <div class="alert alert-info d-flex gap-2 align-items-start" style="font-size:12.5px">
+      <i class="bi bi-info-circle-fill mt-1" style="flex-shrink:0"></i>
+      <div>
+        <strong>How this drives leave routing:</strong> When a student applies for leave,
+        the system checks the <em>departure date</em> in this calendar.
+        If that date is marked as <strong>Working</strong> (or defaults to Mon–Fri if no entry exists),
+        the leave is sent to the <strong>HOD</strong> of the student's department first,
+        then forwarded to the Warden after HOD approval.
+        Non-working days (holidays, exams, etc.) go directly to the Warden.
+      </div>
+    </div>
+  </div>
+
+  {# ── Right: Forms ─────────────────────────────────────────────── #}
+  <div class="col-lg-4">
+
+    {# Tab switcher #}
+    <div class="d-flex gap-2 mb-3">
+      <button class="tab-pill active" id="tab-single" onclick="switchTab('single')">Single Day</button>
+      <button class="tab-pill" id="tab-range" onclick="switchTab('range')">Date Range</button>
+      <button class="tab-pill" id="tab-upload" onclick="switchTab('upload')">CSV Upload</button>
+    </div>
+
+    {# ── Single-day form ─────────────────────────────────────────── #}
+    <div id="panel-single">
+      <div class="card mb-3">
+        <div class="card-header py-3">
+          <div class="card-header-left">
+            <div class="ch-icon" style="background:#EDE9FE"><i class="bi bi-calendar-plus-fill" style="color:#7C3AED"></i></div>
+            <span id="evt-form-title">Mark Single Day</span>
+          </div>
+        </div>
+        <div class="card-body p-3">
+          <form method="post" id="evt-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add">
+            <input type="hidden" name="pk" id="evt-pk" value="">
+            <div class="mb-2">
+              <label class="form-label fw-600" style="font-size:12px">Date <span class="text-danger">*</span></label>
+              <input type="date" name="date" id="evt-date" class="form-control form-control-sm" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-600" style="font-size:12px">Event Type <span class="text-danger">*</span></label>
+              <select name="event_type" id="evt-type" class="form-select form-select-sm" required>
+                {% for val, lbl in event_types %}
+                <option value="{{ val }}">{{ lbl }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-600" style="font-size:12px">Title <span class="text-danger">*</span></label>
+              <input type="text" name="title" id="evt-title" class="form-control form-control-sm" required
+                     maxlength="200" placeholder="e.g. Diwali, Exam Day">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-600" style="font-size:12px">Description</label>
+              <textarea name="description" id="evt-desc" class="form-control form-control-sm" rows="2"></textarea>
+            </div>
+            <button type="submit" class="btn btn-dark btn-sm w-100">Save Event</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    {# ── Date range form ─────────────────────────────────────────── #}
+    <div id="panel-range" style="display:none">
+      <div class="card mb-3">
+        <div class="card-header py-3">
+          <div class="card-header-left">
+            <div class="ch-icon" style="background:#DCFCE7"><i class="bi bi-calendar-range-fill" style="color:#16A34A"></i></div>
+            Mark Date Range
+          </div>
+        </div>
+        <div class="card-body p-3">
+          <p style="font-size:12px;color:var(--text-2)">Mark all days in a range with the same type — e.g. entire Summer Vacation or Exam Period.</p>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_range">
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <label class="form-label fw-600" style="font-size:12px">From <span class="text-danger">*</span></label>
+                <input type="date" name="range_from" class="form-control form-control-sm" required>
+              </div>
+              <div class="col-6">
+                <label class="form-label fw-600" style="font-size:12px">To <span class="text-danger">*</span></label>
+                <input type="date" name="range_to" class="form-control form-control-sm" required>
+              </div>
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-600" style="font-size:12px">Type <span class="text-danger">*</span></label>
+              <select name="range_event_type" class="form-select form-select-sm" required>
+                {% for val, lbl in event_types %}
+                <option value="{{ val }}">{{ lbl }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-600" style="font-size:12px">Title <span class="text-danger">*</span></label>
+              <input type="text" name="range_title" class="form-control form-control-sm" required
+                     maxlength="200" placeholder="e.g. Summer Vacation, Semester Exams">
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-600" style="font-size:12px">Description</label>
+              <textarea name="range_description" class="form-control form-control-sm" rows="2"></textarea>
+            </div>
+            <button type="submit" class="btn btn-success btn-sm w-100">
+              <i class="bi bi-check-all me-1"></i>Mark All Days in Range
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    {# ── Upload form ──────────────────────────────────────────────── #}
+    <div id="panel-upload" style="display:none">
+      <div class="card mb-3">
+        <div class="card-header py-3">
+          <div class="card-header-left">
+            <div class="ch-icon" style="background:#EFF6FF"><i class="bi bi-cloud-upload-fill" style="color:#1D4ED8"></i></div>
+            Upload Academic Calendar
+          </div>
+        </div>
+        <div class="card-body p-3">
+
+          {# PTU Excel format info #}
+          <div class="p-3 mb-3 rounded" style="background:#F0FDF4;border:1.5px solid #BBF7D0;font-size:12.5px">
+            <div class="fw-700 mb-1" style="color:#16A34A">
+              <i class="bi bi-file-earmark-excel-fill me-1"></i>PTU / University Excel Format (.xlsx)
+            </div>
+            <p class="mb-1" style="color:#166534">Upload the official academic calendar Excel file directly. The system automatically reads:</p>
+            <ul class="mb-0" style="padding-left:16px;color:#166534">
+              <li><strong>Week Off</strong> rows → marked as Weekend</li>
+              <li><strong>H</strong> in working days column → Holiday / Festival</li>
+              <li><strong>Numbers</strong> in working days column → Working Day</li>
+              <li>Keywords like <em>MST, Exam, Test</em> → Exam Day</li>
+              <li>Keywords like <em>Jayanti, Diwali, Holi, Guru, Eid</em> → Festival</li>
+            </ul>
+          </div>
+
+          <form method="post" enctype="multipart/form-data" class="mb-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="upload_csv">
+            <div class="mb-3">
+              <label class="form-label fw-600" style="font-size:12px">
+                Select Excel or CSV File <span class="text-danger">*</span>
+              </label>
+              <input type="file" name="csv_file" class="form-control form-control-sm"
+                     accept=".xlsx,.xls,.csv" required>
+              <div class="form-text">Supported: <strong>.xlsx</strong> (PTU format), <strong>.csv</strong> (simple format)</div>
+            </div>
+            <button type="submit" class="btn btn-dark btn-sm w-100">
+              <i class="bi bi-upload me-1"></i>Upload & Import
+            </button>
+          </form>
+
+          {# CSV format reference #}
+          <div class="p-3 rounded" style="background:#F8FAFF;border:1.5px dashed #BFDBFE;font-size:12px">
+            <div class="fw-700 mb-1" style="color:#1D4ED8">
+              <i class="bi bi-file-earmark-text me-1"></i>Simple CSV Format (alternative)
+            </div>
+            <code style="font-size:11px">from_date, to_date, type, title</code>
+            <p class="mt-1 mb-1">Types: <code>working</code> · <code>holiday</code> · <code>exam</code> · <code>festival</code> · <code>sunday</code> · <code>emergency_holiday</code></p>
+            <a href="{% url 'academic_calendar_sample' %}" class="btn btn-outline-primary btn-sm mt-1">
+              <i class="bi bi-download me-1"></i>Download Sample CSV
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    {# ── Recent Events ────────────────────────────────────────────── #}
+    <div class="card">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#F0FDF4"><i class="bi bi-list-ul" style="color:#059669"></i></div>
+          Recent Events
+        </div>
+      </div>
+      <div class="card-body p-2">
+        {% for evt in recent_events %}
+        <div style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;border-bottom:1px solid #F1F5F9">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ evt.badge_color }};flex-shrink:0;display:inline-block"></span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ evt.title }}</div>
+            <div style="font-size:11px;color:var(--text-3)">{{ evt.date|date:"d M Y" }} · {{ evt.get_event_type_display }}</div>
+          </div>
+          <form method="post" style="flex-shrink:0">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="pk" value="{{ evt.pk }}">
+            <button class="btn btn-xs btn-outline-danger" onclick="return confirm('Remove this event?')" title="Delete">
+              <i class="bi bi-trash3"></i>
+            </button>
+          </form>
+        </div>
+        {% empty %}
+        <div class="empty-state py-3">
+          <i class="bi bi-calendar-x" style="font-size:24px;opacity:.3"></i>
+          <p style="font-size:13px">No events marked yet.</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function switchTab(tab) {
+  ['single','range','upload'].forEach(t => {
+    document.getElementById('panel-' + t).style.display = t === tab ? '' : 'none';
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+  });
+}
+function fillSingle(date, type, title, pk) {
+  switchTab('single');
+  document.getElementById('evt-date').value = date;
+  if (type) document.getElementById('evt-type').value = type;
+  if (title) document.getElementById('evt-title').value = title;
+  if (pk) {
+    document.getElementById('evt-pk').value = pk;
+    document.getElementById('evt-form-title').textContent = 'Edit Event';
+  } else {
+    document.getElementById('evt-pk').value = '';
+    document.getElementById('evt-form-title').textContent = 'Mark Single Day';
+  }
+  document.getElementById('panel-single').scrollIntoView({behavior:'smooth'});
+}
+</script>
+<style>.btn-xs{padding:2px 8px;font-size:11.5px}</style>
+{% endblock %}

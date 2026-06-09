@@ -1,0 +1,408 @@
+{% extends 'base/base.html' %}
+{% load hostel_tags %}
+{% block title %}Mess Menu{% endblock %}
+{% block page_title %}Mess Menu{% endblock %}
+
+{% block content %}
+<style>
+  /* ── GGI Brand Palette ───────────────────────────────────────
+     Gold    #F59E0B / soft #FFFBEB  (sidebar logo accent)
+     Blue    #1565C0 / soft #EBF3FF  (primary brand)
+     Mid-Blue#1976D2 / soft #E3F2FD  (sidebar gradient mid)
+     Navy    #0D47A1 / soft #E8EEF9  (sidebar gradient start)
+  ─────────────────────────────────────────────────────────── */
+
+  /* per-meal brand colour tokens */
+  .meal-breakfast { --mc:#F59E0B; --mc-bg:#FFFBEB; --mc-icon:#FEF3C7; --mc-border:#FDE68A; }
+  .meal-lunch     { --mc:#1565C0; --mc-bg:#EBF3FF; --mc-icon:#DBEAFE; --mc-border:#BFDBFE; }
+  .meal-snacks    { --mc:#1976D2; --mc-bg:#E3F2FD; --mc-icon:#BBDEFB; --mc-border:#90CAF9; }
+  .meal-dinner    { --mc:#0D47A1; --mc-bg:#E8EEF9; --mc-icon:#C5CAE9; --mc-border:#9FA8DA; }
+
+  /* ── Meal card ───────────────────────────────────────────── */
+  .meal-col { flex:1; min-width:0; }
+
+  .meal-card {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1.5px solid var(--mc-border);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 4px rgba(13,71,161,.06);
+    transition: box-shadow .15s, transform .15s;
+  }
+  .meal-card:hover { box-shadow: 0 4px 16px rgba(13,71,161,.13); transform: translateY(-1px); }
+
+  .meal-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 13px;
+    background: var(--mc-bg);
+    border-bottom: 2px solid var(--mc-border);
+  }
+
+  .meal-header .mh-icon {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    background: var(--mc-icon);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    color: var(--mc);
+    flex-shrink: 0;
+  }
+
+  .meal-header .mh-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+    color: var(--mc);
+  }
+
+  .meal-body {
+    background: #fff;
+    padding: 12px 14px;
+    flex: 1;
+    position: relative;
+    min-height: 88px;
+  }
+
+  /* ── Item list ───────────────────────────────────────────── */
+  .meal-items { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5px; }
+
+  .meal-items li {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    font-size: 13px;
+    color: #0F172A;
+    line-height: 1.45;
+  }
+
+  .meal-items li::before {
+    content: '';
+    flex-shrink: 0;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--mc);
+    margin-top: 5px;
+  }
+
+  .meal-empty {
+    display: flex; align-items: center; justify-content: center;
+    height: 60px;
+    color: #B0BEC5;
+    font-size: 12px;
+    gap: 5px;
+  }
+
+  /* ── Hover action buttons ────────────────────────────────── */
+  .meal-actions {
+    position: absolute; top:8px; right:8px;
+    display: flex; gap:4px;
+    opacity: 0; transition: opacity .15s;
+  }
+  .meal-body:hover .meal-actions { opacity:1; }
+
+  .ma-btn {
+    width:26px; height:26px; border-radius:6px; border:none;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; cursor:pointer; transition:transform .1s;
+  }
+  .ma-btn:hover { transform:scale(1.12); }
+  .ma-edit { background:#EBF3FF; color:#1565C0; }
+  .ma-del  { background:#FEF2F2; color:#DC2626; }
+
+  /* ── Add slot ────────────────────────────────────────────── */
+  .meal-add-btn {
+    width:100%; background:none;
+    border: 1.5px dashed #CFD8DC;
+    border-radius:8px; color:#90A4AE;
+    font-size:12px; padding:10px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .meal-add-btn:hover {
+    border-color: var(--mc);
+    color: var(--mc);
+    background: var(--mc-bg);
+  }
+
+  /* ── Day row ─────────────────────────────────────────────── */
+  .day-row {
+    display:flex; align-items:stretch; gap:10px; margin-bottom:12px;
+  }
+
+  /* Day label — styled like a mini sidebar tile */
+  .day-label-col {
+    width:106px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:3px; padding:8px 6px;
+    background: linear-gradient(160deg,#1565C0 0%,#1976D2 100%);
+    border-radius:12px;
+    box-shadow: 0 2px 8px rgba(21,101,192,.25);
+  }
+
+  .day-label-col .dl-name {
+    font-size:14px; font-weight:700; color:#fff;
+  }
+
+  .day-label-col .dl-short {
+    font-size:10px; font-weight:600;
+    color: rgba(255,255,255,.65);
+    text-transform:uppercase; letter-spacing:.6px;
+  }
+
+  /* Golden dot on today's row */
+  .day-row.today-row .day-label-col {
+    background: linear-gradient(160deg,#F59E0B 0%,#D97706 100%);
+    box-shadow: 0 2px 8px rgba(245,158,11,.30);
+  }
+  .day-row.today-row .meal-card {
+    box-shadow: 0 2px 10px rgba(245,158,11,.18);
+  }
+
+  /* ── Column headers ──────────────────────────────────────── */
+  .meal-headers-row {
+    display:flex; gap:10px; margin-bottom:6px; padding-left:116px;
+  }
+  .mhr-item {
+    flex:1; text-align:center;
+    font-size:11px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.7px;
+    padding:5px 0;
+  }
+
+  /* ── Warden badge ────────────────────────────────────────── */
+  .warden-badge {
+    display:inline-flex; align-items:center; gap:6px;
+    background:#EBF3FF; color:#1565C0;
+    border-radius:20px; padding:4px 12px;
+    font-size:12px; font-weight:600;
+    border:1px solid #BFDBFE;
+  }
+
+  /* ── Feedback stats ──────────────────────────────────────── */
+  .feedback-stat {
+    border-radius:12px; padding:18px 20px; text-align:center;
+    background:var(--bg,#F1F5FB);
+    border:1.5px solid #E2E8F0;
+  }
+  .feedback-stat .fs-meal { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:#94A3B8; }
+  .feedback-stat .fs-num  { font-size:28px; font-weight:800; color:#0D47A1; margin:4px 0 2px; }
+  .feedback-stat .fs-sub  { font-size:11px; color:#94A3B8; }
+</style>
+
+<!-- ── Page header ─────────────────────────────────── -->
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>
+      Mess Menu
+      {% if is_warden %}
+        <span class="warden-badge ms-2"><i class="bi bi-eye-fill"></i> View Only</span>
+      {% endif %}
+    </h4>
+    <p>{% if is_warden %}Weekly meal schedule for your hostel.{% else %}Set and manage the weekly meal menu for each hostel.{% endif %}</p>
+  </div>
+  <form method="get" class="d-flex gap-2 align-items-center">
+    {% if not is_warden %}
+    <select name="hostel" class="form-select form-select-sm" style="width:200px" onchange="this.form.submit()">
+      <option value="">All Hostels</option>
+      {% for h in hostels %}
+      <option value="{{ h.pk }}" {% if selected_hostel == h.pk|stringformat:'s' %}selected{% endif %}>{{ h.name }}</option>
+      {% endfor %}
+    </select>
+    {% else %}
+    <span class="badge bg-primary-subtle text-primary px-3 py-2" style="font-size:13px">
+      <i class="bi bi-building me-1"></i>
+      {% for h in hostels %}{{ h.name }}{% endfor %}
+    </span>
+    {% endif %}
+  </form>
+</div>
+
+<!-- ── Column headers ─────────────────────────────── -->
+<div class="meal-headers-row">
+  <div class="mhr-item" style="color:#F59E0B">
+    <i class="bi bi-brightness-high-fill me-1"></i>Breakfast
+  </div>
+  <div class="mhr-item" style="color:#1565C0">
+    <i class="bi bi-sun-fill me-1"></i>Lunch
+  </div>
+  <div class="mhr-item" style="color:#1976D2">
+    <i class="bi bi-cup-hot-fill me-1"></i>Evening Snacks
+  </div>
+  <div class="mhr-item" style="color:#0D47A1">
+    <i class="bi bi-moon-stars-fill me-1"></i>Dinner
+  </div>
+</div>
+
+<!-- ── Day rows ───────────────────────────────────── -->
+{% for day_data in menu_grid %}
+{% with day_short=day_data.day_label|slice:":3" %}
+<div class="day-row {% if day_data.day == today_day %}today-row{% endif %}">
+
+  <!-- Day label -->
+  <div class="day-label-col">
+    <span class="dl-name">{{ day_data.day_label }}</span>
+    <span class="dl-short">{{ day_short }}</span>
+  </div>
+
+  <!-- Meal columns -->
+  {% for meal_data in day_data.meals %}
+  <div class="meal-col {% if meal_data.meal == 'breakfast' %}meal-breakfast{% elif meal_data.meal == 'lunch' %}meal-lunch{% elif meal_data.meal == 'snacks' %}meal-snacks{% else %}meal-dinner{% endif %}">
+    <div class="meal-card">
+    <div class="meal-header">
+      <div class="mh-icon">
+        <i class="bi {% if meal_data.meal == 'breakfast' %}bi-brightness-high-fill{% elif meal_data.meal == 'lunch' %}bi-sun-fill{% elif meal_data.meal == 'snacks' %}bi-cup-hot-fill{% else %}bi-moon-stars-fill{% endif %}"></i>
+      </div>
+      <span class="mh-label">{{ meal_data.meal_label }}</span>
+    </div>
+    <div class="meal-body">
+      {% if meal_data.menu %}
+        <ul class="meal-items">
+          {% for item in meal_data.menu.items|split_items %}
+          <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+        {% if not is_warden %}
+        <div class="meal-actions">
+          <button class="ma-btn ma-edit" title="Edit"
+            onclick="openEdit('{{ day_data.day }}','{{ meal_data.meal }}','{{ meal_data.menu.items|escapejs }}','{{ meal_data.menu.pk }}')">
+            <i class="bi bi-pencil-fill"></i>
+          </button>
+          <form method="post" class="d-inline" onsubmit="return confirm('Delete this menu entry?')">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="menu_id" value="{{ meal_data.menu.pk }}">
+            <button class="ma-btn ma-del" title="Delete" type="submit">
+              <i class="bi bi-trash-fill"></i>
+            </button>
+          </form>
+        </div>
+        {% endif %}
+      {% else %}
+        {% if not is_warden %}
+        <button class="meal-add-btn"
+          onclick="openEdit('{{ day_data.day }}','{{ meal_data.meal }}','','')">
+          <i class="bi bi-plus-circle"></i> Add Menu
+        </button>
+        {% else %}
+        <div class="meal-empty">
+          <i class="bi bi-dash-circle me-1" style="font-size:14px"></i> Not set
+        </div>
+        {% endif %}
+      {% endif %}
+    </div>
+    </div><!-- /.meal-card -->
+  </div><!-- /.meal-col -->
+
+  {% endfor %}
+</div>
+{% endwith %}
+{% endfor %}
+
+<!-- ── Feedback summary ───────────────────────────── -->
+{% if feedback_summary %}
+<div class="card mt-4">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-star-fill" style="color:#1565C0"></i></div>
+      Student Feedback Summary
+    </div>
+  </div>
+  <div class="card-body p-4">
+    <div class="row g-3">
+      {% for fb in feedback_summary %}
+      <div class="col-6 col-sm-3">
+        <div class="feedback-stat">
+          <div class="fs-meal">{{ fb.meal_type|title }}</div>
+          <div class="fs-num">{{ fb.total }}</div>
+          <div class="fs-sub">responses</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Edit Modal (admin only) ───────────────────── -->
+{% if not is_warden %}
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:14px;overflow:hidden;border:none;box-shadow:0 20px 60px rgba(0,0,0,.15)">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action"    value="save">
+        <input type="hidden" name="hostel_id" value="{{ selected_hostel }}">
+        <input type="hidden" name="day"       id="modal_day">
+        <input type="hidden" name="meal_type" id="modal_meal">
+
+        <div class="modal-header" id="modal_header_bar" style="border-bottom:none;padding:20px 24px 12px">
+          <div>
+            <h5 class="modal-title mb-0" id="modal_title" style="font-weight:700"></h5>
+            <p class="mb-0 mt-1" style="font-size:12px;color:#8a94a6" id="modal_subtitle">Enter each item on a new line or comma-separated</p>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body" style="padding:8px 24px 20px">
+          <textarea name="items" id="modal_items" class="form-control" rows="6"
+            style="border-radius:10px;font-size:13px;line-height:1.7;resize:none"
+            placeholder="e.g. Idli - 2 pieces, Sambar, Coconut Chutney, Tea" required></textarea>
+        </div>
+
+        <div class="modal-footer" style="border-top:none;padding:0 24px 20px;gap:8px">
+          <button type="button" class="btn btn-outline-secondary btn-sm px-4" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm px-4">
+            <i class="bi bi-check-lg me-1"></i>Save Menu
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if not is_warden %}
+<script>
+/* GGI brand palette for modal accent */
+const mealColors = {
+  breakfast: '#F59E0B',
+  lunch:     '#1565C0',
+  snacks:    '#1976D2',
+  dinner:    '#0D47A1',
+};
+const mealBg = {
+  breakfast: '#FFFBEB',
+  lunch:     '#EBF3FF',
+  snacks:    '#E3F2FD',
+  dinner:    '#E8EEF9',
+};
+
+function openEdit(day, meal, items, menuId) {
+  document.getElementById('modal_day').value   = day;
+  document.getElementById('modal_meal').value  = meal;
+  document.getElementById('modal_items').value = items;
+
+  const titleEl  = document.getElementById('modal_title');
+  const headerEl = document.getElementById('modal_header_bar');
+  titleEl.textContent =
+    day.charAt(0).toUpperCase() + day.slice(1) + ' — ' +
+    meal.charAt(0).toUpperCase() + meal.slice(1);
+
+  const color = mealColors[meal] || '#3B82F6';
+  const bg    = mealBg[meal]    || '#EFF6FF';
+  headerEl.style.background    = bg;
+  headerEl.style.borderLeft    = `4px solid ${color}`;
+  titleEl.style.color          = color;
+
+  new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+</script>
+{% endif %}
+{% endblock %}

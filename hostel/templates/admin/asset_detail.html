@@ -1,0 +1,324 @@
+{% extends "base/base.html" %}
+{% block title %}{{ asset.name }} — Assets{% endblock %}
+{% block page_title %}Asset Detail{% endblock %}
+
+{% block content %}
+<style>
+  .tl-wrap{position:relative;padding-left:32px}
+  .tl-wrap::before{content:'';position:absolute;left:11px;top:0;bottom:0;width:2px;background:#E2E8F0}
+  .tl-item{position:relative;margin-bottom:16px}
+  .tl-dot{position:absolute;left:-32px;top:3px;width:22px;height:22px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;
+    border:2px solid #fff;box-shadow:0 0 0 2px var(--dot-color,#94A3B8);z-index:1;background:#fff}
+  .tl-card{background:#fff;border:1.5px solid #E2E8F0;border-radius:10px;padding:11px 14px}
+  .info-label{font-size:11px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .cond-pill{font-size:12px;font-weight:700;padding:3px 12px;border-radius:20px;display:inline-block}
+</style>
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h4 style="font-size:16px">{{ asset.name }}</h4>
+    <div class="d-flex align-items-center gap-2 mt-1">
+      <code style="font-size:11.5px;background:#F1F5F9;padding:2px 8px;border-radius:4px">{{ asset.asset_code }}</code>
+      {% if asset.asset_type %}<span style="font-size:12px;color:var(--text-2)">{{ asset.asset_type.name }}</span>{% endif %}
+      <span class="cond-pill" style="background:{{ asset.condition_color }}20;color:{{ asset.condition_color }}">
+        {{ asset.get_condition_display }}
+      </span>
+      {% if asset.status == 'discarded' %}
+      <span class="cond-pill" style="background:#F1F5F9;color:#64748B">Discarded</span>
+      {% elif asset.status == 'lost' %}
+      <span class="cond-pill" style="background:#FEF3C7;color:#92400E">Lost</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'asset_edit' asset.pk %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-pencil me-1"></i>Edit
+    </a>
+    <a href="{% url 'asset_dashboard' %}" class="btn btn-outline-secondary btn-sm">← Back</a>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  {# Left column: info + transfer history + log #}
+  <div class="col-lg-8">
+
+    {# Details card #}
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EDE9FE"><i class="bi bi-box-seam-fill" style="color:#7C3AED"></i></div>
+          Asset Information
+        </div>
+        <span style="font-size:12px;color:var(--text-3)">Added {{ asset.created_at|date:"d M Y" }}</span>
+      </div>
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-sm-4">
+            <div class="info-label">Location</div>
+            <div class="fw-600 mt-1">{{ asset.location_display }}</div>
+          </div>
+          <div class="col-sm-4">
+            <div class="info-label">Assigned Date</div>
+            <div class="fw-600 mt-1">{{ asset.assigned_date|date:"d M Y"|default:"—" }}</div>
+          </div>
+          <div class="col-sm-4">
+            <div class="info-label">Added By</div>
+            <div class="fw-600 mt-1">{{ asset.added_by.name|default:"—" }}</div>
+          </div>
+          {% if asset.vendor_name %}
+          <div class="col-sm-4">
+            <div class="info-label">Vendor</div>
+            <div class="fw-600 mt-1">{{ asset.vendor_name }}</div>
+            {% if asset.vendor_contact %}<div style="font-size:12px;color:var(--text-2)">{{ asset.vendor_contact }}</div>{% endif %}
+          </div>
+          {% endif %}
+          {% if asset.purchase_date %}
+          <div class="col-sm-4">
+            <div class="info-label">Purchase Date</div>
+            <div class="fw-600 mt-1">{{ asset.purchase_date|date:"d M Y" }}</div>
+          </div>
+          {% endif %}
+          {% if asset.purchase_cost %}
+          <div class="col-sm-4">
+            <div class="info-label">Purchase Cost</div>
+            <div class="fw-600 mt-1">₹{{ asset.purchase_cost }}</div>
+          </div>
+          {% endif %}
+          {% if asset.vendor_invoice %}
+          <div class="col-sm-4">
+            <div class="info-label">Invoice / PO</div>
+            <div class="fw-600 mt-1">{{ asset.vendor_invoice }}</div>
+          </div>
+          {% endif %}
+          {% if asset.notes %}
+          <div class="col-12">
+            <div class="info-label">Notes</div>
+            <div style="font-size:13px;margin-top:4px;color:var(--text-1)">{{ asset.notes }}</div>
+          </div>
+          {% endif %}
+        </div>
+        {% if asset.status == 'discarded' %}
+        <div class="mt-3 p-3 rounded" style="background:#FEE2E2;border:1px solid #FECACA">
+          <div style="font-size:11px;color:#B91C1C;font-weight:700;margin-bottom:4px">DISCARDED</div>
+          <div style="font-size:13px">{{ asset.discard_reason }}</div>
+          <div style="font-size:11px;color:#64748B;margin-top:4px">By {{ asset.discarded_by.name }} on {{ asset.discarded_at|date:"d M Y, H:i" }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Transfer History #}
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-arrow-left-right" style="color:#1565C0"></i></div>
+          Transfer History
+        </div>
+      </div>
+      <div class="card-body p-3">
+        {% if transfers %}
+        {% for t in transfers %}
+        <div style="border:1.5px solid {% if t.status == 'completed' %}#BBF7D0{% elif t.status == 'pending' %}#FDE68A{% elif t.status == 'rejected' %}#FECACA{% else %}#E2E8F0{% endif %};border-radius:10px;padding:12px 14px;margin-bottom:10px;background:{% if t.status == 'pending' %}#FFFBEB{% else %}#fff{% endif %}">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div style="font-size:13px;font-weight:700">
+                {{ t.from_hostel.name|default:"Unassigned" }}{% if t.from_floor %} · Fl {{ t.from_floor }}{% endif %}{% if t.from_room %} · Rm {{ t.from_room.room_number }}{% endif %}
+                <i class="bi bi-arrow-right mx-2" style="color:#7C3AED"></i>
+                {{ t.to_hostel.name|default:"Unassigned" }}{% if t.to_floor %} · Fl {{ t.to_floor }}{% endif %}{% if t.to_room %} · Rm {{ t.to_room.room_number }}{% endif %}
+              </div>
+              <div style="font-size:12px;color:var(--text-2);margin-top:4px">{{ t.reason }}</div>
+              <div style="font-size:11px;color:var(--text-3);margin-top:3px">
+                Requested by {{ t.requested_by.name|default:"—" }} · {{ t.transfer_date|date:"d M Y" }}
+                {% if t.approved_by %}· Approved by {{ t.approved_by.name }}{% endif %}
+              </div>
+            </div>
+            <div class="d-flex flex-column align-items-end gap-1">
+              <span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;
+                background:{% if t.status == 'completed' %}#DCFCE7{% elif t.status == 'pending' %}#FEF3C7{% elif t.status == 'rejected' %}#FEE2E2{% else %}#F1F5F9{% endif %};
+                color:{% if t.status == 'completed' %}#166534{% elif t.status == 'pending' %}#92400E{% elif t.status == 'rejected' %}#B91C1C{% else %}#374151{% endif %}">
+                {{ t.get_status_display }}
+              </span>
+              {% if t.status == 'pending' %}
+              <form method="post" action="{% url 'asset_transfer_action' t.pk %}" class="d-flex gap-1 mt-1">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="approve">
+                <button class="btn btn-xs" style="background:#059669;color:#fff">Approve</button>
+              </form>
+              <form method="post" action="{% url 'asset_transfer_action' t.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reject">
+                <button class="btn btn-xs btn-outline-danger">Reject</button>
+              </form>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state py-3"><i class="bi bi-arrow-left-right" style="font-size:24px;opacity:.3"></i>
+          <p style="font-size:13px;margin-top:8px">No transfers yet.</p></div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Activity Log #}
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#F0FDF4"><i class="bi bi-clock-history" style="color:#059669"></i></div>
+          Activity Log
+        </div>
+      </div>
+      <div class="card-body p-4">
+        {% if logs %}
+        <div class="tl-wrap">
+          {% for log in logs %}
+          <div class="tl-item">
+            <div class="tl-dot" style="--dot-color:{% if log.action == 'created' %}#059669{% elif log.action == 'transferred' %}#1565C0{% elif log.action == 'discarded' %}#DC2626{% elif log.action == 'condition_changed' %}#D97706{% else %}#7C3AED{% endif %}">
+              <i class="bi {% if log.action == 'created' %}bi-plus{% elif log.action == 'transferred' %}bi-arrow-right{% elif log.action == 'discarded' %}bi-x{% elif log.action == 'condition_changed' %}bi-exclamation{% else %}bi-pencil{% endif %}" style="font-size:9px;color:{% if log.action == 'created' %}#059669{% elif log.action == 'transferred' %}#1565C0{% elif log.action == 'discarded' %}#DC2626{% else %}#7C3AED{% endif %}"></i>
+            </div>
+            <div class="tl-card">
+              <div class="d-flex justify-content-between">
+                <div>
+                  <span class="fw-700" style="font-size:12.5px">{{ log.get_action_display }}</span>
+                  <div style="font-size:13px;color:#374151;margin-top:3px">{{ log.description }}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;margin-left:12px">
+                  <div style="font-size:12px;color:var(--text-2);font-weight:600">{{ log.performed_by.name|default:"System" }}</div>
+                  <div style="font-size:11px;color:var(--text-3)">{{ log.created_at|date:"d M Y, H:i" }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state py-3"><i class="bi bi-clock-history" style="font-size:24px;opacity:.3"></i>
+          <p>No activity yet.</p></div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  {# Right column: actions #}
+  <div class="col-lg-4">
+
+    {% if asset.status != 'discarded' %}
+    {# Transfer form #}
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-arrow-right-circle-fill" style="color:#1565C0"></i></div>
+          Transfer Asset
+        </div>
+      </div>
+      <div class="card-body p-3">
+        <form method="post" action="{% url 'asset_transfer_request' asset.pk %}">
+          {% csrf_token %}
+          <div class="mb-2">
+            <label class="form-label fw-600" style="font-size:12px">To Hostel</label>
+            <select name="to_hostel" class="form-select form-select-sm">
+              <option value="">— Unassign —</option>
+              {% for h in hostels %}
+              <option value="{{ h.pk }}" {% if asset.hostel_id == h.pk %}selected{% endif %}>{{ h.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-4">
+              <label class="form-label fw-600" style="font-size:12px">Floor</label>
+              <input type="number" name="to_floor" class="form-control form-control-sm" min="0" max="20"
+                     value="{{ asset.floor|default:'' }}" placeholder="—">
+            </div>
+            <div class="col-8">
+              <label class="form-label fw-600" style="font-size:12px">Room</label>
+              <select name="to_room" class="form-select form-select-sm">
+                <option value="">— No room —</option>
+                {% for r in rooms %}
+                <option value="{{ r.pk }}" {% if asset.room_id == r.pk %}selected{% endif %}>{{ r.room_number }} ({{ r.hostel.name }})</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-600" style="font-size:12px">Transfer Date</label>
+            <input type="date" name="transfer_date" class="form-control form-control-sm" value="{{ today|date:'Y-m-d' }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:12px">Reason <span class="text-danger">*</span></label>
+            <textarea name="reason" class="form-control form-control-sm" rows="2" required placeholder="Reason for transfer..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-sm w-100" style="background:#1565C0;color:#fff">
+            <i class="bi bi-arrow-right-circle me-1"></i>Submit Transfer
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {# Condition update #}
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FFFBEB"><i class="bi bi-wrench-adjustable" style="color:#D97706"></i></div>
+          Update Condition
+        </div>
+      </div>
+      <div class="card-body p-3">
+        <form method="post" action="{% url 'asset_edit' asset.pk %}">
+          {% csrf_token %}
+          {# Carry over existing fields via hidden inputs #}
+          <input type="hidden" name="name" value="{{ asset.name }}">
+          <input type="hidden" name="asset_type" value="{{ asset.asset_type_id|default:'' }}">
+          <input type="hidden" name="hostel" value="{{ asset.hostel_id|default:'' }}">
+          <input type="hidden" name="floor" value="{{ asset.floor|default:'' }}">
+          <input type="hidden" name="room" value="{{ asset.room_id|default:'' }}">
+          <input type="hidden" name="vendor_name" value="{{ asset.vendor_name }}">
+          <input type="hidden" name="vendor_contact" value="{{ asset.vendor_contact }}">
+          <input type="hidden" name="vendor_invoice" value="{{ asset.vendor_invoice }}">
+          <input type="hidden" name="purchase_cost" value="{{ asset.purchase_cost|default:'' }}">
+          <input type="hidden" name="notes" value="{{ asset.notes }}">
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:12px">New Condition</label>
+            <select name="condition" class="form-select form-select-sm">
+              {% for val, lbl in conditions %}
+              <option value="{{ val }}" {% if asset.condition == val %}selected{% endif %}>{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-sm btn-outline-warning w-100">Update Condition</button>
+        </form>
+      </div>
+    </div>
+
+    {# Discard #}
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEE2E2"><i class="bi bi-trash3-fill" style="color:#DC2626"></i></div>
+          Discard Asset
+        </div>
+      </div>
+      <div class="card-body p-3">
+        <p style="font-size:12.5px;color:var(--text-2)">This action marks the asset as permanently discarded. The record and history are retained.</p>
+        <form method="post" action="{% url 'asset_discard' asset.pk %}" onsubmit="return confirm('Discard this asset permanently?')">
+          {% csrf_token %}
+          <div class="mb-2">
+            <textarea name="reason" class="form-control form-control-sm" rows="2" required
+                      placeholder="Reason for discarding…"></textarea>
+          </div>
+          <button type="submit" class="btn btn-sm btn-outline-danger w-100">
+            <i class="bi bi-trash3 me-1"></i>Discard Asset
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<style>.btn-xs{padding:2px 10px;font-size:11.5px}</style>
+{% endblock %}

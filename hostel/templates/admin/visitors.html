@@ -1,0 +1,275 @@
+{% extends 'base/base.html' %}
+{% block title %}Visitors — GGI Hostel ERP{% endblock %}
+{% block page_title %}Visitor Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Visitor Management</h4>
+    <p>{% if warden_hostel %}{{ warden_hostel.name }} — {% endif %}Walk-in records and approval queue</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'visitor_general_qr' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-qr-code-scan me-1"></i>Walk-In QR
+    </a>
+  </div>
+</div>
+
+{# ── Status summary ── #}
+<div class="row g-3 mb-3">
+  {% for val, label, count in status_counts %}
+  <div class="col-6 col-md-2">
+    <a href="?status={{ val }}{% if hostel_filter %}&hostel={{ hostel_filter }}{% endif %}" class="text-decoration-none">
+      <div class="stat-card text-center" style="--stat-color:{% if val == 'pending' %}#D97706{% elif val == 'approved' %}#059669{% elif val == 'rejected' %}#DC2626{% elif val == 'checked_in' %}#1565C0{% else %}#94A3B8{% endif %}">
+        <div class="s-number" style="font-size:24px">{{ count }}</div>
+        <div class="s-label">{{ label }}</div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+{# ── Purpose summary chips ── #}
+<div class="d-flex gap-2 flex-wrap mb-3">
+  <span style="font-size:12px;font-weight:700;color:var(--text-3);align-self:center">Purpose:</span>
+  {% for val, label, count in purpose_counts %}
+  <a href="?purpose={{ val }}{% if hostel_filter %}&hostel={{ hostel_filter }}{% endif %}"
+     class="text-decoration-none" style="display:inline-flex;align-items:center;gap:5px;
+     padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;
+     background:{% if purpose_filter == val %}#0891B2{% else %}#F1F5F9{% endif %};
+     color:{% if purpose_filter == val %}#fff{% else %}#64748B{% endif %}">
+    <i class="bi bi-{% if val == 'admission' %}building2{% elif val == 'guardian' %}person-hearts{% else %}people-fill{% endif %}"></i>
+    {{ label }} ({{ count }})
+  </a>
+  {% endfor %}
+  {% if purpose_filter %}
+  <a href="?{% if hostel_filter %}hostel={{ hostel_filter }}{% endif %}"
+     style="font-size:12px;color:var(--text-3);align-self:center">
+    <i class="bi bi-x-circle"></i> Clear
+  </a>
+  {% endif %}
+</div>
+
+{# ── Filter bar ── #}
+<div class="filter-card">
+  <form method="get" class="row g-2 align-items-end">
+    {% if not warden_hostel %}
+    <div class="col-md-3">
+      <select name="hostel" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">All Hostels</option>
+        {% for h in hostels %}
+        <option value="{{ h.pk }}" {% if hostel_filter == h.pk|stringformat:"s" %}selected{% endif %}>
+          {{ h.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-md-2">
+      <select name="status" class="form-select form-select-sm">
+        <option value="">All Status</option>
+        {% for val, label in statuses %}
+        <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <input type="date" name="date" class="form-control form-control-sm" value="{{ date_filter }}">
+    </div>
+    <input type="hidden" name="purpose" value="{{ purpose_filter }}">
+    <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm px-3">Filter</button></div>
+    <div class="col-auto">
+      <a href="{% url 'visitor_list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+    </div>
+  </form>
+</div>
+
+{# ── Table ── #}
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-person-check-fill" style="color:#059669"></i></div>
+      Visitors
+    </div>
+    <span style="font-size:12px;color:var(--text-3)">{{ page.paginator.count }} record{{ page.paginator.count|pluralize }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead><tr>
+        <th>Visitor</th>
+        <th>Purpose</th>
+        <th>Hostel</th>
+        <th>Student / Details</th>
+        <th>ID Proof</th>
+        <th>Time In / Out</th>
+        <th>Status</th>
+        <th></th>
+      </tr></thead>
+      <tbody>
+      {% for v in page %}
+      <tr>
+        <td>
+          <div class="tbl-name">{{ v.visitor_name }}</div>
+          <div class="tbl-sub">
+            <i class="bi bi-phone" style="font-size:10px"></i> {{ v.phone }}
+            {% if v.email %}&nbsp;·&nbsp;<i class="bi bi-envelope" style="font-size:10px"></i> {{ v.email }}{% endif %}
+          </div>
+          {% if v.id_upload %}
+          <div class="mt-1">
+            <a href="{{ v.id_upload.url }}" target="_blank"
+               style="font-size:11px;color:var(--blue);font-weight:600">
+              <i class="bi bi-paperclip me-1"></i>View ID
+            </a>
+          </div>
+          {% endif %}
+        </td>
+        <td>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:10px;
+                       font-size:11.5px;font-weight:700;
+                       background:{% if v.purpose_type == 'admission' %}#EFF6FF{% elif v.purpose_type == 'guardian' %}#FDF4FF{% else %}#ECFDF5{% endif %};
+                       color:{% if v.purpose_type == 'admission' %}#1D4ED8{% elif v.purpose_type == 'guardian' %}#7E22CE{% else %}#065F46{% endif %}">
+            <i class="bi bi-{% if v.purpose_type == 'admission' %}building2{% elif v.purpose_type == 'guardian' %}person-hearts{% else %}people-fill{% endif %}"></i>
+            {{ v.get_purpose_type_display }}
+          </span>
+        </td>
+        <td style="font-size:12.5px;color:var(--text-2)">{{ v.hostel.name }}</td>
+        <td>
+          {% if v.purpose_type == 'guardian' %}
+          <div class="tbl-name" style="font-size:12.5px">
+            {{ v.student_name_text|default:v.student.name|default:"—" }}
+          </div>
+          {% if v.relation %}
+          <div class="tbl-sub">{{ v.get_relation_display }}</div>
+          {% endif %}
+          {% if v.student %}
+          <div style="font-size:10.5px;color:#059669;font-weight:600;margin-top:2px">
+            <i class="bi bi-person-check me-1"></i>Linked
+          </div>
+          {% endif %}
+          {% if v.student_acknowledged %}
+          <div style="font-size:10.5px;color:#059669;font-weight:600">
+            <i class="bi bi-check2-circle me-1"></i>Acknowledged {{ v.student_acknowledged_at|date:"H:i" }}
+          </div>
+          {% elif v.student_notified %}
+          <div style="font-size:10.5px;color:#D97706;font-weight:600">
+            <i class="bi bi-bell me-1"></i>Notified — awaiting ack
+          </div>
+          {% endif %}
+          {% elif v.purpose_type == 'guest' %}
+          <div style="font-size:12px;color:var(--text-2)">
+            {{ v.purpose|truncatechars:50 }}
+          </div>
+          {% if v.is_college_student %}
+          <div style="font-size:10.5px;font-weight:700;color:#7C3AED;margin-top:2px">
+            <i class="bi bi-mortarboard-fill me-1"></i>College Student
+            {% if v.college_id_upload %}
+            <a href="{{ v.college_id_upload.url }}" target="_blank"
+               style="font-size:10.5px;color:var(--blue)"> View ID</a>
+            {% endif %}
+          </div>
+          {% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td style="font-size:12px;color:var(--text-2)">
+          {{ v.id_proof_type }}<br>
+          <span style="font-size:11px;color:var(--text-3)">{{ v.id_number }}</span>
+        </td>
+        <td>
+          <div style="font-size:12px;color:var(--text-1)">
+            <i class="bi bi-box-arrow-in-right" style="color:#059669;font-size:11px"></i>
+            {{ v.expected_in_time|time:"H:i" }}
+          </div>
+          <div style="font-size:12px;color:var(--text-1)">
+            <i class="bi bi-box-arrow-right" style="color:#DC2626;font-size:11px"></i>
+            {{ v.expected_out_time|time:"H:i" }}
+          </div>
+          {% if v.actual_in_time %}
+          <div style="font-size:11px;color:#059669;font-weight:600;margin-top:3px">
+            <i class="bi bi-clock-history me-1"></i>In {{ v.actual_in_time|date:"H:i" }}
+          </div>
+          {% endif %}
+          {% if v.actual_out_time %}
+          <div style="font-size:11px;color:#DC2626;font-weight:600">
+            <i class="bi bi-clock me-1"></i>Out {{ v.actual_out_time|date:"H:i" }}
+          </div>
+          {% endif %}
+          <div style="font-size:10.5px;color:var(--text-3)">{{ v.visit_date|date:"d M Y" }}</div>
+        </td>
+        <td>
+          <span class="badge badge-{{ v.status }}">{{ v.get_status_display }}</span>
+        </td>
+        <td>
+          <div class="d-flex flex-column gap-1">
+            {% if v.status == 'pending' %}
+            <form method="post" action="{% url 'visitor_action' v.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="approve">
+              <button class="btn btn-xs btn-outline-success w-100">
+                <i class="bi bi-check-lg me-1"></i>Approve
+              </button>
+            </form>
+            <form method="post" action="{% url 'visitor_action' v.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="reject">
+              <button class="btn btn-xs btn-outline-danger w-100">
+                <i class="bi bi-x-lg me-1"></i>Reject
+              </button>
+            </form>
+            {% elif v.status == 'approved' %}
+            <form method="post" action="{% url 'visitor_action' v.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="checkin">
+              <button class="btn btn-xs btn-outline-primary w-100">
+                <i class="bi bi-box-arrow-in-right me-1"></i>Check In
+              </button>
+            </form>
+            {% elif v.status == 'checked_in' %}
+            <form method="post" action="{% url 'visitor_action' v.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="checkout">
+              <button class="btn btn-xs btn-outline-secondary w-100">
+                <i class="bi bi-box-arrow-right me-1"></i>Check Out
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="8">
+          <div class="empty-state"><i class="bi bi-person-check"></i>
+            <p>No visitor records found.</p>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if page.has_other_pages %}
+<nav class="mt-3 d-flex align-items-center justify-content-between">
+  <span style="font-size:12.5px;color:var(--text-3)">
+    Page {{ page.number }} of {{ page.paginator.num_pages }}
+  </span>
+  <ul class="pagination pagination-sm mb-0">
+    {% if page.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page.previous_page_number }}&status={{ status_filter }}&date={{ date_filter }}&hostel={{ hostel_filter }}&purpose={{ purpose_filter }}">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+    {% endif %}
+    {% if page.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page.next_page_number }}&status={{ status_filter }}&date={{ date_filter }}&hostel={{ hostel_filter }}&purpose={{ purpose_filter }}">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

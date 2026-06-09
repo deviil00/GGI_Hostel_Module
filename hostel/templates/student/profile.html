@@ -1,0 +1,354 @@
+{% extends 'base/base.html' %}
+{% block title %}My Profile — GGI Hostel{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>My Profile</h4>
+    <p>{{ student.roll_number }} &nbsp;·&nbsp; {{ student.department }} &nbsp;·&nbsp; Year {{ student.year }}, Sem {{ student.semester }}</p>
+  </div>
+  {% if student.can_edit_profile %}
+  <a href="{% url 'student_edit_profile' %}" class="btn btn-sm btn-primary">
+    <i class="bi bi-pencil-square me-1"></i>Edit Profile
+  </a>
+  {% else %}
+  <span class="btn btn-sm btn-outline-secondary disabled" title="Contact admin to enable editing">
+    <i class="bi bi-lock-fill me-1"></i>Edit Locked
+  </span>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+
+{# ── LEFT SIDEBAR ── #}
+<div class="col-lg-3">
+
+  <div class="card mb-3">
+    <div class="text-center py-4"
+         style="background:linear-gradient(135deg,#EBF3FF,#F1F5FB);border-radius:14px 14px 0 0;border-bottom:1px solid var(--border)">
+      {% if student.photo %}
+      <img src="{{ student.photo.url }}" alt="{{ student.name }}"
+           style="width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid #fff;
+                  box-shadow:0 2px 12px rgba(0,0,0,.12);margin-bottom:10px">
+      {% else %}
+      <div style="width:88px;height:88px;border-radius:50%;background:var(--blue);color:#fff;
+                  font-size:34px;font-weight:800;display:flex;align-items:center;justify-content:center;
+                  margin:0 auto 10px;border:3px solid #fff;box-shadow:0 2px 12px rgba(0,0,0,.12)">
+        {{ student.name|first|upper }}
+      </div>
+      {% endif %}
+      <div style="font-size:15px;font-weight:700;color:var(--text-1)">{{ student.name }}</div>
+      <div style="font-size:12px;color:var(--text-3);margin-top:2px">{{ student.roll_number }}</div>
+
+      {# Flag badge #}
+      <div class="mt-2">
+        <span style="padding:4px 14px;border-radius:20px;font-size:11.5px;font-weight:800;display:inline-flex;align-items:center;gap:6px;
+                     background:{% if student.flag_color == 'red' %}#FEE2E2{% elif student.flag_color == 'yellow' %}#FEF9C3{% else %}#DCFCE7{% endif %};
+                     color:{% if student.flag_color == 'red' %}#DC2626{% elif student.flag_color == 'yellow' %}#92400E{% else %}#166534{% endif %}">
+          <i class="bi bi-flag-fill"
+             style="font-size:11px;color:{% if student.flag_color == 'red' %}#DC2626{% elif student.flag_color == 'yellow' %}#D97706{% else %}#059669{% endif %}"></i>
+          {{ student.get_flag_color_display }} Status
+        </span>
+      </div>
+    </div>
+
+    <div class="card-body p-0">
+      <table class="table table-sm mb-0" style="font-size:12.5px">
+        <tr><td class="ps-3 py-2" style="color:var(--text-3);width:40%">Unique ID</td>
+            <td class="py-2" style="font-family:monospace;font-size:11px">{{ student.id }}</td></tr>
+        <tr><td class="ps-3" style="color:var(--text-3)">Email</td>
+            <td>{{ student.email|default:"—" }}</td></tr>
+        <tr><td class="ps-3" style="color:var(--text-3)">Phone</td>
+            <td>{{ student.phone|default:"—" }}</td></tr>
+        <tr><td class="ps-3" style="color:var(--text-3)">Branch</td>
+            <td>{{ student.department }}</td></tr>
+        <tr><td class="ps-3" style="color:var(--text-3)">Year / Sem</td>
+            <td>Year {{ student.year }} / Sem {{ student.semester }}</td></tr>
+        {% if student.gender %}<tr><td class="ps-3" style="color:var(--text-3)">Gender</td><td>{{ student.get_gender_display }}</td></tr>{% endif %}
+        {% if student.date_of_birth %}<tr><td class="ps-3" style="color:var(--text-3)">DOB</td><td>{{ student.date_of_birth|date:"d M Y" }}</td></tr>{% endif %}
+        {% with room=student.current_room %}
+        <tr><td class="ps-3" style="color:var(--text-3)">Hostel</td>
+            <td>{% if room %}{{ room.hostel.name }}{% else %}<span style="color:var(--text-3)">Not allotted</span>{% endif %}</td></tr>
+        <tr><td class="ps-3" style="color:var(--text-3)">Room No</td>
+            <td>{% if room %}<strong>{{ room.room_number }}</strong>{% else %}—{% endif %}</td></tr>
+        {% endwith %}
+        {% if student.address %}<tr><td class="ps-3 pb-2" style="color:var(--text-3)">Address</td><td class="pb-2" style="font-size:12px">{{ student.address }}</td></tr>{% endif %}
+      </table>
+    </div>
+  </div>
+
+  {# Guardian #}
+  <div class="card mb-3">
+    <div class="card-header">
+      <div class="card-header-left" style="font-size:12.5px;font-weight:700">
+        <div class="ch-icon" style="background:#FDF4FF"><i class="bi bi-person-hearts" style="color:#7E22CE"></i></div>
+        Guardian Details
+      </div>
+    </div>
+    <div class="card-body py-2 px-3" style="font-size:12.5px">
+      {% if student.guardian_name %}
+      <div style="font-weight:700;color:var(--text-1)">{{ student.guardian_name }}</div>
+      {% if student.guardian_relation %}<div style="color:var(--text-3)">{{ student.guardian_relation }}</div>{% endif %}
+      {% if student.guardian_phone %}<div><i class="bi bi-phone me-1" style="font-size:10px"></i>{{ student.guardian_phone }}</div>{% endif %}
+      {% if student.guardian_email %}<div><i class="bi bi-envelope me-1" style="font-size:10px"></i>{{ student.guardian_email }}</div>{% endif %}
+      {% else %}
+      <span style="color:var(--text-3);font-size:12px">No guardian details added.</span>
+      {% if student.can_edit_profile %}<a href="{% url 'student_edit_profile' %}" style="font-size:12px;color:var(--blue);margin-left:6px">Add now</a>{% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  {# Documents #}
+  <div class="card mb-3">
+    <div class="card-header">
+      <div class="card-header-left" style="font-size:12.5px;font-weight:700">
+        <div class="ch-icon" style="background:#F0F9FF"><i class="bi bi-file-earmark-person-fill" style="color:#0891B2"></i></div>
+        My Documents
+      </div>
+      {% if student.can_edit_profile %}<a href="{% url 'student_edit_profile' %}" class="btn btn-xs btn-outline-primary">Upload</a>{% endif %}
+    </div>
+    <div class="card-body py-2 px-3" style="font-size:12.5px">
+      <div class="d-flex flex-column gap-2">
+        <div>
+          <div style="color:var(--text-3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Aadhaar Card</div>
+          {% if student.aadhar_number %}<div style="font-weight:600">{{ student.aadhar_number }}</div>{% endif %}
+          {% if student.aadhar_doc %}
+          <a href="{{ student.aadhar_doc.url }}" target="_blank" style="font-size:11.5px;color:var(--blue);font-weight:600">
+            <i class="bi bi-paperclip me-1"></i>View
+          </a>
+          {% else %}<span style="font-size:11px;color:#D97706"><i class="bi bi-exclamation-circle me-1"></i>Not uploaded</span>{% endif %}
+        </div>
+        <hr style="margin:4px 0">
+        <div>
+          <div style="color:var(--text-3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">College ID Card</div>
+          {% if student.college_id_number %}<div style="font-weight:600">{{ student.college_id_number }}</div>{% endif %}
+          {% if student.college_id_doc %}
+          <a href="{{ student.college_id_doc.url }}" target="_blank" style="font-size:11.5px;color:var(--blue);font-weight:600">
+            <i class="bi bi-paperclip me-1"></i>View
+          </a>
+          {% else %}<span style="font-size:11px;color:#D97706"><i class="bi bi-exclamation-circle me-1"></i>Not uploaded</span>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>{# end left col #}
+
+{# ── RIGHT MAIN ── #}
+<div class="col-lg-9">
+
+  <ul class="nav nav-tabs mb-3" id="profileTabs" role="tablist" style="border-bottom:2px solid var(--border)">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#sp-alloc" style="font-size:13px">
+      <i class="bi bi-house-fill me-1"></i>Room History
+    </button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#sp-fees" style="font-size:13px">
+      <i class="bi bi-cash-coin me-1"></i>Fees
+    </button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#sp-complaints" style="font-size:13px">
+      <i class="bi bi-chat-square-text-fill me-1"></i>Complaints
+    </button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#sp-gp" style="font-size:13px">
+      <i class="bi bi-pass-fill me-1"></i>Gate Passes
+    </button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#sp-leave" style="font-size:13px">
+      <i class="bi bi-calendar2-x-fill me-1"></i>Leaves
+    </button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#sp-discipline" style="font-size:13px">
+      <i class="bi bi-exclamation-triangle-fill me-1" style="color:#DC2626"></i>Discipline
+    </button></li>
+  </ul>
+
+  <div class="tab-content">
+
+    {# Allocations #}
+    <div class="tab-pane fade show active" id="sp-alloc">
+      <div class="card">
+        <div class="card-header"><div class="card-header-left"><div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-house-fill" style="color:var(--blue)"></i></div>Room Allocation History</div></div>
+        <div class="table-responsive">
+        <table class="table" style="font-size:13px">
+          <thead><tr><th>Hostel</th><th>Room No</th><th>Check-in</th><th>Check-out</th><th>Status</th></tr></thead>
+          <tbody>
+          {% for a in allocations %}
+          <tr>
+            <td style="color:var(--text-2)">{{ a.room.hostel.name }}</td>
+            <td><strong>{{ a.room.room_number }}</strong></td>
+            <td style="color:var(--text-2)">{{ a.check_in|date:"d M Y" }}</td>
+            <td style="color:var(--text-2)">{{ a.check_out|date:"d M Y"|default:"Active" }}</td>
+            <td><span class="badge badge-{{ a.status }}">{{ a.get_status_display }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5"><div class="empty-state py-3"><i class="bi bi-house-slash" style="font-size:22px"></i><p>No allocation history</p></div></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    {# Fees #}
+    <div class="tab-pane fade" id="sp-fees">
+      <div class="card">
+        <div class="card-header"><div class="card-header-left"><div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-cash-coin" style="color:#059669"></i></div>Fee Records</div></div>
+        <table class="table" style="font-size:13px">
+          <thead><tr><th>Semester</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+          <tbody>
+          {% for f in fee_records %}
+          <tr>
+            <td>{{ f.fee_structure.name }}</td>
+            <td>₹{{ f.total_amount }}</td>
+            <td>₹{{ f.amount_paid }}</td>
+            <td class="{% if f.balance > 0 %}fw-bold{% endif %}" style="color:{% if f.balance > 0 %}#DC2626{% else %}var(--text-2){% endif %}">₹{{ f.balance }}</td>
+            <td><span class="badge badge-{{ f.status }}">{{ f.get_status_display }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5"><div class="empty-state py-3"><i class="bi bi-receipt" style="font-size:22px"></i><p>No fee records</p></div></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {# Complaints #}
+    <div class="tab-pane fade" id="sp-complaints">
+      <div class="card">
+        <div class="card-header"><div class="card-header-left"><div class="ch-icon" style="background:#F5F3FF"><i class="bi bi-chat-square-text-fill" style="color:#7C3AED"></i></div>My Complaints</div></div>
+        <table class="table" style="font-size:13px">
+          <thead><tr><th>Title</th><th>Category</th><th>Priority</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody>
+          {% for c in complaints %}
+          <tr>
+            <td class="fw-bold">{{ c.title }}</td>
+            <td style="color:var(--text-2)">{{ c.get_category_display }}</td>
+            <td><span class="badge badge-{{ c.priority }}">{{ c.get_priority_display }}</span></td>
+            <td><span class="badge badge-{{ c.status }}">{{ c.get_status_display }}</span></td>
+            <td style="color:var(--text-3)">{{ c.created_at|date:"d M Y" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5"><div class="empty-state py-3"><i class="bi bi-chat-slash" style="font-size:22px"></i><p>No complaints raised</p></div></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {# Gate Passes — monthly #}
+    <div class="tab-pane fade" id="sp-gp">
+      {% regroup gate_passes by created_at|date:"F Y" as gp_months %}
+      {% if gp_months %}
+        {% for month in gp_months %}
+        <div class="card mb-3">
+          <div class="card-header" style="background:#F0FDFA">
+            <div class="card-header-left" style="color:#0D9488;font-weight:700;font-size:13px">
+              <i class="bi bi-calendar3 me-2"></i>{{ month.grouper }}
+              <span class="badge ms-2" style="background:#CCFBF1;color:#0F766E">{{ month.list|length }}</span>
+            </div>
+          </div>
+          <div class="table-responsive">
+          <table class="table" style="font-size:12.5px">
+            <thead><tr><th>Destination</th><th>Departure</th><th>Exp. Return</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for gp in month.list %}
+            <tr {% if gp.is_overstayed %}style="background:#FEF2F2"{% endif %}>
+              <td>
+                <div class="fw-bold">{{ gp.destination }}</div>
+                <div style="font-size:11px;color:var(--text-3)">{{ gp.reason|truncatechars:40 }}</div>
+              </td>
+              <td>{{ gp.departure_date|date:"d M" }} <span style="font-size:11px;color:var(--text-3)">{{ gp.departure_time|time:"H:i" }}</span></td>
+              <td>{{ gp.expected_return_date|date:"d M" }} <span style="font-size:11px;color:var(--text-3)">{{ gp.expected_return_time|time:"H:i" }}</span></td>
+              <td>
+                {% if gp.is_overstayed %}<span class="badge" style="background:#FEE2E2;color:#DC2626">Overstayed</span>
+                {% elif gp.status == 'approved' %}<span class="badge badge-paid">Approved</span>
+                {% elif gp.status == 'returned' %}<span class="badge" style="background:#ECFDF5;color:#059669">Returned</span>
+                {% elif gp.status == 'pending' %}<span class="badge badge-pending">Pending</span>
+                {% else %}<span class="badge" style="background:#FEF2F2;color:#DC2626">Rejected</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="card"><div class="card-body"><div class="empty-state py-3"><i class="bi bi-pass" style="font-size:30px"></i><p>No gate passes yet</p></div></div></div>
+      {% endif %}
+    </div>
+
+    {# Leaves — monthly #}
+    <div class="tab-pane fade" id="sp-leave">
+      {% regroup leave_apps by from_date|date:"F Y" as leave_months %}
+      {% if leave_months %}
+        {% for month in leave_months %}
+        <div class="card mb-3">
+          <div class="card-header" style="background:#FDF4FF">
+            <div class="card-header-left" style="color:#7E22CE;font-weight:700;font-size:13px">
+              <i class="bi bi-calendar3 me-2"></i>{{ month.grouper }}
+              <span class="badge ms-2" style="background:#F3E8FF;color:#6D28D9">{{ month.list|length }}</span>
+            </div>
+          </div>
+          <table class="table" style="font-size:12.5px">
+            <thead><tr><th>From</th><th>To</th><th>Reason</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for lv in month.list %}
+            <tr>
+              <td>{{ lv.from_date|date:"d M Y" }}</td>
+              <td>{{ lv.to_date|date:"d M Y" }}</td>
+              <td style="max-width:200px;color:var(--text-2)">{{ lv.reason|truncatechars:60 }}</td>
+              <td>
+                {% if lv.status == 'approved' %}<span class="badge badge-paid">Approved</span>
+                {% elif lv.status == 'pending' %}<span class="badge badge-pending">Pending</span>
+                {% else %}<span class="badge" style="background:#FEF2F2;color:#DC2626">Rejected</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="card"><div class="card-body"><div class="empty-state py-3"><i class="bi bi-calendar2-x" style="font-size:30px"></i><p>No leave applications</p></div></div></div>
+      {% endif %}
+    </div>
+
+    {# Discipline #}
+    <div class="tab-pane fade" id="sp-discipline">
+      <div class="card">
+        <div class="card-header"><div class="card-header-left"><div class="ch-icon" style="background:#FEF2F2"><i class="bi bi-exclamation-triangle-fill" style="color:#DC2626"></i></div>Disciplinary Actions & Fines</div></div>
+        {% if discipline %}
+        <table class="table" style="font-size:12.5px">
+          <thead><tr><th>Violation</th><th>Description</th><th>Fine Amount</th><th>Fine Status</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody>
+          {% for d in discipline %}
+          <tr style="{% if d.status == 'active' %}background:#FFFBEB{% endif %}">
+            <td class="fw-bold">{{ d.violation }}</td>
+            <td style="max-width:180px;color:var(--text-2);font-size:12px">{{ d.description|truncatechars:55 }}</td>
+            <td style="font-weight:700;color:{% if d.fine_amount > 0 %}#DC2626{% else %}var(--text-3){% endif %}">
+              {% if d.fine_amount > 0 %}₹{{ d.fine_amount }}{% else %}—{% endif %}
+            </td>
+            <td>
+              {% if d.fine_amount > 0 %}
+                {% if d.fine_paid %}<span style="color:#059669;font-weight:700;font-size:11px"><i class="bi bi-check-circle-fill me-1"></i>Paid</span>
+                {% else %}<span style="color:#DC2626;font-weight:700;font-size:11px"><i class="bi bi-x-circle-fill me-1"></i>Unpaid</span>{% endif %}
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if d.status == 'active' %}<span class="badge" style="background:#FEF2F2;color:#DC2626">Active</span>
+              {% elif d.status == 'resolved' %}<span class="badge" style="background:#ECFDF5;color:#059669">Resolved</span>
+              {% else %}<span class="badge badge-pending">Appealed</span>{% endif %}
+            </td>
+            <td style="color:var(--text-3)">{{ d.created_at|date:"d M Y" }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="card-body"><div class="empty-state py-3"><i class="bi bi-shield-check" style="font-size:30px;color:#059669"></i><p style="color:#059669;font-weight:600">No disciplinary records</p></div></div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+{% endblock %}

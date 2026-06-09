@@ -1,0 +1,262 @@
+{% extends "base/base.html" %}
+{% block title %}Download Reports — Admin 1{% endblock %}
+{% block page_title %}Download Reports{% endblock %}
+
+{% block content %}
+<style>
+  .report-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: box-shadow .18s;
+  }
+  .report-card:hover { box-shadow: var(--shadow-md); }
+  .report-card-icon {
+    width: 46px; height: 46px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .report-card-title { font-size: 15px; font-weight: 700; color: var(--text-1); margin: 0; }
+  .report-card-desc  { font-size: 12.5px; color: var(--text-3); margin: 0; }
+  .btn-pdf  { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+  .btn-xlsx { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
+  .btn-pdf:hover  { background: #FEE2E2; color: #991B1B; }
+  .btn-xlsx:hover { background: #DCFCE7; color: #166534; }
+  .hostel-report-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: box-shadow .15s;
+  }
+  .hostel-report-card:hover { box-shadow: var(--shadow-xs); }
+  .date-filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+</style>
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Download Reports</h4>
+    <p>Export reports as PDF or Excel (xlsx) for offline use and sharing</p>
+  </div>
+</div>
+
+<!-- ── Row 1: Standard Reports ────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+
+  <!-- Room Transfer Report -->
+  <div class="col-md-6 col-xl-4">
+    <div class="report-card">
+      <div class="d-flex align-items-center gap-3">
+        <div class="report-card-icon" style="background:#EFF6FF;color:#1565C0">
+          <i class="bi bi-shuffle"></i>
+        </div>
+        <div>
+          <p class="report-card-title">Room Transfer Report</p>
+          <p class="report-card-desc">All checked-out room allocations with student & room details</p>
+        </div>
+      </div>
+      <div class="d-flex gap-2 mt-1">
+        <a href="{% url 'report_room_transfer' %}?format=pdf"
+           class="btn btn-sm btn-pdf flex-fill text-center">
+          <i class="bi bi-file-earmark-pdf-fill me-1"></i> PDF
+        </a>
+        <a href="{% url 'report_room_transfer' %}?format=xlsx"
+           class="btn btn-sm btn-xlsx flex-fill text-center">
+          <i class="bi bi-file-earmark-excel-fill me-1"></i> Excel
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Daily Attendance Report -->
+  <div class="col-md-6 col-xl-4">
+    <div class="report-card">
+      <div class="d-flex align-items-center gap-3">
+        <div class="report-card-icon" style="background:#F0FDF4;color:#059669">
+          <i class="bi bi-calendar2-check-fill"></i>
+        </div>
+        <div>
+          <p class="report-card-title">Daily Attendance Report</p>
+          <p class="report-card-desc">Present / Absent / On-Leave counts with student details</p>
+        </div>
+      </div>
+      <form class="date-filter-row" id="att-form">
+        <input type="date" name="date" id="att-date" value="{{ today|date:'Y-m-d' }}"
+               max="{{ today|date:'Y-m-d' }}" class="form-control form-control-sm" style="width:148px">
+        <button type="button" onclick="dlReport('attendance', 'pdf', {date: document.getElementById('att-date').value})"
+                class="btn btn-sm btn-pdf flex-fill">
+          <i class="bi bi-file-earmark-pdf-fill me-1"></i> PDF
+        </button>
+        <button type="button" onclick="dlReport('attendance', 'xlsx', {date: document.getElementById('att-date').value})"
+                class="btn btn-sm btn-xlsx flex-fill">
+          <i class="bi bi-file-earmark-excel-fill me-1"></i> Excel
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Fee Report -->
+  <div class="col-md-6 col-xl-4">
+    <div class="report-card">
+      <div class="d-flex align-items-center gap-3">
+        <div class="report-card-icon" style="background:#FFFBEB;color:#D97706">
+          <i class="bi bi-cash-stack"></i>
+        </div>
+        <div>
+          <p class="report-card-title">Fee Report</p>
+          <p class="report-card-desc">All fee records — paid, pending, partial, waived</p>
+        </div>
+      </div>
+      <div class="d-flex gap-2 mt-1">
+        <a href="{% url 'report_fees' %}?format=pdf"
+           class="btn btn-sm btn-pdf flex-fill text-center">
+          <i class="bi bi-file-earmark-pdf-fill me-1"></i> PDF
+        </a>
+        <a href="{% url 'report_fees' %}?format=xlsx"
+           class="btn btn-sm btn-xlsx flex-fill text-center">
+          <i class="bi bi-file-earmark-excel-fill me-1"></i> Excel
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gate Pass Report -->
+  <div class="col-md-6 col-xl-4">
+    <div class="report-card">
+      <div class="d-flex align-items-center gap-3">
+        <div class="report-card-icon" style="background:#EDE9FE;color:#7C3AED">
+          <i class="bi bi-pass-fill"></i>
+        </div>
+        <div>
+          <p class="report-card-title">Gate Pass Report</p>
+          <p class="report-card-desc">All gate passes with overstay highlights and status</p>
+        </div>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap mt-1">
+        <input type="date" id="gp-from" class="form-control form-control-sm" style="width:140px" placeholder="From">
+        <input type="date" id="gp-to"   class="form-control form-control-sm" style="width:140px" placeholder="To">
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" onclick="dlReport('gatepass', 'pdf', {from: document.getElementById('gp-from').value, to: document.getElementById('gp-to').value})"
+                class="btn btn-sm btn-pdf flex-fill">
+          <i class="bi bi-file-earmark-pdf-fill me-1"></i> PDF
+        </button>
+        <button type="button" onclick="dlReport('gatepass', 'xlsx', {from: document.getElementById('gp-from').value, to: document.getElementById('gp-to').value})"
+                class="btn btn-sm btn-xlsx flex-fill">
+          <i class="bi bi-file-earmark-excel-fill me-1"></i> Excel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mess Report -->
+  <div class="col-md-6 col-xl-4">
+    <div class="report-card">
+      <div class="d-flex align-items-center gap-3">
+        <div class="report-card-icon" style="background:#F0FDF4;color:#059669">
+          <i class="bi bi-cup-hot-fill"></i>
+        </div>
+        <div>
+          <p class="report-card-title">Mess Report</p>
+          <p class="report-card-desc">Food wastage records + student feedback analysis (all dates)</p>
+        </div>
+      </div>
+      <div class="d-flex gap-2 mt-1">
+        <a href="{% url 'report_mess' %}?format=pdf"
+           class="btn btn-sm btn-pdf flex-fill text-center">
+          <i class="bi bi-file-earmark-pdf-fill me-1"></i> PDF
+        </a>
+        <a href="{% url 'report_mess' %}?format=xlsx"
+           class="btn btn-sm btn-xlsx flex-fill text-center">
+          <i class="bi bi-file-earmark-excel-fill me-1"></i> Excel (2 sheets)
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Row 2: Per-Hostel Daily Reports ────────────────────────────────────── -->
+<div class="card-header mb-3">
+  <div class="ch-icon" style="background:#EFF6FF;color:#1565C0">
+    <i class="bi bi-building-fill"></i>
+  </div>
+  <div class="card-header-left">
+    <strong>Daily Hostel Report</strong>
+    <span style="font-size:12px;color:var(--text-3);margin-left:8px">
+      Click any hostel to download a full A-to-Z report for that hostel on the selected date
+    </span>
+  </div>
+  <input type="date" id="hostel-report-date" value="{{ today|date:'Y-m-d' }}"
+         max="{{ today|date:'Y-m-d' }}" class="form-control form-control-sm ms-auto" style="width:160px">
+</div>
+
+<div class="row g-2 mb-4">
+  {% for hostel in hostels %}
+  <div class="col-md-6 col-xl-4">
+    <div class="hostel-report-card">
+      <div class="d-flex align-items-center gap-3">
+        <div style="width:38px;height:38px;border-radius:10px;background:#EFF6FF;color:#1565C0;
+                    display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">
+          <i class="bi bi-building"></i>
+        </div>
+        <div>
+          <div style="font-weight:600;font-size:13.5px;color:var(--text-1)">{{ hostel.name }}</div>
+          <div style="font-size:11.5px;color:var(--text-3)">{{ hostel.hostel_type|title }} Hostel</div>
+        </div>
+      </div>
+      <div class="d-flex gap-2 flex-shrink-0">
+        <button onclick="dlHostelReport('{{ hostel.pk }}', 'pdf')"
+                class="btn btn-sm btn-pdf px-3">
+          <i class="bi bi-file-earmark-pdf-fill"></i>
+        </button>
+        <button onclick="dlHostelReport('{{ hostel.pk }}', 'xlsx')"
+                class="btn btn-sm btn-xlsx px-3">
+          <i class="bi bi-file-earmark-excel-fill"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <p class="text-muted">No active hostels found.</p>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+const REPORT_URLS = {
+  room_transfer: "{% url 'report_room_transfer' %}",
+  attendance:    "{% url 'report_attendance' %}",
+  fees:          "{% url 'report_fees' %}",
+  gatepass:      "{% url 'report_gatepass' %}",
+  mess:          "{% url 'report_mess' %}",
+};
+
+function dlReport(type, fmt, params) {
+  const url = new URL(REPORT_URLS[type], window.location.origin);
+  url.searchParams.set('format', fmt);
+  if (params) {
+    Object.entries(params).forEach(([k, v]) => { if (v) url.searchParams.set(k, v); });
+  }
+  window.location.href = url.toString();
+}
+
+function dlHostelReport(hostelPk, fmt) {
+  const date = document.getElementById('hostel-report-date').value;
+  const base = `/reports/hostel/${hostelPk}/daily/`;
+  const url = new URL(base, window.location.origin);
+  url.searchParams.set('format', fmt);
+  if (date) url.searchParams.set('date', date);
+  window.location.href = url.toString();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base/base.html" %}
+{% block title %}Attendance Report — Hostel ERP{% endblock %}
+{% block page_title %}Attendance Report{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h6 class="mb-0 text-muted">Per-student attendance summary (all recorded dates)</h6>
+  <a href="{% url 'attendance_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Daily View
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th class="ps-3">#</th>
+          <th>Roll No.</th>
+          <th>Name</th>
+          <th>Department</th>
+          <th>Year</th>
+          <th class="text-center">Total Days</th>
+          <th class="text-center text-success">Present</th>
+          <th class="text-center text-danger">Absent</th>
+          <th class="text-center text-info">Leave</th>
+          <th class="text-center">Attendance %</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in students %}
+        {% with pct=s.present_days|default:0 %}
+        <tr>
+          <td class="ps-3 text-muted">{{ forloop.counter }}</td>
+          <td>{{ s.roll_number }}</td>
+          <td>{{ s.name }}</td>
+          <td>{{ s.department }}</td>
+          <td>{{ s.get_year_display }}</td>
+          <td class="text-center">{{ s.total_days }}</td>
+          <td class="text-center text-success fw-semibold">{{ s.present_days }}</td>
+          <td class="text-center text-danger fw-semibold">{{ s.absent_days }}</td>
+          <td class="text-center text-info fw-semibold">{{ s.leave_days }}</td>
+          <td class="text-center">
+            {% if s.total_days > 0 %}
+              {% widthratio s.present_days s.total_days 100 as pct_val %}
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-grow-1" style="height:6px">
+                  <div class="progress-bar
+                    {% if pct_val >= 75 %}bg-success{% elif pct_val >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                    style="width:{{ pct_val }}%"></div>
+                </div>
+                <span style="font-size:12px;min-width:36px">{{ pct_val }}%</span>
+              </div>
+            {% else %}
+              <span class="text-muted" style="font-size:12px">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr><td colspan="10" class="text-center text-muted py-4">No resident students found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

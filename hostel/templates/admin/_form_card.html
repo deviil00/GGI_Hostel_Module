@@ -1,0 +1,95 @@
+<div class="col-md-6 col-xl-4">
+  <div class="card h-100 form-card" style="border-top:3px solid {% if cat %}{{ cat.color }}{% else %}#CBD5E1{% endif %}">
+    <div class="card-header" style="border-bottom:1px solid var(--border)">
+      <div class="card-header-left" style="gap:10px">
+        <div class="ch-icon" style="background:{% if cat %}{{ cat.color }}18{% elif f.is_active %}var(--blue-soft){% else %}#F1F5F9{% endif %}">
+          <i class="bi {% if cat %}{{ cat.icon }}{% else %}bi-file-earmark-text-fill{% endif %}"
+             style="color:{% if cat %}{{ cat.color }}{% elif f.is_active %}var(--blue){% else %}var(--text-3){% endif %}"></i>
+        </div>
+        <div style="min-width:0">
+          <div style="font-size:13.5px;font-weight:700;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            {{ f.title }}
+          </div>
+          <div style="font-size:11px;color:var(--text-3)">
+            Created {{ f.created_at|date:"d M Y" }}
+          </div>
+        </div>
+      </div>
+      {% if f.is_active %}
+        <span class="badge badge-paid">Active</span>
+      {% else %}
+        <span class="badge" style="background:#F1F5F9;color:var(--text-3)">Inactive</span>
+      {% endif %}
+    </div>
+
+    <div class="card-body p-0">
+      {# Stats row #}
+      <div class="row g-0 text-center" style="border-bottom:1px solid var(--border-light)">
+        <div class="col" style="padding:14px 0;border-right:1px solid var(--border-light)">
+          <div style="font-size:22px;font-weight:800;color:var(--text-1)">{{ f.submission_count }}</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-top:3px">Total</div>
+        </div>
+        <div class="col" style="padding:14px 0;border-right:1px solid var(--border-light)">
+          <div style="font-size:22px;font-weight:800;color:#D97706">{{ f.pending_count }}</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-top:3px">Pending</div>
+        </div>
+        <div class="col" style="padding:14px 0">
+          <div style="font-size:22px;font-weight:800;color:#059669">{{ f.approved_count }}</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-top:3px">Approved</div>
+        </div>
+      </div>
+
+      <table class="table table-sm mb-0" style="font-size:12.5px">
+        <tr>
+          <td class="ps-3" style="color:var(--text-3);padding-top:10px">Audience</td>
+          <td style="padding-top:10px">
+            {% if f.form_category %}
+              {% if f.form_category.target_years %}
+              {% for yr in f.form_category.target_years %}
+              <span style="font-size:10.5px;padding:1px 7px;border-radius:6px;background:#EFF6FF;color:#1D4ED8;font-weight:600">Yr {{ yr }}</span>
+              {% endfor %}
+              {% endif %}
+              {% if f.form_category.target_depts %}
+              {% for dp in f.form_category.target_depts %}
+              <span style="font-size:10.5px;padding:1px 7px;border-radius:6px;background:#ECFDF5;color:#065F46;font-weight:600">{{ dp }}</span>
+              {% endfor %}
+              {% endif %}
+              {% if f.form_category.target_hostels %}
+              <span style="font-size:10.5px;padding:1px 7px;border-radius:6px;background:#FDF4FF;color:#7E22CE;font-weight:600">
+                {{ f.form_category.target_hostels|length }} hostel{{ f.form_category.target_hostels|length|pluralize }}
+              </span>
+              {% else %}
+              <span style="font-size:10.5px;color:var(--text-3)">All Hostels</span>
+              {% endif %}
+            {% else %}
+              <span style="font-size:11.5px;color:var(--text-3)">All students</span>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td class="ps-3" style="color:var(--text-3)">Fields</td>
+          <td>{{ f.fields.count }} field{{ f.fields.count|pluralize }}</td>
+        </tr>
+        <tr>
+          <td class="ps-3" style="color:var(--text-3);padding-bottom:10px">Deadline</td>
+          <td style="padding-bottom:10px">{% if f.deadline %}{{ f.deadline|date:"d M Y" }}{% else %}<span style="color:var(--text-3)">None</span>{% endif %}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="card-footer d-flex gap-2 flex-wrap justify-content-end"
+         style="background:var(--surface);border-top:1px solid var(--border);padding:10px 14px;border-radius:0 0 14px 14px">
+      <a href="{% url 'form_analytics' f.pk %}" class="btn btn-xs btn-outline-success" title="Analytics">
+        <i class="bi bi-bar-chart-line me-1"></i>Analytics
+      </a>
+      <a href="{% url 'form_submissions' f.pk %}" class="btn btn-xs btn-outline-secondary">
+        <i class="bi bi-inbox me-1"></i>Submissions
+      </a>
+      {% if is_superadmin %}
+      <a href="{% url 'edit_registration_form' f.pk %}" class="btn btn-xs btn-outline-primary">
+        <i class="bi bi-pencil me-1"></i>Edit
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</div>

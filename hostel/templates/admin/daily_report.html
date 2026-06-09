@@ -1,0 +1,300 @@
+{% extends "base/base.html" %}
+{% block title %}Daily Gate Pass & Leave Report{% endblock %}
+{% block page_title %}Daily Gate Pass & Leave Report{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Gate Pass &amp; Leave Report</h4>
+    <p>Student-level daily breakdown — history stored permanently, counts reset each day automatically</p>
+  </div>
+  <a href="{% url 'admin_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Dashboard
+  </a>
+</div>
+
+<!-- Filters -->
+<div class="filter-card mb-4">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label fw-semibold" style="font-size:12px">Date</label>
+      <input type="date" name="date" value="{{ report_date|date:'Y-m-d' }}"
+             class="form-control form-control-sm" max="{{ today|date:'Y-m-d' }}">
+    </div>
+    {% if not is_warden %}
+    <div class="col-md-3">
+      <label class="form-label fw-semibold" style="font-size:12px">Hostel</label>
+      <select name="hostel" class="form-select form-select-sm">
+        <option value="">All Hostels</option>
+        {% for h in all_hostels %}
+        <option value="{{ h.pk }}" {% if sel_hostel_pk == h.pk|stringformat:'s' %}selected{% endif %}>{{ h.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary btn-sm px-4">Apply</button>
+    </div>
+    <div class="col-auto">
+      <a href="{% url 'gate_pass_report' %}?date={{ today|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary">Today</a>
+    </div>
+    <div class="col-auto ms-auto d-flex gap-1">
+      <a href="#" class="btn btn-xs btn-outline-secondary" onclick="event.preventDefault();navDay(-1)">
+        <i class="bi bi-chevron-left"></i> Prev Day
+      </a>
+      <a href="#" class="btn btn-xs btn-outline-secondary" onclick="event.preventDefault();navDay(1)"
+         {% if report_date == today %}style="opacity:.4;pointer-events:none"{% endif %}>
+        Next Day <i class="bi bi-chevron-right"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+<!-- Summary cards -->
+<div class="row g-3 mb-4">
+  {% for row in hostel_rows %}
+  <div class="col-md-4 col-xl-3">
+    <div class="card" style="border-top:3px solid #0D9488;cursor:pointer"
+         onclick="scrollToHostel({{ forloop.counter }})">
+      <div class="card-body py-3 px-4">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3)">
+          {{ row.hostel.name }}
+        </div>
+        <div class="d-flex gap-4 mt-2">
+          <div>
+            <div style="font-size:26px;font-weight:800;color:#0D9488;line-height:1">{{ row.gp_count }}</div>
+            <div style="font-size:10.5px;color:var(--text-3)">Gate Pass{{ row.gp_count|pluralize:"es" }}</div>
+          </div>
+          <div>
+            <div style="font-size:26px;font-weight:800;color:#7C3AED;line-height:1">{{ row.leave_count }}</div>
+            <div style="font-size:10.5px;color:var(--text-3)">On Leave</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Per-hostel cards with tabs -->
+{% for row in hostel_rows %}
+<div class="card mb-4" id="hostel-block-{{ forloop.counter }}">
+
+  <!-- Hostel header -->
+  <div class="card-header" style="background:linear-gradient(135deg,#0F4C81,#1565C0);color:#fff">
+    <div class="card-header-left" style="color:#fff">
+      <i class="bi bi-building-fill me-2"></i>
+      <span style="font-size:15px;font-weight:700">{{ row.hostel.name }}</span>
+      <span style="font-size:12px;opacity:.8;margin-left:8px">{{ row.hostel.get_type_display }}</span>
+    </div>
+    <div class="d-flex gap-2">
+      <span class="badge" style="background:rgba(255,255,255,.2);font-size:12px">
+        {{ row.gp_count }} Gate Pass{{ row.gp_count|pluralize:"es" }}
+      </span>
+      <span class="badge" style="background:rgba(255,255,255,.2);font-size:12px">
+        {{ row.leave_count }} On Leave
+      </span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div style="padding:0 16px;border-bottom:2px solid var(--border);background:#FAFBFC">
+    <ul class="nav" style="gap:4px;margin:0">
+      <li class="nav-item">
+        <a class="rpt-tab active" href="#" data-tab="gp-{{ forloop.counter }}" onclick="switchTab(this,'{{ forloop.counter }}');return false;"
+           style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;font-size:13px;font-weight:600;
+                  color:#0D9488;border-bottom:2px solid #0D9488;margin-bottom:-2px;text-decoration:none">
+          <i class="bi bi-pass-fill"></i> Gate Passes
+          <span style="background:#F0FDFA;color:#0D9488;font-size:11px;font-weight:700;
+                       padding:1px 7px;border-radius:10px">{{ row.gp_count }}</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="rpt-tab" href="#" data-tab="leave-{{ forloop.counter }}" onclick="switchTab(this,'{{ forloop.counter }}');return false;"
+           style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;font-size:13px;font-weight:600;
+                  color:var(--text-3);border-bottom:2px solid transparent;margin-bottom:-2px;text-decoration:none">
+          <i class="bi bi-calendar2-x-fill"></i> Leave Applications
+          <span style="background:#F1F5F9;color:var(--text-3);font-size:11px;font-weight:700;
+                       padding:1px 7px;border-radius:10px">{{ row.leave_count }}</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Gate Passes tab content -->
+  <div id="gp-{{ forloop.counter }}">
+    {% if row.gp_list %}
+    <div class="table-responsive">
+      <table class="table" style="font-size:13px">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Destination</th>
+            <th>Departure</th>
+            <th>Expected Return</th>
+            <th>Reason</th>
+            <th>Status</th>
+            <th>Guardian Phone</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for gp in row.gp_list %}
+          <tr {% if gp.is_overstayed %}style="background:#FEF2F2"{% endif %}>
+            <td>
+              <a href="{% url 'student_detail' gp.student.pk %}" style="text-decoration:none">
+                <div class="tbl-name" style="color:var(--blue)">{{ gp.student.name }}</div>
+              </a>
+              <div class="tbl-sub">{{ gp.student.roll_number }}</div>
+              {% if gp.is_overstayed %}
+              <div style="margin-top:3px">
+                <span style="background:#FEE2E2;color:#B91C1C;font-size:10.5px;font-weight:700;
+                             padding:2px 7px;border-radius:4px;display:inline-flex;align-items:center;gap:4px">
+                  <i class="bi bi-exclamation-triangle-fill" style="font-size:10px"></i>
+                  Overstayed — due {{ gp.expected_return_date }}
+                </span>
+              </div>
+              {% endif %}
+            </td>
+            <td style="color:var(--text-2)">{{ gp.destination }}</td>
+            <td>{{ gp.departure_date }}<br><span class="tbl-sub">{{ gp.departure_time|time:"h:i A" }}</span></td>
+            <td>{{ gp.expected_return_date }}<br><span class="tbl-sub">{{ gp.expected_return_time|time:"h:i A" }}</span></td>
+            <td style="max-width:180px;color:var(--text-2)">{{ gp.reason|truncatechars:60 }}</td>
+            <td>
+              {% if gp.status == 'approved' %}
+                <span class="badge badge-paid">Approved</span>
+              {% elif gp.status == 'pending' %}
+                <span class="badge badge-pending">Pending</span>
+              {% elif gp.status == 'rejected' %}
+                <span class="badge" style="background:#FEF2F2;color:#DC2626">Rejected</span>
+              {% else %}
+                <span class="badge" style="background:#F1F5F9;color:var(--text-3)">Returned</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if gp.student.guardian_phone %}
+                <span style="color:#D97706;font-weight:600">
+                  <i class="bi bi-person-hearts" style="font-size:11px"></i>
+                  {{ gp.student.guardian_phone }}
+                </span>
+              {% else %}
+                <span style="color:#CBD5E1;font-size:11px">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="padding:36px;text-align:center;color:var(--text-3);font-size:13px">
+      <i class="bi bi-pass" style="font-size:26px;opacity:.25;display:block;margin-bottom:6px"></i>
+      No gate passes with departure date {{ report_date }}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Leave Applications tab content (hidden by default) -->
+  <div id="leave-{{ forloop.counter }}" style="display:none">
+    {% if row.leave_list %}
+    <div class="table-responsive">
+      <table class="table" style="font-size:13px">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Reason</th>
+            <th>Approved By</th>
+            <th>Guardian Phone</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lv in row.leave_list %}
+          <tr>
+            <td>
+              <a href="{% url 'student_detail' lv.student.pk %}" style="text-decoration:none">
+                <div class="tbl-name" style="color:var(--blue)">{{ lv.student.name }}</div>
+              </a>
+              <div class="tbl-sub">{{ lv.student.roll_number }}</div>
+            </td>
+            <td>{{ lv.from_date }}</td>
+            <td>{{ lv.to_date }}</td>
+            <td style="max-width:200px;color:var(--text-2)">{{ lv.reason|truncatechars:70 }}</td>
+            <td style="color:var(--text-2)">{{ lv.reviewed_by.name|default:"—" }}</td>
+            <td>
+              {% if lv.student.guardian_phone %}
+                <span style="color:#D97706;font-weight:600">
+                  <i class="bi bi-person-hearts" style="font-size:11px"></i>
+                  {{ lv.student.guardian_phone }}
+                </span>
+              {% else %}
+                <span style="color:#CBD5E1;font-size:11px">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="padding:36px;text-align:center;color:var(--text-3);font-size:13px">
+      <i class="bi bi-calendar2-check" style="font-size:26px;opacity:.25;display:block;margin-bottom:6px"></i>
+      No approved leave applications active on {{ report_date }}
+    </div>
+    {% endif %}
+  </div>
+
+</div><!-- end hostel card -->
+{% empty %}
+<div class="card">
+  <div style="padding:48px;text-align:center;color:var(--text-3)">
+    <i class="bi bi-building" style="font-size:36px;opacity:.25;display:block;margin-bottom:10px"></i>
+    No hostels found.
+  </div>
+</div>
+{% endfor %}
+
+<script>
+function switchTab(el, cardId) {
+  // Deactivate all tabs in this card
+  const card = document.getElementById('hostel-block-' + cardId);
+  card.querySelectorAll('.rpt-tab').forEach(function(t) {
+    t.style.color = 'var(--text-3)';
+    t.style.borderBottomColor = 'transparent';
+    t.classList.remove('active');
+  });
+  // Hide all tab panes in this card
+  const tabId = el.dataset.tab;
+  const prefix = tabId.startsWith('gp-') ? ['gp-', 'leave-'] : ['leave-', 'gp-'];
+  document.getElementById('gp-' + cardId).style.display = 'none';
+  document.getElementById('leave-' + cardId).style.display = 'none';
+  // Activate clicked tab
+  el.classList.add('active');
+  if (tabId.startsWith('gp-')) {
+    el.style.color = '#0D9488';
+    el.style.borderBottomColor = '#0D9488';
+  } else {
+    el.style.color = '#7C3AED';
+    el.style.borderBottomColor = '#7C3AED';
+  }
+  document.getElementById(tabId).style.display = '';
+}
+
+function scrollToHostel(n) {
+  const el = document.getElementById('hostel-block-' + n);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function navDay(delta) {
+  const dateInput = document.querySelector('input[name="date"]');
+  const d = new Date(dateInput.value || '{{ report_date|date:"Y-m-d" }}');
+  d.setDate(d.getDate() + delta);
+  const iso = d.toISOString().slice(0, 10);
+  if (iso > '{{ today|date:"Y-m-d" }}') return;
+  const hostelSel = document.querySelector('select[name="hostel"]');
+  const hostel = hostelSel ? hostelSel.value : '';
+  window.location.href = '{% url "daily_report" %}?date=' + iso + (hostel ? '&hostel=' + hostel : '');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,399 @@
+{% extends "base/base.html" %}
+{% block title %}Dashboard — GGI Hostel ERP{% endblock %}
+{% block page_title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Announcements banner -->
+{% if announcements %}
+<div class="mb-3">
+  {% for ann in announcements %}
+  <div class="d-flex align-items-start gap-3 p-3 rounded mb-2"
+       style="background:{% if ann.priority == 'urgent' %}#FEF2F2{% elif ann.priority == 'warning' %}#FFFBEB{% else %}var(--blue-soft){% endif %};
+              border-left:4px solid {% if ann.priority == 'urgent' %}#DC2626{% elif ann.priority == 'warning' %}#D97706{% else %}var(--blue){% endif %}">
+    <i class="bi {% if ann.priority == 'urgent' %}bi-exclamation-circle-fill{% elif ann.priority == 'warning' %}bi-exclamation-triangle-fill{% else %}bi-megaphone-fill{% endif %}"
+       style="font-size:18px;flex-shrink:0;color:{% if ann.priority == 'urgent' %}#DC2626{% elif ann.priority == 'warning' %}#D97706{% else %}var(--blue){% endif %}"></i>
+    <div style="flex:1">
+      <div class="fw-600" style="font-size:13px">{{ ann.title }}</div>
+      <div style="font-size:12.5px;color:var(--text-2)">{{ ann.content|truncatechars:120 }}</div>
+    </div>
+    <a href="{% url 'announcement_list' %}" class="btn btn-xs btn-outline-secondary" style="flex-shrink:0">Manage</a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Welcome -->
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Good day, {{ request.user.name }} 👋</h4>
+    <p>
+      {% if is_warden %}
+        <span class="badge" style="background:#EBF3FF;color:#1565C0;font-size:12px"><i class="bi bi-building me-1"></i>{{ selected_hostel.name }}</span>
+      {% elif selected_hostel %}
+        GGI Hostel ERP — <strong>{{ today }}</strong> &nbsp;
+        <span class="badge" style="background:#EBF3FF;color:#1565C0;font-size:12px"><i class="bi bi-building me-1"></i>{{ selected_hostel.name }}</span>
+      {% else %}
+        GGI Hostel ERP — <strong>{{ today }}</strong>
+      {% endif %}
+    </p>
+  </div>
+  <div class="d-flex gap-2 align-items-center flex-wrap">
+    {% if not is_warden %}
+    <form method="get" class="d-flex gap-2 align-items-center">
+      <select name="hostel" class="form-select form-select-sm" style="width:180px" onchange="this.form.submit()">
+        <option value="">All Hostels</option>
+        {% for h in all_hostels %}
+        <option value="{{ h.pk }}" {% if selected_hostel.pk == h.pk %}selected{% endif %}>{{ h.name }}</option>
+        {% endfor %}
+      </select>
+      {% if selected_hostel %}
+      <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x"></i></a>
+      {% endif %}
+    </form>
+    {% endif %}
+    <a href="{% url 'outsiders' %}" class="btn btn-outline-primary">
+      <i class="bi bi-box-arrow-up-right me-1"></i>Outsiders
+      {% if stats.students_out > 0 %}
+      <span class="badge" style="background:#0891B2;color:#fff;margin-left:4px">{{ stats.students_out }}</span>
+      {% endif %}
+    </a>
+    <a href="{% url 'mark_attendance' %}?date={{ today|date:'Y-m-d' }}" class="btn btn-primary">
+      <i class="bi bi-calendar2-check me-2"></i>
+      {% if stats.attendance_done %}Edit Attendance{% else %}Mark Attendance{% endif %}
+    </a>
+  </div>
+</div>
+
+<!-- ── Alerts row ── -->
+{% if stats.overstayed_passes or stats.pending_visitors or stats.pending_passes %}
+<div class="row g-2 mb-3">
+  {% if stats.overstayed_passes %}
+  <div class="col-auto">
+    <a href="{% url 'gate_pass_list' %}?status=approved" class="text-decoration-none">
+      <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background:#FEF2F2;border:1px solid #FCA5A5;font-size:13px">
+        <i class="bi bi-clock-history" style="color:#DC2626"></i>
+        <span style="color:#B91C1C;font-weight:600">{{ stats.overstayed_passes }} Overstayed Gate Pass{{ stats.overstayed_passes|pluralize:"es" }}</span>
+      </div>
+    </a>
+  </div>
+  {% endif %}
+  {% if stats.pending_visitors %}
+  <div class="col-auto">
+    <a href="{% url 'visitor_list' %}?status=pending" class="text-decoration-none">
+      <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background:#FFFBEB;border:1px solid #FCD34D;font-size:13px">
+        <i class="bi bi-person-check" style="color:#D97706"></i>
+        <span style="color:#92400E;font-weight:600">{{ stats.pending_visitors }} Pending Visitor Request{{ stats.pending_visitors|pluralize }}</span>
+      </div>
+    </a>
+  </div>
+  {% endif %}
+  {% if stats.pending_passes %}
+  <div class="col-auto">
+    <a href="{% url 'gate_pass_list' %}?status=pending" class="text-decoration-none">
+      <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background:#EBF3FF;border:1px solid #93C5FD;font-size:13px">
+        <i class="bi bi-pass" style="color:#1565C0"></i>
+        <span style="color:#1E40AF;font-weight:600">{{ stats.pending_passes }} Pending Gate Pass{{ stats.pending_passes|pluralize:"es" }}</span>
+      </div>
+    </a>
+  </div>
+  {% endif %}
+  {% if stats.pending_apps %}
+  <div class="col-auto">
+    <a href="{% url 'registration_form_list' %}" class="text-decoration-none">
+      <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background:#F5F3FF;border:1px solid #C4B5FD;font-size:13px">
+        <i class="bi bi-file-earmark-text" style="color:#7C3AED"></i>
+        <span style="color:#5B21B6;font-weight:600">{{ stats.pending_apps }} Pending Application{{ stats.pending_apps|pluralize }}</span>
+      </div>
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ── Stat cards row 1 ── -->
+<div class="row g-3 mb-3">
+  {% if not is_warden %}
+  <div class="col-xl-2 col-md-4 col-6">
+    <a href="{% url 'hostel_list' %}" style="text-decoration:none">
+    <div class="stat-card" style="--stat-color:#0F4C81">
+      <div class="s-top"><div class="s-icon" style="background:#DBEAFE"><i class="bi bi-building-fill" style="color:#0F4C81"></i></div></div>
+      <div class="s-number">{{ stats.total_hostels }}</div>
+      <div class="s-label">Total Hostels</div>
+    </div></a>
+  </div>
+  <div class="col-xl-2 col-md-4 col-6">
+    <a href="{% url 'student_list' %}" style="text-decoration:none">
+    <div class="stat-card" style="--stat-color:#1565C0">
+      <div class="s-top"><div class="s-icon" style="background:#EBF3FF"><i class="bi bi-people-fill" style="color:#1565C0"></i></div></div>
+      <div class="s-number">{{ stats.total_students }}</div>
+      <div class="s-label">{% if selected_hostel %}Hostel Residents{% else %}Total Residents{% endif %}</div>
+    </div></a>
+  </div>
+  {% endif %}
+  <div class="col-xl-2 col-md-4 col-6">
+    <a href="{% url 'room_list' %}?status=vacant" style="text-decoration:none">
+    <div class="stat-card" style="--stat-color:#059669">
+      <div class="s-top"><div class="s-icon" style="background:#ECFDF5"><i class="bi bi-door-open-fill" style="color:#059669"></i></div></div>
+      <div class="s-number">{{ stats.vacant_rooms }}</div>
+      <div class="s-label">Vacant Rooms</div>
+    </div></a>
+  </div>
+  <div class="col-xl-2 col-md-4 col-6">
+    <a href="{% url 'room_list' %}?status=partial" style="text-decoration:none">
+    <div class="stat-card" style="--stat-color:#F59E0B">
+      <div class="s-top"><div class="s-icon" style="background:#FEF3C7"><i class="bi bi-door-closed" style="color:#F59E0B"></i></div></div>
+      <div class="s-number">{{ stats.partially_occupied_rooms }}</div>
+      <div class="s-label">Partially Occupied</div>
+    </div></a>
+  </div>
+  <div class="col-xl-2 col-md-4 col-6">
+    <a href="{% url 'room_list' %}?status=occupied" style="text-decoration:none">
+    <div class="stat-card" style="--stat-color:#D97706">
+      <div class="s-top"><div class="s-icon" style="background:#FFFBEB"><i class="bi bi-door-closed-fill" style="color:#D97706"></i></div></div>
+      <div class="s-number">{{ stats.occupied_rooms }}</div>
+      <div class="s-label">Fully Occupied</div>
+    </div></a>
+  </div>
+  <div class="col-xl-2 col-md-4 col-6">
+    <a href="{% url 'complaint_list' %}?status=open" style="text-decoration:none">
+    <div class="stat-card" style="--stat-color:#7C3AED">
+      <div class="s-top"><div class="s-icon" style="background:#F5F3FF"><i class="bi bi-chat-square-text-fill" style="color:#7C3AED"></i></div></div>
+      <div class="s-number">{{ stats.open_complaints }}</div>
+      <div class="s-label">Open Complaints</div>
+    </div></a>
+  </div>
+  <div class="col-xl-2 col-md-4 col-6">
+    <a href="{% url 'outsiders' %}" style="text-decoration:none">
+    <div class="stat-card" style="--stat-color:#0891B2">
+      <div class="s-top"><div class="s-icon" style="background:#F0F9FF"><i class="bi bi-box-arrow-up-right" style="color:#0891B2"></i></div></div>
+      <div class="s-number">{{ stats.students_out }}</div>
+      <div class="s-label">Outside Now <span style="font-size:9px;opacity:.7">(QR verified)</span></div>
+    </div></a>
+  </div>
+  <div class="col-xl-2 col-md-4 col-6">
+    <a href="{% url 'gate_pass_report' %}?date={{ today|date:'Y-m-d' }}" style="text-decoration:none">
+    <div class="stat-card" style="--stat-color:#0D9488">
+      <div class="s-top"><div class="s-icon" style="background:#F0FDFA"><i class="bi bi-pass-fill" style="color:#0D9488"></i></div></div>
+      <div class="s-number">{{ stats.today_gate_passes }}</div>
+      <div class="s-label">Today's Gate Passes</div>
+    </div></a>
+  </div>
+  <div class="col-xl-2 col-md-4 col-6">
+    <a href="{% url 'leave_report' %}?date={{ today|date:'Y-m-d' }}" style="text-decoration:none">
+    <div class="stat-card" style="--stat-color:#7C3AED">
+      <div class="s-top"><div class="s-icon" style="background:#F5F3FF"><i class="bi bi-calendar2-x-fill" style="color:#7C3AED"></i></div></div>
+      <div class="s-number">{{ stats.today_on_leave }}</div>
+      <div class="s-label">On Leave Today</div>
+    </div></a>
+  </div>
+  <div class="col-xl-2 col-md-4 col-6">
+    <a href="{% url 'maintenance_list' %}?status=open" style="text-decoration:none">
+    <div class="stat-card" style="--stat-color:#DC2626">
+      <div class="s-top"><div class="s-icon" style="background:#FEF2F2"><i class="bi bi-tools" style="color:#DC2626"></i></div></div>
+      <div class="s-number">{{ stats.open_maintenance }}</div>
+      <div class="s-label">Open Maintenance</div>
+    </div></a>
+  </div>
+</div>
+
+<!-- ── Attendance panel ── -->
+<div class="card mb-4">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-calendar2-check-fill" style="color:#1565C0"></i></div>
+      Today's Attendance — {{ today }}
+      {% if stats.attendance_done %}
+        <span class="badge badge-paid ms-2">Marked</span>
+      {% else %}
+        <span class="badge badge-pending ms-2">Not Marked</span>
+      {% endif %}
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'attendance_list' %}?date={{ today|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye me-1"></i>View</a>
+      <a href="{% url 'attendance_report' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-bar-chart-line me-1"></i>Report</a>
+    </div>
+  </div>
+  <div class="card-body py-3 px-4">
+    <div class="row g-0 text-center">
+      <div class="col" style="border-right:1px solid var(--border)">
+        <div style="font-size:28px;font-weight:800;color:#059669;line-height:1">{{ stats.present_today }}</div>
+        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-top:5px">Present</div>
+      </div>
+      <div class="col" style="border-right:1px solid var(--border)">
+        <div style="font-size:28px;font-weight:800;color:#DC2626;line-height:1">{{ stats.absent_today }}</div>
+        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-top:5px">Absent</div>
+      </div>
+      <div class="col" style="border-right:1px solid var(--border)">
+        <div style="font-size:28px;font-weight:800;color:#1565C0;line-height:1">{{ stats.leave_today }}</div>
+        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-top:5px">On Leave</div>
+      </div>
+      <div class="col" style="border-right:1px solid var(--border)">
+        <div style="font-size:28px;font-weight:800;color:var(--text-3);line-height:1">{{ stats.unmarked_today }}</div>
+        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-top:5px">Not Marked</div>
+      </div>
+      <div class="col">
+        <div style="font-size:28px;font-weight:800;color:var(--text-1);line-height:1">{{ stats.total_students }}</div>
+        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-top:5px">Total</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Hostel-wise occupancy ── -->
+{% if hostels_data %}
+<div class="card mb-4">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-building-fill" style="color:#1565C0"></i></div>
+      {% if is_warden %}Hostel Occupancy{% else %}Hostel-wise Occupancy{% endif %}
+    </div>
+    <a href="{% url 'occupancy_report' %}" class="btn btn-sm btn-outline-secondary">Full Report</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead><tr><th>Hostel</th><th>Rooms</th><th>Total Beds</th><th>Occupied</th><th>Vacant</th><th>Occupancy</th>{% if not is_warden %}<th></th>{% endif %}</tr></thead>
+      <tbody>
+        {% for h in hostels_data %}
+        <tr>
+          <td><div class="tbl-name">{{ h.hostel.name }}</div><div class="tbl-sub">{{ h.hostel.get_type_display }}</div></td>
+          <td>{{ h.total_rooms }} <span class="tbl-sub">({{ h.vacant_rooms }} vacant)</span></td>
+          <td>{{ h.total_beds }}</td>
+          <td class="fw-600" style="color:#059669">{{ h.occupied_beds }}</td>
+          <td class="fw-600" style="color:#D97706">{{ h.vacant_beds }}</td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div style="flex:1;height:6px;background:#E2E8F0;border-radius:3px;overflow:hidden">
+                <div style="width:{{ h.pct }}%;height:100%;background:{% if h.pct > 80 %}#DC2626{% elif h.pct > 60 %}#D97706{% else %}#059669{% endif %};border-radius:3px"></div>
+              </div>
+              <span style="font-size:12px;font-weight:600;width:36px">{{ h.pct }}%</span>
+            </div>
+          </td>
+          {% if not is_warden %}
+          <td>
+            <a href="?hostel={{ h.hostel.pk }}" class="btn btn-xs btn-outline-primary">
+              <i class="bi bi-eye"></i> View
+            </a>
+          </td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="7"><div class="empty-state"><i class="bi bi-building"></i><p>No hostel data yet.</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+
+<!-- ── Bottom tables ── -->
+<div class="row g-3">
+  <!-- Recent Allocations -->
+  <div class="col-xl-5">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-house-fill" style="color:#1565C0"></i></div>
+          Recent Allocations
+        </div>
+        <a href="{% url 'allocate_room_blank' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus me-1"></i>Allocate</a>
+      </div>
+      <table class="table">
+        <thead><tr><th>Student</th><th>Room</th><th>Check-in</th></tr></thead>
+        <tbody>
+          {% for a in recent_allocations %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="tbl-avatar av-blue">{{ a.student.name|first|upper }}</div>
+                <div><div class="tbl-name">{{ a.student.name }}</div><div class="tbl-sub">{{ a.student.roll_number }}</div></div>
+              </div>
+            </td>
+            <td><span class="fw-600">{{ a.room.room_number }}</span><span class="tbl-sub d-block">{{ a.room.hostel.name }}</span></td>
+            <td style="color:var(--text-2)">{{ a.check_in }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3"><div class="empty-state"><i class="bi bi-inbox"></i><p>No allocations</p></div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Open Complaints -->
+  <div class="col-xl-4">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEF2F2"><i class="bi bi-chat-square-text-fill" style="color:#DC2626"></i></div>
+          Open Complaints
+        </div>
+        <a href="{% url 'complaint_list' %}" class="btn btn-sm btn-outline-secondary">View All</a>
+      </div>
+      <table class="table">
+        <thead><tr><th>Student</th><th>Category</th><th>Priority</th></tr></thead>
+        <tbody>
+          {% for c in recent_complaints %}
+          <tr>
+            <td><div class="tbl-name">{{ c.student.name }}</div><div class="tbl-sub">{{ c.student.roll_number }}</div></td>
+            <td style="color:var(--text-2)">{{ c.get_category_display }}</td>
+            <td><span class="badge badge-{{ c.priority }}">{{ c.get_priority_display }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3"><div class="empty-state"><i class="bi bi-check-circle" style="color:#059669"></i><p>No open complaints</p></div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Overstayed + Pending Visitors -->
+  <div class="col-xl-3">
+    {% if overstayed %}
+    <div class="card mb-3">
+      <div class="card-header" style="background:#FEF2F2">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEE2E2"><i class="bi bi-clock-history" style="color:#DC2626"></i></div>
+          <span style="color:#B91C1C">Overstayed</span>
+        </div>
+      </div>
+      {% for gp in overstayed %}
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border-light)">
+        <div class="tbl-name">{{ gp.student.name }}</div>
+        <div class="tbl-sub">Expected: {{ gp.expected_return_date }} {{ gp.expected_return_time }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if pending_visitors %}
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FFFBEB"><i class="bi bi-person-check-fill" style="color:#D97706"></i></div>
+          Pending Visitors
+        </div>
+        <a href="{% url 'visitor_list' %}" class="btn btn-xs btn-outline-secondary">All</a>
+      </div>
+      {% for v in pending_visitors %}
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border-light)">
+        <div class="tbl-name">{{ v.visitor_name }}</div>
+        <div class="tbl-sub">{{ v.hostel.name }} · {{ v.visit_date }}</div>
+        <div class="d-flex gap-1 mt-1">
+          <form method="post" action="{% url 'visitor_action' v.pk %}">
+            {% csrf_token %}<input type="hidden" name="action" value="approve">
+            <button class="btn btn-xs btn-success" type="submit">Approve</button>
+          </form>
+          <form method="post" action="{% url 'visitor_action' v.pk %}">
+            {% csrf_token %}<input type="hidden" name="action" value="reject">
+            <button class="btn btn-xs btn-outline-danger" type="submit">Reject</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

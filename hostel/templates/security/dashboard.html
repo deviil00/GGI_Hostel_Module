@@ -1,0 +1,311 @@
+{% extends 'base/base.html' %}
+{% block title %}Security Dashboard{% endblock %}
+{% block page_title %}Security Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Security Dashboard</h4>
+    <p>Gate pass monitoring — {{ now|date:"d M Y, h:i A" }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'scan_qr' %}" class="btn btn-primary btn-sm">
+      <i class="bi bi-qr-code-scan me-1"></i>Scan QR
+    </a>
+    {% if is_admin %}
+    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#createGuardModal">
+      <i class="bi bi-person-plus me-1"></i>Add Guard
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Summary tiles -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#D97706">
+      <div class="s-top"><div class="s-icon" style="background:#FFFBEB"><i class="bi bi-hourglass-split" style="color:#D97706;font-size:20px"></i></div></div>
+      <div class="s-number">{{ awaiting_exit|length }}</div>
+      <div class="s-label">Awaiting Exit Permit</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#DC2626">
+      <div class="s-top"><div class="s-icon" style="background:#FEF2F2"><i class="bi bi-person-walking" style="color:#DC2626;font-size:20px"></i></div></div>
+      <div class="s-number">{{ currently_outside|length }}</div>
+      <div class="s-label">Currently Outside</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#7C3AED">
+      <div class="s-top"><div class="s-icon" style="background:#F5F3FF"><i class="bi bi-hourglass-split" style="color:#7C3AED;font-size:20px"></i></div></div>
+      <div class="s-number">{{ awaiting_entry|length }}</div>
+      <div class="s-label">Awaiting Entry Permit</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#059669">
+      <div class="s-top"><div class="s-icon" style="background:#ECFDF5"><i class="bi bi-clipboard-check-fill" style="color:#059669;font-size:20px"></i></div></div>
+      <div class="s-number">{{ today_log|length }}</div>
+      <div class="s-label">Movements Today</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Awaiting Exit Permission ── -->
+{% if awaiting_exit %}
+<div class="card mb-4" style="border-color:#FDE68A">
+  <div class="card-header" style="background:#FFFBEB">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#FFFBEB"><i class="bi bi-hourglass-split" style="color:#D97706"></i></div>
+      <span style="color:#92400E;font-weight:700">Students Awaiting Exit Permission ({{ awaiting_exit|length }})</span>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0" style="font-size:13px">
+      <thead>
+        <tr><th>Student</th><th>Roll No.</th><th>Destination</th><th>Approved By</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for gp in awaiting_exit %}
+        <tr>
+          <td class="fw-600">{{ gp.student.name }}</td>
+          <td>{{ gp.student.roll_number }}</td>
+          <td>{{ gp.destination }}</td>
+          <td style="font-size:12px;color:var(--text-2)">{{ gp.approved_by.name|default:"—" }}</td>
+          <td>
+            <form method="post" action="{% url 'guard_permit_exit' %}">
+              {% csrf_token %}
+              <input type="hidden" name="pk" value="{{ gp.pk }}">
+              <button type="submit" class="btn btn-sm btn-warning fw-600">
+                <i class="bi bi-box-arrow-right me-1"></i>Permit Exit
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Exit Permitted — Waiting for QR scan ── -->
+{% if exit_permitted %}
+<div class="card mb-4" style="border-color:#BFDBFE">
+  <div class="card-header" style="background:#EBF3FF">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-qr-code" style="color:#1565C0"></i></div>
+      <span style="color:#1E3A8A;font-weight:700">Exit Permitted — Awaiting QR Scan ({{ exit_permitted|length }})</span>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0" style="font-size:13px">
+      <thead>
+        <tr><th>Student</th><th>Roll No.</th><th>Permitted At</th><th>Expires In</th></tr>
+      </thead>
+      <tbody>
+        {% for entry in exit_permitted %}
+        {% with gp=entry.gp %}
+        <tr>
+          <td class="fw-600">{{ gp.student.name }}</td>
+          <td>{{ gp.student.roll_number }}</td>
+          <td>{{ gp.guard_exit_permitted_at|date:"h:i A" }}</td>
+          <td>
+            <span class="badge" style="background:#EBF3FF;color:#1565C0">
+              {{ entry.expires_in }}s left
+            </span>
+          </td>
+        </tr>
+        {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Currently Outside ── -->
+{% if currently_outside or late_returns %}
+<div class="card mb-4" {% if late_returns %}style="border-color:#FCA5A5"{% endif %}>
+  <div class="card-header" {% if late_returns %}style="background:#FEF2F2"{% endif %}>
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:{% if late_returns %}#FEF2F2{% else %}#EBF3FF{% endif %}">
+        <i class="bi bi-person-walking" style="color:{% if late_returns %}#DC2626{% else %}#1565C0{% endif %}"></i>
+      </div>
+      <span style="font-weight:700;color:{% if late_returns %}#991B1B{% else %}var(--text-1){% endif %}">
+        Currently Outside ({{ currently_outside|length }}{% if late_returns %} + {{ late_returns|length }} overdue{% endif %})
+      </span>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0" style="font-size:13px">
+      <thead>
+        <tr><th>Student</th><th>Roll No.</th><th>Exit At</th><th>Due Return</th><th>Status</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for entry in late_returns %}
+        {% with gp=entry.gp %}
+        <tr style="background:#FFF5F5">
+          <td class="fw-600">{{ gp.student.name }}</td>
+          <td style="color:#DC2626;font-weight:700">{{ gp.student.roll_number }}</td>
+          <td>{{ gp.exit_time|date:"h:i A" }}</td>
+          <td style="color:#DC2626;font-weight:700">{{ entry.expected_dt|date:"d M, h:i A" }}</td>
+          <td><span class="badge" style="background:#FEF2F2;color:#DC2626">Overdue {{ entry.hours_out }}h</span></td>
+          <td>
+            {% if not gp.guard_entry_permitted %}
+            <form method="post" action="{% url 'guard_permit_entry' %}">
+              {% csrf_token %}
+              <input type="hidden" name="pk" value="{{ gp.pk }}">
+              <button type="submit" class="btn btn-sm btn-primary fw-600">
+                <i class="bi bi-box-arrow-in-left me-1"></i>Permit Entry
+              </button>
+            </form>
+            {% else %}
+            <span style="font-size:12px;color:#059669;font-weight:600"><i class="bi bi-check-circle me-1"></i>Entry Permitted</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endwith %}
+        {% endfor %}
+        {% for entry in currently_outside %}
+        {% with gp=entry.gp %}
+        <tr>
+          <td class="fw-600">{{ gp.student.name }}</td>
+          <td>{{ gp.student.roll_number }}</td>
+          <td>{{ gp.exit_time|date:"h:i A" }}</td>
+          <td>{% if entry.expected_dt %}{{ entry.expected_dt|date:"d M, h:i A" }}{% else %}—{% endif %}</td>
+          <td><span class="badge" style="background:#EBF3FF;color:#1565C0">Out {{ entry.hours_out }}h</span></td>
+          <td>
+            {% if not gp.guard_entry_permitted %}
+            <form method="post" action="{% url 'guard_permit_entry' %}">
+              {% csrf_token %}
+              <input type="hidden" name="pk" value="{{ gp.pk }}">
+              <button type="submit" class="btn btn-sm btn-primary fw-600">
+                <i class="bi bi-box-arrow-in-left me-1"></i>Permit Entry
+              </button>
+            </form>
+            {% else %}
+            <span style="font-size:12px;color:#059669;font-weight:600"><i class="bi bi-check-circle me-1"></i>Entry Permitted</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if not awaiting_exit and not currently_outside and not late_returns and not exit_permitted %}
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="empty-state">
+      <i class="bi bi-shield-check" style="color:#059669"></i>
+      <p style="color:#059669;font-weight:600">All clear. No pending gate pass activity.</p>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Today's movement log -->
+<div class="card mb-4">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-journal-text" style="color:#059669"></i></div>
+      <span class="fw-700">Today's Movement Log</span>
+    </div>
+  </div>
+  {% if today_log %}
+  <div class="table-responsive">
+    <table class="table mb-0" style="font-size:13px">
+      <thead>
+        <tr><th>Student</th><th>Roll No.</th><th>Exit</th><th>Entry</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for gp in today_log %}
+        <tr>
+          <td class="fw-600">{{ gp.student.name }}</td>
+          <td>{{ gp.student.roll_number }}</td>
+          <td>{{ gp.exit_time|date:"h:i A" }}</td>
+          <td>{% if gp.entry_time %}{{ gp.entry_time|date:"h:i A" }}{% else %}<span style="color:#D97706;font-style:italic">Outside</span>{% endif %}</td>
+          <td>
+            {% if gp.entry_time %}
+              <span class="badge" style="background:#ECFDF5;color:#059669">Returned</span>
+            {% elif gp.is_overstayed %}
+              <span class="badge" style="background:#FEF2F2;color:#DC2626">Overdue</span>
+            {% else %}
+              <span class="badge" style="background:#FFFBEB;color:#D97706">Outside</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body">
+    <div class="empty-state"><i class="bi bi-journal"></i><p>No movements today.</p></div>
+  </div>
+  {% endif %}
+</div>
+
+{% if is_admin %}
+<!-- Guard accounts -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#F5F3FF"><i class="bi bi-person-badge-fill" style="color:#7C3AED"></i></div>
+      <span class="fw-700">Security Guards ({{ guards|length }})</span>
+    </div>
+    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createGuardModal">
+      <i class="bi bi-person-plus me-1"></i>Add Guard
+    </button>
+  </div>
+  {% if guards %}
+  <div class="table-responsive">
+    <table class="table mb-0" style="font-size:13px">
+      <thead><tr><th>Name</th><th>Email</th><th>Phone</th></tr></thead>
+      <tbody>
+        {% for g in guards %}
+        <tr><td class="fw-600">{{ g.name }}</td><td>{{ g.email }}</td><td>{{ g.phone|default:"—" }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card-body"><div class="empty-state"><i class="bi bi-person-badge"></i><p>No guards added yet.</p></div></div>
+  {% endif %}
+</div>
+
+<!-- Create Guard Modal -->
+<div class="modal fade" id="createGuardModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'create_security_guard' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title fw-700">Add Security Guard</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3"><label class="form-label fw-600">Full Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label fw-600">Email <span class="text-danger">*</span></label>
+            <input type="email" name="email" class="form-control" required></div>
+          <div class="mb-3"><label class="form-label fw-600">Phone</label>
+            <input type="text" name="phone" class="form-control"></div>
+          <div class="mb-3"><label class="form-label fw-600">Password <span class="text-danger">*</span></label>
+            <input type="password" name="password" class="form-control" required></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-person-check me-1"></i>Create Guard</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

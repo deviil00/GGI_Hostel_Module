@@ -1,0 +1,504 @@
+{% extends 'base/base.html' %}
+{% block title %}Leave Applications{% endblock %}
+{% block page_title %}Leave Applications{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Leave Applications</h4>
+    <p>Review and action student leave requests.</p>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="s-number">{{ counts.all }}</div>
+      <div class="s-label">Total</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#D97706">
+      <div class="s-number">{{ counts.pending }}</div>
+      <div class="s-label">Pending</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#059669">
+      <div class="s-number">{{ counts.approved }}</div>
+      <div class="s-label">Approved</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#DC2626">
+      <div class="s-number">{{ counts.rejected }}</div>
+      <div class="s-label">Rejected</div>
+    </div>
+  </div>
+</div>
+
+{% if pending_extensions %}
+<!-- Pending Extension Requests -->
+<div class="card mb-4" style="border-left:4px solid #D97706">
+  <div class="card-header py-3">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#FEF3C7"><i class="bi bi-calendar-plus-fill" style="color:#D97706"></i></div>
+      Pending Extension Requests
+      <span class="badge ms-2" style="background:#FEF3C7;color:#92400E">{{ pending_extensions|length }}</span>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Original Leave</th>
+          <th>New Return Date</th>
+          <th>Reason</th>
+          <th>Requested</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ext in pending_extensions %}
+        <tr>
+          <td>
+            <div class="tbl-name">{{ ext.leave.student.name }}</div>
+            <div class="tbl-sub">{{ ext.leave.student.roll_number }}</div>
+          </td>
+          <td style="font-size:12.5px">
+            {{ ext.leave.from_date|date:"d M" }} → {{ ext.leave.to_date|date:"d M Y" }}
+            {% if ext.leave.category %}
+            <div style="font-size:11px;color:var(--text-3)">{{ ext.leave.category.name }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <span class="fw-600">{{ ext.new_to_date|date:"d M Y" }}</span>
+            <div style="font-size:11px;color:#D97706">
+              +{{ ext.new_to_date|timeuntil:ext.leave.to_date }} extra
+            </div>
+          </td>
+          <td style="font-size:12.5px;max-width:180px">{{ ext.reason|truncatechars:60 }}</td>
+          <td style="font-size:12px;color:var(--text-3)">{{ ext.created_at|date:"d M Y" }}</td>
+          <td>
+            <div class="d-flex gap-1">
+              <form method="post" action="{% url 'leave_extension_action' ext.pk %}">
+                {% csrf_token %}
+                <button name="action" value="approve" class="btn btn-sm btn-success">
+                  <i class="bi bi-check-lg"></i> Approve
+                </button>
+              </form>
+              <form method="post" action="{% url 'leave_extension_action' ext.pk %}">
+                {% csrf_token %}
+                <button name="action" value="reject" class="btn btn-sm btn-outline-danger">
+                  <i class="bi bi-x-lg"></i> Reject
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if pending_hod %}
+<!-- Working-day leaves awaiting HOD approval -->
+<div class="card mb-4" style="border-left:4px solid #7C3AED">
+  <div class="card-header py-3">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#EDE9FE"><i class="bi bi-person-check-fill" style="color:#7C3AED"></i></div>
+      Awaiting HOD Approval (Working-Day Leaves)
+      <span class="badge ms-2" style="background:#EDE9FE;color:#5B21B6">{{ pending_hod|length }}</span>
+    </div>
+    <span style="font-size:11.5px;color:var(--text-2)">These leaves are on working days and require HOD sign-off before reaching the Warden.</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Student / Dept</th>
+          <th>Year</th>
+          <th>Period</th>
+          <th>Category</th>
+          <th>Reason</th>
+          <th>Applied</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for leave in pending_hod %}
+        <tr>
+          <td style="min-width:170px">
+            <div class="tbl-name">{{ leave.student.name }}</div>
+            <div class="tbl-sub">{{ leave.student.roll_number }}</div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:1px">{{ leave.student.department }}</div>
+          </td>
+          <td style="font-size:12.5px">{{ leave.student.get_year_display|default:"—" }}</td>
+          <td style="font-size:12.5px">
+            {{ leave.from_date|date:"d M" }} → {{ leave.to_date|date:"d M Y" }}
+          </td>
+          <td style="font-size:12px;color:var(--text-2)">{{ leave.category.name|default:"—" }}</td>
+          <td style="font-size:12.5px;max-width:160px">{{ leave.reason|truncatechars:50 }}</td>
+          <td style="font-size:12px;color:var(--text-3)">{{ leave.created_at|date:"d M Y" }}</td>
+          <td>
+            <div class="d-flex gap-1">
+              <form method="post" action="{% url 'leave_hod_action' leave.pk %}">
+                {% csrf_token %}
+                <button name="action" value="approve" class="btn btn-sm btn-success">
+                  <i class="bi bi-check-lg"></i> HOD Approve
+                </button>
+              </form>
+              <form method="post" action="{% url 'leave_hod_action' leave.pk %}">
+                {% csrf_token %}
+                <button name="action" value="reject" class="btn btn-sm btn-outline-danger">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Filter panel -->
+<div class="card mb-3">
+  <div class="card-body py-3">
+    <form method="get" id="leave-filter-form">
+      <!-- Status chips row -->
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+        <i class="bi bi-funnel text-muted"></i>
+        <span class="fw-600" style="font-size:12.5px">Status:</span>
+        <a href="?{% if q %}q={{ q }}&{% endif %}{% if hostel_id %}hostel={{ hostel_id }}&{% endif %}{% if f_department %}department={{ f_department }}&{% endif %}{% if f_category %}category={{ f_category }}&{% endif %}{% if f_room %}room={{ f_room }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}{% if year_filter %}year={{ year_filter }}&{% endif %}status="
+           class="badge text-decoration-none {% if not status_filter %}badge-resident{% else %}bg-light text-dark border{% endif %}">All</a>
+        {% for val, label in statuses %}
+        <a href="?{% if q %}q={{ q }}&{% endif %}{% if hostel_id %}hostel={{ hostel_id }}&{% endif %}{% if f_department %}department={{ f_department }}&{% endif %}{% if f_category %}category={{ f_category }}&{% endif %}{% if f_room %}room={{ f_room }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}{% if year_filter %}year={{ year_filter }}&{% endif %}status={{ val }}"
+           class="badge text-decoration-none {% if status_filter == val %}badge-resident{% else %}bg-light text-dark border{% endif %}">{{ label }}</a>
+        {% endfor %}
+        {% if active_filters %}
+        <a href="?status={{ status_filter }}" class="ms-auto btn btn-xs btn-outline-danger" style="font-size:11.5px">
+          <i class="bi bi-x-circle me-1"></i>Clear filters
+        </a>
+        {% endif %}
+      </div>
+
+      <!-- Advanced filters grid -->
+      <input type="hidden" name="status" value="{{ status_filter }}">
+      <div class="row g-2">
+        <!-- Search -->
+        <div class="col-12 col-md-4">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" name="q" class="form-control" placeholder="Name, roll no, Leave-ID…" value="{{ q }}">
+          </div>
+        </div>
+
+        <!-- Hostel -->
+        {% if all_hostels %}
+        <div class="col-6 col-md-2">
+          <select name="hostel" class="form-select form-select-sm">
+            <option value="">All Hostels</option>
+            {% for h in all_hostels %}
+            <option value="{{ h.pk }}" {% if hostel_id == h.pk|stringformat:"s" %}selected{% endif %}>{{ h.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <!-- Department -->
+        <div class="col-6 col-md-2">
+          <select name="department" class="form-select form-select-sm">
+            <option value="">All Departments</option>
+            {% for dept in departments %}
+            <option value="{{ dept }}" {% if f_department == dept %}selected{% endif %}>{{ dept }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Year -->
+        <div class="col-4 col-md-1">
+          <select name="year" class="form-select form-select-sm">
+            <option value="">All Years</option>
+            {% for val, label in years %}
+            <option value="{{ val }}" {% if year_filter == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Leave Category -->
+        <div class="col-8 col-md-2">
+          <select name="category" class="form-select form-select-sm">
+            <option value="">All Categories</option>
+            {% for cat in leave_categories %}
+            <option value="{{ cat.pk }}" {% if f_category == cat.pk|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Room -->
+        <div class="col-6 col-md-2">
+          <input type="text" name="room" class="form-control form-control-sm" placeholder="Room no…" value="{{ f_room }}">
+        </div>
+
+        <!-- Date From -->
+        <div class="col-6 col-md-2">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white" style="font-size:11px">From</span>
+            <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+          </div>
+        </div>
+
+        <!-- Date To -->
+        <div class="col-6 col-md-2">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white" style="font-size:11px">To</span>
+            <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="col-6 col-md-1 d-flex gap-1">
+          <button type="submit" class="btn btn-sm btn-primary flex-fill">
+            <i class="bi bi-search"></i>
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if page.object_list %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Student</th>
+          <th>Category</th>
+          <th>Period</th>
+          <th>Reason</th>
+          <th>HOD</th>
+          <th>Warden</th>
+          <th>Status</th>
+          <th>Applied On</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for leave in page.object_list %}
+        <tr>
+          <td>
+            <span class="badge" style="background:#F0FDF4;color:#15803D;font-size:11px;font-weight:700;letter-spacing:.3px">
+              {{ leave.leave_id }}
+            </span>
+          </td>
+          <td style="min-width:190px">
+            <div class="d-flex align-items-start gap-2">
+              {% if leave.student.photo %}
+              <img src="{{ leave.student.photo.url }}"
+                   style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #E2E8F0;margin-top:1px">
+              {% else %}
+              <div class="tbl-avatar av-blue" style="flex-shrink:0">{{ leave.student.name|first|upper }}</div>
+              {% endif %}
+              <div>
+                <div class="tbl-name">{{ leave.student.name }}</div>
+                <div class="tbl-sub">{{ leave.student.roll_number }}</div>
+                <div style="font-size:11px;color:var(--text-2);margin-top:1px">
+                  {{ leave.student.department }}{% if leave.student.year %} · {{ leave.student.get_year_display }}{% endif %}
+                </div>
+                {% with alloc=leave.student.active_allocs|first %}
+                {% if alloc %}
+                <div style="font-size:11px;color:var(--text-3);margin-top:1px">
+                  <i class="bi bi-building" style="font-size:10px"></i>
+                  {{ alloc.room.hostel.name }}
+                  <span style="color:#1E40AF;font-weight:600"> · {{ alloc.room.room_number }}</span>
+                </div>
+                {% endif %}
+                {% endwith %}
+              </div>
+            </div>
+          </td>
+          <td style="font-size:12px;color:var(--text-2)">{{ leave.category.name|default:"—" }}</td>
+          <td>
+            <div style="font-size:13px;font-weight:600">{{ leave.from_date|date:"d M" }} → {{ leave.to_date|date:"d M Y" }}</div>
+          </td>
+          <td style="max-width:180px;font-size:12.5px">{{ leave.reason|truncatechars:50 }}</td>
+          <td>
+            {% if leave.is_working_day_leave %}
+              {% if leave.hod_status == 'approved' %}
+                <span class="badge" style="background:#D1FAE5;color:#065F46"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
+                {% if leave.hod_approved_by %}
+                <div style="font-size:10.5px;color:var(--text-3)">{{ leave.hod_approved_by.name|default:leave.hod_approved_by.email }}</div>
+                {% endif %}
+              {% elif leave.hod_status == 'rejected' %}
+                <span class="badge bg-danger">Rejected</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">Pending</span>
+              {% endif %}
+            {% else %}
+              <span class="text-muted" style="font-size:12px">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if leave.warden_status == 'approved' %}
+              <span class="badge" style="background:#D1FAE5;color:#065F46">
+                <i class="bi bi-check-circle-fill me-1"></i>Approved
+              </span>
+              {% if leave.warden_approved_by %}
+              <div style="font-size:10.5px;color:var(--text-3)">{{ leave.warden_approved_by.name|default:leave.warden_approved_by.email }}</div>
+              {% endif %}
+            {% elif leave.warden_status == 'rejected' %}
+              <span class="badge bg-danger">Rejected</span>
+            {% else %}
+              <span class="text-muted" style="font-size:12px">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if leave.status == 'approved' %}
+              <span class="badge bg-success">Approved</span>
+            {% elif leave.status == 'rejected' %}
+              <span class="badge bg-danger">Rejected</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">Pending</span>
+            {% endif %}
+          </td>
+          <td style="font-size:12px;color:var(--text-3)">{{ leave.created_at|date:"d M Y" }}</td>
+          <td>
+            {% if leave.status == 'pending' %}
+            <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#actionModal{{ leave.pk }}">
+              <i class="bi bi-check2-circle"></i> Action
+            </button>
+            <!-- Action Modal -->
+            <div class="modal fade" id="actionModal{{ leave.pk }}" tabindex="-1">
+              <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                  <div class="modal-header" style="background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff">
+                    <h5 class="modal-title"><i class="bi bi-calendar-check me-2"></i>Leave — {{ leave.student.name }}</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                  </div>
+                  <div class="modal-body p-0">
+                    <div class="p-3" style="background:#FFFBEB;border-bottom:2px solid #FDE68A">
+                      <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-person-hearts" style="font-size:18px;color:#D97706"></i>
+                        <span class="fw-700" style="font-size:13px;color:#92400E">Parent / Guardian Contact</span>
+                        <span class="badge ms-auto" style="background:#FDE68A;color:#92400E;font-size:10px">Contact before approving</span>
+                      </div>
+                      {% if leave.student.guardian_name %}
+                      <div class="mb-1" style="font-size:13px;color:#78350F">
+                        <i class="bi bi-person-fill me-1"></i><strong>{{ leave.student.guardian_name }}</strong>
+                      </div>
+                      {% endif %}
+                      {% if leave.student.guardian_phone %}
+                      <a href="tel:{{ leave.student.guardian_phone }}"
+                         class="btn btn-sm fw-700"
+                         style="background:#F59E0B;color:#fff;border:none;font-size:13px">
+                        <i class="bi bi-telephone-fill me-1"></i>{{ leave.student.guardian_phone }}
+                      </a>
+                      {% else %}
+                      <span style="font-size:12px;color:#92400E"><i class="bi bi-exclamation-triangle-fill me-1"></i>No guardian phone on record.</span>
+                      {% endif %}
+                    </div>
+                    <div class="p-4">
+                      <div class="row g-2 mb-3">
+                        <div class="col-sm-4">
+                          <div class="p-3 rounded" style="background:#F8FAFF;border:1px solid #E2E8F0">
+                            <div class="text-muted" style="font-size:11px;font-weight:600;text-transform:uppercase">Period</div>
+                            <div class="fw-700 mt-1">{{ leave.from_date|date:"d M" }} → {{ leave.to_date|date:"d M Y" }}</div>
+                          </div>
+                        </div>
+                        <div class="col-sm-4">
+                          <div class="p-3 rounded" style="background:#F8FAFF;border:1px solid #E2E8F0">
+                            <div class="text-muted" style="font-size:11px;font-weight:600;text-transform:uppercase">Category</div>
+                            <div class="fw-700 mt-1">{{ leave.category.name|default:"—" }}</div>
+                          </div>
+                        </div>
+                        <div class="col-sm-4">
+                          <div class="p-3 rounded" style="background:#F8FAFF;border:1px solid #E2E8F0">
+                            <div class="text-muted" style="font-size:11px;font-weight:600;text-transform:uppercase">Warden</div>
+                            <div class="fw-700 mt-1">
+                              {% if leave.warden_status == 'approved' %}
+                                <span style="color:#059669"><i class="bi bi-check-circle-fill me-1"></i>Approved</span>
+                              {% elif leave.warden_status == 'rejected' %}
+                                <span style="color:#DC2626"><i class="bi bi-x-circle-fill me-1"></i>Rejected</span>
+                              {% else %}
+                                <span style="color:#D97706">Pending</span>
+                              {% endif %}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="col-12">
+                          <div class="p-3 rounded" style="background:#F8FAFF;border:1px solid #E2E8F0">
+                            <div class="text-muted" style="font-size:11px;font-weight:600;text-transform:uppercase">Reason</div>
+                            <div class="mt-1" style="font-size:13px">{{ leave.reason }}</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="form-check p-3 rounded mb-3" style="background:#F0FDF4;border:1px solid #BBF7D0">
+                        <input class="form-check-input" type="checkbox" id="parentConfirm{{ leave.pk }}"
+                               onchange="document.getElementById('approveLeave{{ leave.pk }}').disabled=!this.checked">
+                        <label class="form-check-label fw-600" for="parentConfirm{{ leave.pk }}" style="font-size:13px;color:#166534">
+                          <i class="bi bi-telephone-outbound me-1"></i>I have contacted & confirmed with the parent/guardian
+                        </label>
+                      </div>
+                      <form method="post" action="{% url 'leave_action' leave.pk %}" id="leaveForm{{ leave.pk }}">
+                        {% csrf_token %}
+                        <div class="mb-0">
+                          <label class="form-label fw-semibold">Remarks (optional)</label>
+                          <textarea name="admin_remarks" class="form-control" rows="2" placeholder="Any notes…"></textarea>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="leaveForm{{ leave.pk }}" name="action" value="reject" class="btn btn-danger">
+                      <i class="bi bi-x-circle me-1"></i>Reject
+                    </button>
+                    <button id="approveLeave{{ leave.pk }}" type="submit" form="leaveForm{{ leave.pk }}" name="action" value="approve" class="btn btn-success" disabled>
+                      <i class="bi bi-check-circle me-1"></i>Approve
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% else %}
+            <span class="text-muted small">
+              {{ leave.reviewed_by.name|default:"—" }}<br>
+              {{ leave.reviewed_at|date:"d M Y"|default:"" }}
+            </span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if page.has_other_pages %}
+{% with bp="status="|add:status_filter|add:"&q="|add:q|add:"&hostel="|add:hostel_id|add:"&department="|add:f_department|add:"&category="|add:f_category|add:"&room="|add:f_room|add:"&date_from="|add:date_from|add:"&date_to="|add:date_to|add:"&year="|add:year_filter %}
+<nav class="mt-3">
+  <ul class="pagination pagination-sm">
+    {% if page.has_previous %}<li class="page-item"><a class="page-link" href="?{{ bp }}&page={{ page.previous_page_number }}">Previous</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">Page {{ page.number }} of {{ page.paginator.num_pages }}</span></li>
+    {% if page.has_next %}<li class="page-item"><a class="page-link" href="?{{ bp }}&page={{ page.next_page_number }}">Next</a></li>{% endif %}
+  </ul>
+</nav>
+{% endwith %}
+{% endif %}
+
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-calendar2-x fs-1 d-block mb-2"></i>
+  No leave applications found.
+</div>
+{% endif %}
+{% endblock %}

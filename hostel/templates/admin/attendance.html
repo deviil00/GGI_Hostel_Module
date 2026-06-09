@@ -1,0 +1,139 @@
+{% extends "base/base.html" %}
+{% block title %}Attendance — Hostel ERP{% endblock %}
+{% block page_title %}Attendance{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Hostel-Wise Attendance</h4>
+    <p>{{ selected_date }} — click a hostel card to view details</p>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+    <form method="get" class="d-flex align-items-center gap-2">
+      <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}"
+             class="form-control form-control-sm" style="width:170px">
+      <button type="submit" class="btn btn-sm btn-outline-secondary">Go</button>
+    </form>
+    <a href="{% url 'attendance_report' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-bar-chart me-1"></i>Report
+    </a>
+  </div>
+</div>
+
+{# ── Overall summary ── #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center">
+      <div class="number text-success">{{ overall.present }}</div>
+      <div class="label">Present</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center">
+      <div class="number text-danger">{{ overall.absent }}</div>
+      <div class="label">Absent</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center">
+      <div class="number" style="color:#7C3AED">{{ overall.leave }}</div>
+      <div class="label">On Leave</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card text-center">
+      <div class="number text-secondary">{{ overall.total }}</div>
+      <div class="label">Total Students</div>
+    </div>
+  </div>
+</div>
+
+{# ── Hostel cards ── #}
+{% if not hostel_stats %}
+<div class="card">
+  <div class="empty-state" style="padding:60px">
+    <i class="bi bi-building" style="font-size:40px;opacity:.3;display:block;margin-bottom:12px;color:var(--text-3)"></i>
+    <p style="font-size:14px;color:var(--text-2)">No hostels found.</p>
+  </div>
+</div>
+{% else %}
+<div class="row g-4">
+  {% for row in hostel_stats %}
+  <div class="col-md-6 col-xl-4">
+    <a href="{% url 'hostel_attendance_detail' row.hostel.pk %}?date={{ selected_date|date:'Y-m-d' }}"
+       style="text-decoration:none">
+      <div class="card h-100" style="transition:box-shadow .15s;cursor:pointer"
+           onmouseenter="this.style.boxShadow='0 4px 20px rgba(0,0,0,.12)'"
+           onmouseleave="this.style.boxShadow=''">
+        <div class="card-header"
+             style="background:linear-gradient(135deg,#0F4C81,#1565C0);color:#fff;border:none">
+          <div class="card-header-left" style="color:#fff">
+            <i class="bi bi-building-fill me-2"></i>
+            <span style="font-weight:700">{{ row.hostel.name }}</span>
+          </div>
+          <span style="font-size:11px;background:rgba(255,255,255,.2);padding:2px 10px;
+                       border-radius:12px;font-weight:600">
+            {{ row.hostel.get_type_display }}
+          </span>
+        </div>
+        <div class="card-body p-4">
+          {# Progress bar #}
+          <div style="margin-bottom:14px">
+            <div style="font-size:11px;color:var(--text-3);margin-bottom:6px">
+              {{ row.marked_pct }}% marked
+            </div>
+            <div style="height:8px;border-radius:4px;background:var(--border);overflow:hidden">
+              <div style="height:100%;border-radius:4px;background:#1565C0;width:{{ row.marked_pct }}%"></div>
+            </div>
+          </div>
+
+          <div class="row g-2">
+            <div class="col-6">
+              <div style="padding:10px 14px;border-radius:8px;background:#ECFDF5;border:1px solid #6EE7B7;text-align:center">
+                <div style="font-size:22px;font-weight:800;color:#059669">{{ row.present }}</div>
+                <div style="font-size:11px;color:#065F46;font-weight:600">
+                  Present <span style="opacity:.7">({{ row.present_pct }}%)</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div style="padding:10px 14px;border-radius:8px;background:#FEF2F2;border:1px solid #FCA5A5;text-align:center">
+                <div style="font-size:22px;font-weight:800;color:#DC2626">{{ row.absent }}</div>
+                <div style="font-size:11px;color:#991B1B;font-weight:600">
+                  Absent <span style="opacity:.7">({{ row.absent_pct }}%)</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div style="padding:10px 14px;border-radius:8px;background:#F5F3FF;border:1px solid #C4B5FD;text-align:center">
+                <div style="font-size:22px;font-weight:800;color:#7C3AED">{{ row.leave }}</div>
+                <div style="font-size:11px;color:#5B21B6;font-weight:600">
+                  On Leave <span style="opacity:.7">({{ row.leave_pct }}%)</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div style="padding:10px 14px;border-radius:8px;background:#F8FAFF;border:1px solid var(--border);text-align:center">
+                <div style="font-size:22px;font-weight:800;color:var(--text-2)">{{ row.unmarked }}</div>
+                <div style="font-size:11px;color:var(--text-3);font-weight:600">Unmarked</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);
+                      display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:12px;color:var(--text-3)">
+              <i class="bi bi-people-fill me-1"></i>{{ row.total }} residents
+            </span>
+            <span style="font-size:12px;color:#1565C0;font-weight:600">
+              View Detail <i class="bi bi-arrow-right ms-1"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

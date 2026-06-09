@@ -1,0 +1,364 @@
+{% extends "base/base.html" %}
+{% block title %}Student Bulk Import — GGI Hostel ERP{% endblock %}
+{% block page_title %}Student Bulk Import{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Bulk Import — Students</h4>
+    <p>Upload a filled Excel file to create multiple student profiles in one shot</p>
+  </div>
+  <a href="{% url 'student_list' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Back to Students
+  </a>
+</div>
+
+{% if done %}
+<!-- ── Result panel ── -->
+<div class="row g-3 mb-4">
+  <div class="col-md-2-4">
+    <div class="stat-card" style="--stat-color:#059669">
+      <div class="s-top"><div class="s-icon" style="background:#ECFDF5"><i class="bi bi-person-plus-fill" style="color:#059669"></i></div></div>
+      <div class="s-number">{{ created_students }}</div>
+      <div class="s-label">Students Created</div>
+    </div>
+  </div>
+  <div class="col-md-2-4">
+    <div class="stat-card" style="--stat-color:#0277BD">
+      <div class="s-top"><div class="s-icon" style="background:#E1F5FE"><i class="bi bi-arrow-repeat" style="color:#0277BD"></i></div></div>
+      <div class="s-number">{{ updated_students }}</div>
+      <div class="s-label">Students Updated</div>
+    </div>
+  </div>
+  <div class="col-md-2-4">
+    <div class="stat-card" style="--stat-color:#1565C0">
+      <div class="s-top"><div class="s-icon" style="background:#EBF3FF"><i class="bi bi-door-open-fill" style="color:#1565C0"></i></div></div>
+      <div class="s-number">{{ allocated_rooms }}</div>
+      <div class="s-label">Rooms Allocated</div>
+    </div>
+  </div>
+  <div class="col-md-2-4">
+    <div class="stat-card" style="--stat-color:#7C3AED">
+      <div class="s-top"><div class="s-icon" style="background:#F5F3FF"><i class="bi bi-person-badge-fill" style="color:#7C3AED"></i></div></div>
+      <div class="s-number">{{ created_users }}</div>
+      <div class="s-label">Login Accounts Created</div>
+    </div>
+  </div>
+  <div class="col-md-2-4">
+    <div class="stat-card" style="--stat-color:{% if skipped_rows %}#DC2626{% else %}#059669{% endif %}">
+      <div class="s-top"><div class="s-icon" style="background:{% if skipped_rows %}#FEF2F2{% else %}#ECFDF5{% endif %}">
+        <i class="bi bi-{% if skipped_rows %}exclamation-triangle-fill{% else %}check-circle-fill{% endif %}"
+           style="color:{% if skipped_rows %}#DC2626{% else %}#059669{% endif %}"></i>
+      </div></div>
+      <div class="s-number">{{ skipped_rows|length }}</div>
+      <div class="s-label">Rows Skipped</div>
+    </div>
+  </div>
+</div>
+
+{% if parse_error %}
+<div class="alert" style="background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;border-radius:10px;padding:14px 18px;margin-bottom:20px">
+  <i class="bi bi-x-octagon-fill me-2"></i>
+  <strong>Parse Error:</strong> {{ parse_error }}
+</div>
+{% endif %}
+
+{% if skipped_rows %}
+<div class="card mb-4" style="border-color:#FCA5A5">
+  <div class="card-header" style="background:#FEF2F2">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#FEF2F2"><i class="bi bi-exclamation-triangle-fill" style="color:#DC2626"></i></div>
+      <span style="color:#991B1B;font-weight:700">Skipped Rows ({{ skipped_rows|length }})</span>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead>
+        <tr><th style="width:80px">Row</th><th>Student / Data</th><th>Reason</th></tr>
+      </thead>
+      <tbody>
+        {% for skip in skipped_rows %}
+        <tr>
+          <td class="fw-600" style="color:#DC2626">{{ skip.row }}</td>
+          <td style="font-size:13px">{{ skip.data }}</td>
+          <td><span style="font-size:12.5px;color:#991B1B">{{ skip.reason }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="d-flex gap-3">
+  <a href="{% url 'student_list' %}" class="btn btn-primary">
+    <i class="bi bi-people-fill me-1"></i>View Students
+  </a>
+  <a href="{% url 'import_students' %}" class="btn btn-outline-secondary">
+    <i class="bi bi-upload me-1"></i>Upload Another File
+  </a>
+</div>
+
+{% else %}
+<!-- ── Upload form ── -->
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-file-earmark-excel-fill" style="color:#1565C0"></i></div>
+          Upload Excel File
+        </div>
+      </div>
+      <div class="card-body p-4">
+
+        <!-- Step 1 -->
+        <div class="d-flex gap-3 mb-4 p-3 rounded" style="background:#EBF3FF">
+          <div style="width:32px;height:32px;background:#1565C0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <span style="color:#fff;font-weight:800;font-size:14px">1</span>
+          </div>
+          <div>
+            <div class="fw-700" style="font-size:13.5px;margin-bottom:4px">Download the Sample Template</div>
+            <div style="font-size:12.5px;color:var(--text-2);margin-bottom:10px">
+              Download the ready-to-fill Excel with all 17 columns pre-formatted. Includes sample rows and an Instructions sheet explaining every column.
+            </div>
+            <a href="{% url 'student_import_sample' %}" class="btn btn-sm btn-primary">
+              <i class="bi bi-download me-1"></i>Download Sample Excel
+            </a>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="d-flex gap-3 mb-4 p-3 rounded" style="background:var(--bg-2)">
+          <div style="width:32px;height:32px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:.5">
+            <span style="color:#fff;font-weight:800;font-size:14px">2</span>
+          </div>
+          <div style="flex:1">
+            <div class="fw-700" style="font-size:13.5px;margin-bottom:4px">Fill in Student Details</div>
+            <div style="font-size:12.5px;color:var(--text-2)">
+              Fill <strong>Roll Number</strong> and <strong>Student Name</strong> — all other columns are optional but recommended.
+              Leave <strong>Hostel Name (P)</strong> and <strong>Room No. (Q)</strong> blank — Admin assigns rooms after upload.
+              Delete sample rows before uploading. Save as <strong>.xlsx</strong>.
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="d-flex gap-3 p-3 rounded" style="background:var(--bg-2)">
+          <div style="width:32px;height:32px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:.5">
+            <span style="color:#fff;font-weight:800;font-size:14px">3</span>
+          </div>
+          <div style="flex:1">
+            <div class="fw-700" style="font-size:13.5px;margin-bottom:10px">Upload Your File</div>
+            <form method="post" enctype="multipart/form-data" id="uploadForm">
+              {% csrf_token %}
+              <div class="mb-3">
+                <label class="form-label fw-600">Select Excel File (.xlsx)</label>
+                <input type="file" name="excel_file" accept=".xlsx,.xls" class="form-control"
+                       id="fileInput" required onchange="showFileName(this)">
+                <div class="form-text" id="fileNameDisplay">Only .xlsx files are supported.</div>
+              </div>
+              <button type="submit" class="btn btn-primary" id="uploadBtn">
+                <i class="bi bi-cloud-upload me-1"></i>Upload &amp; Process
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Right column -->
+  <div class="col-lg-5">
+
+    <!-- Column reference -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-table" style="color:#059669"></i></div>
+          Column Reference (A → Q)
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table mb-0" style="font-size:11.5px">
+          <thead>
+            <tr>
+              <th style="width:22px">Col</th>
+              <th>Name</th>
+              <th style="width:68px">Required</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Student Identity -->
+            <tr style="background:#EBF3FF">
+              <td class="fw-700" style="color:#1565C0">A</td>
+              <td class="fw-600">Roll Number</td>
+              <td><span class="badge" style="background:#FEF2F2;color:#DC2626">Yes</span></td>
+              <td style="color:var(--text-2)">2024001</td>
+            </tr>
+            <tr style="background:#EBF3FF">
+              <td class="fw-700" style="color:#1565C0">B</td>
+              <td class="fw-600">Student Name</td>
+              <td><span class="badge" style="background:#FEF2F2;color:#DC2626">Yes</span></td>
+              <td style="color:var(--text-2)">Rahul Sharma</td>
+            </tr>
+            <tr style="background:#EBF3FF">
+              <td class="fw-700" style="color:#1565C0">C</td>
+              <td class="fw-600">Unique ID</td>
+              <td><span class="badge" style="background:#ECFDF5;color:#065F46">No</span></td>
+              <td style="color:var(--text-2)">GGI2024001</td>
+            </tr>
+            <tr style="background:#EBF3FF">
+              <td class="fw-700" style="color:#1565C0">D</td>
+              <td class="fw-600">Email</td>
+              <td><span class="badge" style="background:#ECFDF5;color:#065F46">No</span></td>
+              <td style="color:var(--text-2)">rahul@ggi.edu</td>
+            </tr>
+            <!-- Academic -->
+            <tr style="background:#E8F5E9">
+              <td class="fw-700" style="color:#1B5E20">E</td>
+              <td class="fw-600">Department</td>
+              <td><span class="badge" style="background:#ECFDF5;color:#065F46">No</span></td>
+              <td style="color:var(--text-2)">Computer Science</td>
+            </tr>
+            <tr style="background:#E8F5E9">
+              <td class="fw-700" style="color:#1B5E20">F</td>
+              <td class="fw-600">Year (1–4)</td>
+              <td><span class="badge" style="background:#ECFDF5;color:#065F46">No</span></td>
+              <td style="color:var(--text-2)">2</td>
+            </tr>
+            <tr style="background:#E8F5E9">
+              <td class="fw-700" style="color:#1B5E20">G</td>
+              <td class="fw-600">Semester (1–8)</td>
+              <td><span class="badge" style="background:#ECFDF5;color:#065F46">No</span></td>
+              <td style="color:var(--text-2)">3</td>
+            </tr>
+            <tr style="background:#E8F5E9">
+              <td class="fw-700" style="color:#1B5E20">H</td>
+              <td class="fw-600">Gender</td>
+              <td><span class="badge" style="background:#ECFDF5;color:#065F46">No</span></td>
+              <td style="color:var(--text-2)">Male / Female</td>
+            </tr>
+            <!-- Contact -->
+            <tr style="background:#E0F2F1">
+              <td class="fw-700" style="color:#00695C">I</td>
+              <td class="fw-600">Phone</td>
+              <td><span class="badge" style="background:#ECFDF5;color:#065F46">No</span></td>
+              <td style="color:var(--text-2)">9876543210</td>
+            </tr>
+            <tr style="background:#E0F2F1">
+              <td class="fw-700" style="color:#00695C">J</td>
+              <td class="fw-600">Date of Birth</td>
+              <td><span class="badge" style="background:#ECFDF5;color:#065F46">No</span></td>
+              <td style="color:var(--text-2)">15-03-2005</td>
+            </tr>
+            <!-- Guardian -->
+            <tr style="background:#F3E5F5">
+              <td class="fw-700" style="color:#6A1B9A">K</td>
+              <td class="fw-600">Guardian Name</td>
+              <td><span class="badge" style="background:#ECFDF5;color:#065F46">No</span></td>
+              <td style="color:var(--text-2)">Suresh Sharma</td>
+            </tr>
+            <tr style="background:#F3E5F5">
+              <td class="fw-700" style="color:#6A1B9A">L</td>
+              <td class="fw-600">Guardian Relation</td>
+              <td><span class="badge" style="background:#ECFDF5;color:#065F46">No</span></td>
+              <td style="color:var(--text-2)">Father</td>
+            </tr>
+            <tr style="background:#F3E5F5">
+              <td class="fw-700" style="color:#6A1B9A">M</td>
+              <td class="fw-600">Guardian Phone</td>
+              <td><span class="badge" style="background:#FEF9C3;color:#92400E">Rec.</span></td>
+              <td style="color:var(--text-2)">9876543211</td>
+            </tr>
+            <tr style="background:#F3E5F5">
+              <td class="fw-700" style="color:#6A1B9A">N</td>
+              <td class="fw-600">Guardian Email</td>
+              <td><span class="badge" style="background:#ECFDF5;color:#065F46">No</span></td>
+              <td style="color:var(--text-2)">parent@gmail.com</td>
+            </tr>
+            <!-- Address -->
+            <tr style="background:#FBE9E7">
+              <td class="fw-700" style="color:#BF360C">O</td>
+              <td class="fw-600">Address</td>
+              <td><span class="badge" style="background:#ECFDF5;color:#065F46">No</span></td>
+              <td style="color:var(--text-2)">Village ABC, Dist XYZ</td>
+            </tr>
+            <!-- Admin assigned -->
+            <tr style="background:#ECEFF1">
+              <td class="fw-700" style="color:#455A64">P</td>
+              <td class="fw-600">Hostel Name</td>
+              <td><span class="badge" style="background:#F1F5F9;color:#475569">Admin 2</span></td>
+              <td style="color:var(--text-2)">BH-1 (leave blank)</td>
+            </tr>
+            <tr style="background:#ECEFF1">
+              <td class="fw-700" style="color:#455A64">Q</td>
+              <td class="fw-600">Room No.</td>
+              <td><span class="badge" style="background:#F1F5F9;color:#475569">Admin 2</span></td>
+              <td style="color:var(--text-2)">BH-101 (leave blank)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- How allocation works -->
+    <div class="card mb-3" style="border-color:#BFDBFE">
+      <div class="card-header" style="background:#EFF6FF">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#DBEAFE"><i class="bi bi-diagram-3-fill" style="color:#1565C0"></i></div>
+          <span style="color:#1E40AF;font-weight:700">How It Works</span>
+        </div>
+      </div>
+      <div class="card-body p-3">
+        <ol style="font-size:12.5px;color:var(--text-2);padding-left:18px;margin:0;line-height:1.8">
+          <li>Upload Excel → <strong>student profiles created instantly</strong> and visible to student, admin &amp; superadmin.</li>
+          <li>If Email (D) is provided → <strong>login account auto-created</strong> (temp password = Roll Number).</li>
+          <li>Superadmin/Admin fills Hostel (P) + Room (Q) in the sheet or via the student profile → <strong>room allocation auto-assigned</strong>.</li>
+          <li>Student profile shows room, floor, bed number as soon as allocation is saved.</li>
+          <li>Upload the same Roll Number again → record is <strong>updated, not duplicated</strong>.</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="card" style="border-color:#C4B5FD">
+      <div class="card-body p-3">
+        <div class="fw-700 mb-2" style="font-size:13px;color:#5B21B6"><i class="bi bi-lightbulb-fill me-1"></i>Tips</div>
+        <ul style="font-size:12.5px;color:var(--text-2);padding-left:16px;margin:0">
+          <li><strong>Hostel Name must match exactly</strong> as entered in the system (case-insensitive).</li>
+          <li>Room No. must already exist in that hostel — create rooms first via Bulk Upload Rooms.</li>
+          <li>Guardian Phone (M) is used for gate pass &amp; leave approval — always include it.</li>
+          <li>DOB format is <code>DD-MM-YYYY</code>, e.g. <code>15-03-2005</code>.</li>
+          <li>Semester defaults to 1 if left blank; Year defaults to 1.</li>
+          <li>Rows with missing Roll Number or Name are automatically skipped.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endif %}
+
+<style>
+.col-md-2-4 { flex: 0 0 20%; max-width: 20%; padding: 0 0.75rem; }
+@media (max-width: 768px) { .col-md-2-4 { flex: 0 0 50%; max-width: 50%; } }
+</style>
+
+<script>
+function showFileName(input) {
+  const display = document.getElementById('fileNameDisplay');
+  if (input.files && input.files[0]) {
+    display.textContent = '✓ Selected: ' + input.files[0].name;
+    display.style.color = '#059669';
+  }
+}
+document.getElementById('uploadForm') && document.getElementById('uploadForm').addEventListener('submit', function() {
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
+});
+</script>
+{% endblock %}

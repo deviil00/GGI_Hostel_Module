@@ -1,0 +1,329 @@
+{% extends "base/base.html" %}
+{% block title %}Students — GGI Hostel ERP{% endblock %}
+{% block page_title %}Students{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Student Directory</h4>
+    <p>{{ student_count }} student{{ student_count|pluralize }} found</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if is_admin and not warden_hostel %}
+    <button class="btn btn-sm btn-outline-secondary" onclick="toggleCourseManager()">
+      <i class="bi bi-mortarboard me-1"></i>Manage Courses
+    </button>
+    <a href="{% url 'student_import_sample' %}" class="btn btn-sm btn-outline-secondary" title="Download sample Excel">
+      <i class="bi bi-file-earmark-arrow-down me-1"></i>Sample Excel
+    </a>
+    <a href="{% url 'import_students' %}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-upload me-1"></i>Import Excel
+    </a>
+    <a href="{% url 'allocate_room_blank' %}" class="btn btn-sm btn-primary">
+      <i class="bi bi-plus-lg me-1"></i>Allocate Room
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{# ══════ COURSE / DEPARTMENT MANAGER (admin only) ══════ #}
+{% if is_admin and not warden_hostel %}
+<div id="course-manager" style="display:none" class="card mb-4">
+  <div class="card-header" style="background:linear-gradient(135deg,#1B5E20,#2E7D32);color:#fff;border:none">
+    <div class="card-header-left" style="color:#fff">
+      <i class="bi bi-mortarboard me-2"></i><strong>Courses / Departments</strong>
+      <span style="font-size:11px;opacity:.75;margin-left:6px">
+        These appear as dropdowns when adding students &amp; in announcement targeting
+      </span>
+    </div>
+    <button type="button" class="btn btn-xs"
+            style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)"
+            onclick="toggleCourseManager()">Close</button>
+  </div>
+  <div class="card-body p-4">
+    <div class="row g-4">
+
+      {# ── Add course form ── #}
+      <div class="col-md-4">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_dept">
+          <div class="mb-2">
+            <label class="form-label fw-600" style="font-size:12px">
+              Course / Department Name <span class="text-danger">*</span>
+            </label>
+            <input type="text" name="dept_name" class="form-control form-control-sm"
+                   placeholder="e.g. Computer Science & Engineering" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:12px">Short Code</label>
+            <input type="text" name="dept_code" class="form-control form-control-sm"
+                   placeholder="e.g. CSE, ECE, ME" maxlength="20"
+                   style="text-transform:uppercase">
+          </div>
+          <button type="submit" class="btn btn-sm btn-success w-100">
+            <i class="bi bi-plus-circle me-1"></i>Add Course
+          </button>
+        </form>
+      </div>
+
+      {# ── Existing courses list ── #}
+      <div class="col-md-8">
+        {% if dept_objects %}
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          {% for d in dept_objects %}
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;
+                      background:{% if d.is_active %}#F0FDF4{% else %}#F8FAFF{% endif %};
+                      border:1.5px solid {% if d.is_active %}#BBF7D0{% else %}#E2E8F0{% endif %};
+                      min-width:160px">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:{% if d.is_active %}#15803D{% else %}var(--text-3){% endif %}">
+                {% if d.code %}<span style="font-size:11px;font-weight:800;background:{% if d.is_active %}#D1FAE5{% else %}#F1F5F9{% endif %};
+                              padding:1px 6px;border-radius:4px;margin-right:4px">{{ d.code }}</span>{% endif %}
+                {{ d.name }}
+              </div>
+              <div style="font-size:10.5px;color:var(--text-3);margin-top:2px">
+                {{ d.student_count }} student{{ d.student_count|pluralize }}
+                {% if not d.is_active %}&nbsp;·&nbsp;<em>Inactive</em>{% endif %}
+              </div>
+            </div>
+            <div class="d-flex gap-1 ms-auto" style="flex-shrink:0">
+              {# Toggle active #}
+              <form method="post" style="display:inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="toggle_dept">
+                <input type="hidden" name="dept_pk" value="{{ d.pk }}">
+                <button type="submit" class="btn btn-xs {% if d.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                        title="{% if d.is_active %}Deactivate{% else %}Activate{% endif %}">
+                  <i class="bi {% if d.is_active %}bi-eye-slash{% else %}bi-eye{% endif %}"></i>
+                </button>
+              </form>
+              {# Delete #}
+              <form method="post" style="display:inline"
+                    onsubmit="return confirm('Delete course \'{{ d.name|escapejs }}\'?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_dept">
+                <input type="hidden" name="dept_pk" value="{{ d.pk }}">
+                <button type="submit" class="btn btn-xs btn-outline-danger">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="font-size:13px;color:var(--text-3);padding:20px 0">
+          No courses defined yet — add your first one to enable department dropdowns and announcement targeting.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# Datalist for department autocomplete in any add-student form #}
+<datalist id="dept-master-list">
+  {% for d in all_departments %}<option value="{{ d }}">{% endfor %}
+</datalist>
+
+<!-- Filters -->
+<div class="filter-card">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-white border-end-0" style="border-color:var(--border)">
+          <i class="bi bi-search" style="color:var(--text-3)"></i>
+        </span>
+        <input type="text" name="q" value="{{ search }}"
+               class="form-control border-start-0" style="border-color:var(--border)"
+               placeholder="Search name or roll no…">
+      </div>
+    </div>
+    {% if not warden_hostel %}
+    <div class="col-md-2">
+      <select name="hostel" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">All Hostels</option>
+        {% for h in all_hostels %}
+        <option value="{{ h.pk }}" {% if filters.hostel == h.pk|stringformat:"s" %}selected{% endif %}>{{ h.name }}</option>
+        {% endfor %}
+        <option value="unallocated" {% if filters.hostel == "unallocated" %}selected{% endif %}>Unallocated</option>
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-md-2">
+      <select name="dept" class="form-select form-select-sm">
+        <option value="">All Departments</option>
+        {% for d in departments %}
+        <option value="{{ d }}" {% if filters.dept == d %}selected{% endif %}>{{ d }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select name="year" class="form-select form-select-sm">
+        <option value="">All Years</option>
+        <option value="1" {% if filters.year == "1" %}selected{% endif %}>1st Year</option>
+        <option value="2" {% if filters.year == "2" %}selected{% endif %}>2nd Year</option>
+        <option value="3" {% if filters.year == "3" %}selected{% endif %}>3rd Year</option>
+        <option value="4" {% if filters.year == "4" %}selected{% endif %}>4th Year</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <select name="status" class="form-select form-select-sm">
+        <option value="">All Status</option>
+        <option value="resident"    {% if filters.status == "resident" %}selected{% endif %}>Resident</option>
+        <option value="nonresident" {% if filters.status == "nonresident" %}selected{% endif %}>Non-Resident</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary btn-sm px-3">Filter</button>
+    </div>
+    <div class="col-auto">
+      <a href="{% url 'student_list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+    </div>
+  </form>
+</div>
+
+{# ── Hostel-wise grouped student list ── #}
+{% regroup page_students by hostel_group as hostel_sections %}
+
+{% if hostel_sections %}
+  {% for section in hostel_sections %}
+  <div class="card mb-3">
+    {# Section header #}
+    <div class="card-header"
+         style="background:{% if section.grouper == 'Unallocated' %}#F8FAFC{% else %}linear-gradient(135deg,#EBF3FF,#F0F7FF){% endif %};
+                border-bottom:2px solid {% if section.grouper == 'Unallocated' %}var(--border){% else %}#BFDBFE{% endif %}">
+      <div class="card-header-left">
+        <div class="ch-icon" style="background:{% if section.grouper == 'Unallocated' %}#F1F5F9{% else %}#DBEAFE{% endif %}">
+          <i class="bi bi-{% if section.grouper == 'Unallocated' %}house-slash{% else %}building-fill{% endif %}"
+             style="color:{% if section.grouper == 'Unallocated' %}var(--text-3){% else %}var(--blue){% endif %}"></i>
+        </div>
+        <span style="font-size:14px;font-weight:800;color:{% if section.grouper == 'Unallocated' %}var(--text-3){% else %}var(--text-1){% endif %}">
+          {{ section.grouper }}
+        </span>
+      </div>
+      <span style="font-size:12px;color:var(--text-3)">
+        {{ section.list|length }} student{{ section.list|length|pluralize }}
+      </span>
+    </div>
+
+    <div class="table-responsive">
+    <table class="table" style="margin-bottom:0">
+      <thead><tr>
+        <th>Student</th>
+        <th>Branch</th>
+        <th>Year / Sem</th>
+        <th>Contact</th>
+        <th>Room</th>
+        <th>Status</th>
+        <th></th>
+      </tr></thead>
+      <tbody>
+      {% for student in section.list %}
+      {% cycle 'av-blue' 'av-green' 'av-purple' 'av-amber' 'av-teal' as avatar_color silent %}
+      <tr>
+        <td>
+          <div class="d-flex align-items-center gap-2">
+            {# Avatar with flag dot overlay #}
+            <div style="position:relative;flex-shrink:0">
+              {% if student.photo %}
+              <img src="{{ student.photo.url }}" alt="{{ student.name }}"
+                   style="width:34px;height:34px;border-radius:50%;object-fit:cover">
+              {% else %}
+              <div class="tbl-avatar {{ avatar_color }}">{{ student.name|first|upper }}</div>
+              {% endif %}
+              <i class="bi bi-flag-fill"
+                 title="{{ student.get_flag_color_display }} flag{% if student.flag_note %}: {{ student.flag_note }}{% endif %}"
+                 style="position:absolute;bottom:-2px;right:-5px;font-size:11px;
+                        color:{% if student.flag_color == 'red' %}#DC2626{% elif student.flag_color == 'yellow' %}#D97706{% else %}#059669{% endif %};
+                        filter:drop-shadow(0 0 2px #fff)"></i>
+            </div>
+            <div>
+              <div class="tbl-name">{{ student.name }}</div>
+              <div class="tbl-sub">{{ student.roll_number }}</div>
+            </div>
+          </div>
+        </td>
+
+        <td style="color:var(--text-2);font-size:13px">{{ student.department }}</td>
+
+        <td>
+          <span class="badge" style="background:var(--blue-soft);color:var(--blue)">
+            Y{{ student.year }} / S{{ student.semester }}
+          </span>
+        </td>
+
+        <td>
+          <div style="font-size:13px;color:var(--text-1)">
+            <i class="bi bi-phone" style="font-size:11px;color:var(--text-3)"></i>
+            {{ student.phone|default:"—" }}
+          </div>
+          {% if student.guardian_phone %}
+          <div style="font-size:11px;color:var(--text-3);margin-top:2px">
+            <i class="bi bi-person-hearts" style="font-size:10px;color:#D97706"></i>
+            <span style="color:#D97706;font-weight:600">{{ student.guardian_name|default:"Parent" }}</span>
+            &nbsp;{{ student.guardian_phone }}
+          </div>
+          {% else %}
+          <div style="font-size:11px;color:#CBD5E1;margin-top:2px">
+            <i class="bi bi-exclamation-circle" style="font-size:10px"></i> No parent no.
+          </div>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if student.alloc_room %}
+          <span class="badge" style="background:#F0F9FF;color:#0891B2;font-weight:700">
+            <i class="bi bi-door-open" style="font-size:10px"></i> {{ student.alloc_room.room_number }}
+          </span>
+          {% else %}
+          <span style="color:var(--text-3);font-size:12px">—</span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if student.is_resident %}
+            <span class="badge badge-resident">Resident</span>
+          {% else %}
+            <span class="badge" style="background:#F1F5F9;color:var(--text-3)">Inactive</span>
+          {% endif %}
+        </td>
+
+        <td>
+          <a href="{% url 'student_detail' student.pk %}" class="btn btn-xs btn-outline-secondary">
+            <i class="bi bi-eye me-1"></i>View
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+<div class="card"><div class="card-body">
+  <div class="empty-state"><i class="bi bi-people"></i><p>No students found.</p></div>
+</div></div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleCourseManager() {
+  const el = document.getElementById('course-manager');
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+  if (el.style.display !== 'none') el.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+// Auto-open course manager if redirected from edit_student page hint link
+if (new URLSearchParams(location.search).get('open_courses') === '1') {
+  document.addEventListener('DOMContentLoaded', function() {
+    const el = document.getElementById('course-manager');
+    if (el) { el.style.display = ''; el.scrollIntoView({behavior:'smooth'}); }
+  });
+}
+</script>
+{% endblock %}

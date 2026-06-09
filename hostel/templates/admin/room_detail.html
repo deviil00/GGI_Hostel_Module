@@ -1,0 +1,530 @@
+{% extends 'base/base.html' %}
+{% block title %}Room {{ room.room_number }} — {{ hostel.name }}{% endblock %}
+{% block page_title %}Room {{ room.room_number }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Room {{ room.room_number }}</h4>
+    <p>
+      {{ hostel.name }} &bull; Floor {{ room.floor }}{% if room.wing %} &bull; {{ room.wing }}{% endif %}
+      &bull;
+      <span style="color:{% if room.status == 'occupied' %}#D97706{% elif room.status == 'maintenance' %}#DC2626{% elif room.status == 'reserved' %}#7C3AED{% else %}#059669{% endif %};font-weight:600">
+        {{ room.get_status_display }}
+      </span>
+    </p>
+  </div>
+  <a href="{% url 'floor_detail' hostel.pk room.floor %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Floor {{ room.floor }}
+  </a>
+</div>
+
+<!-- Quick stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="--stat-color:#1565C0">
+      <div class="s-top"><div class="s-icon" style="background:#EBF3FF"><i class="bi bi-person-fill" style="color:#1565C0"></i></div></div>
+      <div class="s-number">{{ room.current_occupants }}/{{ room.capacity }}</div>
+      <div class="s-label">Occupancy</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="--stat-color:#059669">
+      <div class="s-top"><div class="s-icon" style="background:#ECFDF5"><i class="bi bi-bunk-ladder" style="color:#059669"></i></div></div>
+      <div class="s-number">{{ beds|length }}</div>
+      <div class="s-label">Beds</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="--stat-color:#7C3AED">
+      <div class="s-top"><div class="s-icon" style="background:#F5F3FF"><i class="bi bi-box-seam-fill" style="color:#7C3AED"></i></div></div>
+      <div class="s-number">{{ assets|length }}</div>
+      <div class="s-label">Assets</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="--stat-color:#DC2626">
+      <div class="s-top"><div class="s-icon" style="background:#FEF2F2"><i class="bi bi-tools" style="color:#DC2626"></i></div></div>
+      <div class="s-number">{{ maintenance|length }}</div>
+      <div class="s-label">Maintenance Logs</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" id="roomTabs" style="border-bottom:2px solid var(--border)">
+  <li class="nav-item">
+    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-info" style="font-size:13px;font-weight:600">
+      <i class="bi bi-info-circle me-1"></i>Room Info
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-students" style="font-size:13px;font-weight:600">
+      <i class="bi bi-people-fill me-1"></i>Students
+      {% if allocations %}<span class="badge rounded-pill ms-1" style="background:#1565C0;font-size:10px">{{ allocations|length }}</span>{% endif %}
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-beds" style="font-size:13px;font-weight:600">
+      <i class="bi bi-bunk-ladder me-1"></i>Beds
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-assets" style="font-size:13px;font-weight:600">
+      <i class="bi bi-box-seam-fill me-1"></i>Assets
+      {% if assets %}<span class="badge rounded-pill ms-1" style="background:#7C3AED;font-size:10px">{{ assets|length }}</span>{% endif %}
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-maintenance" style="font-size:13px;font-weight:600">
+      <i class="bi bi-tools me-1"></i>Maintenance
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+  <!-- ── Tab 1: Room Info ── -->
+  <div class="tab-pane fade show active" id="tab-info">
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-building" style="color:#1565C0"></i></div>
+              Edit Room Details
+            </div>
+          </div>
+          <div class="card-body p-4">
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="edit_room">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label fw-600">Room Number</label>
+                  <input type="text" name="room_number" class="form-control" value="{{ room.room_number }}" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-600">Floor</label>
+                  <input type="number" name="floor" class="form-control" value="{{ room.floor }}" min="1" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label fw-600">Wing / Block</label>
+                  <input type="text" name="wing" class="form-control" value="{{ room.wing }}" placeholder="e.g. A-Wing">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-600">Room Type</label>
+                  <input type="text" name="room_type" class="form-control" value="{{ room.room_type }}" placeholder="e.g. AC Double, Non-AC Triple">
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label fw-600">Capacity</label>
+                  <input type="number" name="capacity" class="form-control" value="{{ room.capacity }}" min="1" max="20">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-600">Status</label>
+                  <select name="status" class="form-select">
+                    {% for val, label in status_choices %}
+                    <option value="{{ val }}" {% if room.status == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+
+              <!-- Amenities -->
+              <div class="mt-3">
+                <label class="form-label fw-600">Amenities / Features</label>
+                <div class="d-flex flex-wrap gap-2">
+                  {% for a in all_amenities %}
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="amenities" value="{{ a.pk }}" id="am_{{ a.pk }}"
+                           {% if a.pk in selected_amenities %}checked{% endif %}>
+                    <label class="form-check-label" for="am_{{ a.pk }}" style="font-size:13px">
+                      <i class="bi {{ a.icon }} me-1"></i>{{ a.name }}
+                    </label>
+                  </div>
+                  {% empty %}
+                  <span class="text-muted" style="font-size:12.5px">No amenities defined. <a href="{% url 'amenity_list' %}">Add amenities</a></span>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary mt-4">
+                <i class="bi bi-check-lg me-1"></i>Save Changes
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-header-left">
+              <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-info-circle-fill" style="color:#059669"></i></div>
+              Room Summary
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <table class="table mb-0">
+              <tr><td class="text-muted" style="font-size:13px;width:40%">Hostel</td><td class="fw-600" style="font-size:13px">{{ hostel.name }}</td></tr>
+              <tr><td class="text-muted" style="font-size:13px">Floor</td><td class="fw-600" style="font-size:13px">{{ room.floor }}</td></tr>
+              <tr><td class="text-muted" style="font-size:13px">Type</td><td class="fw-600" style="font-size:13px">{{ room.room_type }}</td></tr>
+              <tr><td class="text-muted" style="font-size:13px">Capacity</td><td class="fw-600" style="font-size:13px">{{ room.capacity }} beds</td></tr>
+              <tr><td class="text-muted" style="font-size:13px">Occupied</td><td class="fw-600" style="font-size:13px;color:#D97706">{{ room.current_occupants }}</td></tr>
+              <tr>
+                <td class="text-muted" style="font-size:13px">Amenities</td>
+                <td>
+                  {% for a in room.amenities.all %}
+                  <span style="font-size:11px;background:#EBF3FF;color:#1565C0;padding:2px 7px;border-radius:20px">
+                    <i class="bi {{ a.icon }}"></i> {{ a.name }}
+                  </span>
+                  {% empty %}<span class="text-muted" style="font-size:12px">None</span>
+                  {% endfor %}
+                </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 2: Students ── -->
+  <div class="tab-pane fade" id="tab-students">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-people-fill" style="color:#1565C0"></i></div>
+          Currently Allocated Students ({{ allocations|length }}/{{ room.capacity }})
+        </div>
+        {% if room.beds_available > 0 %}
+        <a href="{% url 'allocate_room_blank' %}" class="btn btn-sm btn-primary"><i class="bi bi-person-plus me-1"></i>Allocate Student</a>
+        {% endif %}
+      </div>
+      {% if allocations %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr><th>Student</th><th>Department</th><th>Year / Sem</th><th>Phone</th><th>Guardian</th><th>Check-in</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for alloc in allocations %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="tbl-avatar av-blue">{{ alloc.student.name|first|upper }}</div>
+                  <div>
+                    <div class="tbl-name">{{ alloc.student.name }}</div>
+                    <div class="tbl-sub">{{ alloc.student.roll_number }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>{{ alloc.student.department }}</td>
+              <td>Year {{ alloc.student.year }} / Sem {{ alloc.student.semester }}</td>
+              <td>{{ alloc.student.phone|default:"—" }}</td>
+              <td>
+                <div style="font-size:12.5px">{{ alloc.student.guardian_name|default:"—" }}</div>
+                <div class="tbl-sub">{{ alloc.student.guardian_phone|default:"" }}</div>
+              </td>
+              <td style="font-size:12.5px">{{ alloc.check_in }}</td>
+              <td>
+                <div class="d-flex gap-1">
+                  <a href="{% url 'student_detail' alloc.student.pk %}" class="btn btn-xs btn-outline-primary"><i class="bi bi-eye"></i></a>
+                  <a href="{% url 'checkout_student' alloc.pk %}" class="btn btn-xs btn-outline-danger"><i class="bi bi-box-arrow-right"></i></a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body">
+        <div class="empty-state"><i class="bi bi-person-x"></i><p>No students currently allocated to this room.</p></div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Tab 3: Beds ── -->
+  <div class="tab-pane fade" id="tab-beds">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-bunk-ladder" style="color:#059669"></i></div>
+          Bed Management
+        </div>
+        <div class="d-flex gap-2">
+          <form method="post" class="d-inline">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="auto_beds">
+            <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-lightning me-1"></i>Auto-create {{ room.capacity }} Beds</button>
+          </form>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <!-- Add bed form -->
+        <form method="post" class="d-flex gap-2 mb-4">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_bed">
+          <input type="text" name="bed_number" class="form-control form-control-sm" style="width:120px" placeholder="Bed No. e.g. A">
+          <button class="btn btn-sm btn-primary"><i class="bi bi-plus me-1"></i>Add Bed</button>
+        </form>
+
+        <!-- Beds grid -->
+        {% if beds %}
+        <div class="row g-2">
+          {% for bed in beds %}
+          <div class="col-6 col-md-3">
+            <div class="p-3 rounded text-center"
+                 style="border:1.5px solid {% if bed.status == 'occupied' %}#FCD34D{% elif bed.status == 'maintenance' %}#FCA5A5{% elif bed.status == 'reserved' %}#C4B5FD{% else %}#6EE7B7{% endif %};
+                        background:{% if bed.status == 'occupied' %}#FFFBEB{% elif bed.status == 'maintenance' %}#FEF2F2{% elif bed.status == 'reserved' %}#F5F3FF{% else %}#ECFDF5{% endif %}">
+              <div class="fw-800" style="font-size:20px">{{ bed.bed_number }}</div>
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-3)">{{ bed.get_status_display }}</div>
+              <div class="d-flex gap-1 justify-content-center mt-2">
+                <form method="post" class="d-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="update_bed">
+                  <input type="hidden" name="bed_id" value="{{ bed.pk }}">
+                  <select name="bed_status" class="form-select form-select-sm" style="font-size:11px;width:100px" onchange="this.form.submit()">
+                    {% for val, label in bed_statuses %}
+                    <option value="{{ val }}" {% if bed.status == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </form>
+                <form method="post" class="d-inline" onsubmit="return confirm('Remove bed {{ bed.bed_number }}?')">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete_bed">
+                  <input type="hidden" name="bed_id" value="{{ bed.pk }}">
+                  <button class="btn btn-xs btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state"><i class="bi bi-bunk-ladder"></i><p>No beds added yet. Use "Auto-create" to add {{ room.capacity }} beds at once.</p></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab 4: Assets ── -->
+  <div class="tab-pane fade" id="tab-assets">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#F5F3FF"><i class="bi bi-box-seam-fill" style="color:#7C3AED"></i></div>
+          Room Assets / Inventory
+        </div>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addAssetModal">
+          <i class="bi bi-plus me-1"></i>Add Asset
+        </button>
+      </div>
+      {% if assets %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr><th>Item</th><th>Qty</th><th>Condition</th><th>Asset Tag</th><th>Notes</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for asset in assets %}
+            <tr>
+              <td class="fw-600">{{ asset.name }}</td>
+              <td>{{ asset.quantity }}</td>
+              <td>
+                <span class="badge" style="font-size:11px;background:{% if asset.condition == 'good' %}#ECFDF5;color:#065F46{% elif asset.condition == 'fair' %}#FFFBEB;color:#92400E{% elif asset.condition == 'poor' %}#FEF3C7;color:#92400E{% elif asset.condition == 'damaged' %}#FEF2F2;color:#991B1B{% else %}#F3F4F6;color:#6B7280{% endif %}">
+                  {{ asset.get_condition_display }}
+                </span>
+              </td>
+              <td style="font-size:12.5px">{{ asset.asset_tag|default:"—" }}</td>
+              <td style="font-size:12.5px;color:var(--text-2)">{{ asset.notes|default:"—"|truncatechars:40 }}</td>
+              <td>
+                <div class="d-flex gap-1">
+                  <button class="btn btn-xs btn-outline-secondary" onclick="editAsset('{{ asset.pk }}','{{ asset.name }}','{{ asset.quantity }}','{{ asset.condition }}','{{ asset.asset_tag }}','{{ asset.notes|escapejs }}')">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <form method="post" onsubmit="return confirm('Remove {{ asset.name }}?')">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_asset">
+                    <input type="hidden" name="asset_id" value="{{ asset.pk }}">
+                    <button class="btn btn-xs btn-outline-danger"><i class="bi bi-trash"></i></button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body">
+        <div class="empty-state"><i class="bi bi-box-seam"></i><p>No assets recorded for this room.</p></div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Tab 5: Maintenance ── -->
+  <div class="tab-pane fade" id="tab-maintenance">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEF2F2"><i class="bi bi-tools" style="color:#DC2626"></i></div>
+          Maintenance Logs
+        </div>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addMaintModal">
+          <i class="bi bi-plus me-1"></i>Log Issue
+        </button>
+      </div>
+      {% if maintenance %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr><th>Category</th><th>Issue</th><th>Assigned To</th><th>Status</th><th>Date</th></tr>
+          </thead>
+          <tbody>
+            {% for log in maintenance %}
+            <tr>
+              <td><span class="badge" style="background:#EBF3FF;color:#1565C0;font-size:11px">{{ log.get_category_display }}</span></td>
+              <td style="font-size:13px">{{ log.issue|truncatechars:60 }}</td>
+              <td style="font-size:12.5px">{{ log.assigned_to|default:"—" }}</td>
+              <td>
+                <span class="badge" style="font-size:11px;background:{% if log.status == 'open' %}#FEF2F2;color:#991B1B{% elif log.status == 'in_progress' %}#FFFBEB;color:#92400E{% else %}#ECFDF5;color:#065F46{% endif %}">
+                  {{ log.get_status_display }}
+                </span>
+              </td>
+              <td style="font-size:12.5px">{{ log.created_at|date:"d M Y" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body">
+        <div class="empty-state"><i class="bi bi-tools"></i><p>No maintenance issues logged for this room.</p></div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div><!-- end tab-content -->
+
+<!-- Add Asset Modal -->
+<div class="modal fade" id="addAssetModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" id="assetForm">
+        {% csrf_token %}
+        <input type="hidden" name="action" id="assetAction" value="add_asset">
+        <input type="hidden" name="asset_id" id="assetId">
+        <div class="modal-header">
+          <h5 class="modal-title fw-700" id="assetModalTitle">Add Asset</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-600">Item Name <span class="text-danger">*</span></label>
+            <input type="text" name="asset_name" id="assetName" class="form-control" placeholder="e.g. Fan, Cupboard, Table" required>
+          </div>
+          <div class="row g-3">
+            <div class="col-4">
+              <label class="form-label fw-600">Quantity</label>
+              <input type="number" name="asset_qty" id="assetQty" class="form-control" value="1" min="1">
+            </div>
+            <div class="col-8">
+              <label class="form-label fw-600">Condition</label>
+              <select name="asset_condition" id="assetCondition" class="form-select">
+                {% for val, label in asset_conditions %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="mb-3 mt-3">
+            <label class="form-label fw-600">Asset Tag / Serial No.</label>
+            <input type="text" name="asset_tag" id="assetTag" class="form-control" placeholder="Optional">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Notes</label>
+            <textarea name="asset_notes" id="assetNotes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check me-1"></i>Save Asset</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Add Maintenance Modal -->
+<div class="modal fade" id="addMaintModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_maintenance">
+        <div class="modal-header">
+          <h5 class="modal-title fw-700">Log Maintenance Issue</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-600">Category <span class="text-danger">*</span></label>
+            <select name="category" class="form-select" required>
+              {% for val, label in maint_categories %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Issue Description <span class="text-danger">*</span></label>
+            <textarea name="issue" class="form-control" rows="3" required placeholder="Describe the issue..."></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Assigned To</label>
+            <input type="text" name="assigned_to" class="form-control" placeholder="Plumber / Electrician name">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Scheduled Date</label>
+            <input type="date" name="scheduled_date" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check me-1"></i>Log Issue</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function editAsset(id, name, qty, condition, tag, notes) {
+  document.getElementById('assetAction').value     = 'edit_asset';
+  document.getElementById('assetId').value         = id;
+  document.getElementById('assetName').value       = name;
+  document.getElementById('assetQty').value        = qty;
+  document.getElementById('assetCondition').value  = condition;
+  document.getElementById('assetTag').value        = tag;
+  document.getElementById('assetNotes').value      = notes;
+  document.getElementById('assetModalTitle').textContent = 'Edit Asset';
+  new bootstrap.Modal(document.getElementById('addAssetModal')).show();
+}
+// Reset modal when opened fresh
+document.getElementById('addAssetModal').addEventListener('show.bs.modal', function(e) {
+  if (!e.relatedTarget) return; // opened by editAsset() — skip
+  document.getElementById('assetAction').value    = 'add_asset';
+  document.getElementById('assetId').value        = '';
+  document.getElementById('assetName').value      = '';
+  document.getElementById('assetQty').value       = '1';
+  document.getElementById('assetCondition').value = 'good';
+  document.getElementById('assetTag').value       = '';
+  document.getElementById('assetNotes').value     = '';
+  document.getElementById('assetModalTitle').textContent = 'Add Asset';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,198 @@
+{% extends "base/base.html" %}
+{% block title %}Module Permissions{% endblock %}
+{% block page_title %}Module Permissions{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Module Permissions</h4>
+    <p>Control which sections are visible to each staff role — including custom roles you create</p>
+  </div>
+  <a href="{% url 'superadmin_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Dashboard
+  </a>
+</div>
+
+{# ── Shared action forms (outside the save form to avoid nesting) ── #}
+<form method="post" id="deleteForm" style="display:none">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="delete_role">
+  <input type="hidden" name="role_key" id="deleteRoleKey">
+</form>
+<form method="post" id="restoreForm" style="display:none">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="restore_role">
+  <input type="hidden" name="role_key" id="restoreRoleKey">
+</form>
+
+{# ── Save permissions form ── #}
+<form method="post" id="permForm">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="save">
+
+  {% for rp in roles_perms %}
+  <div class="card mb-4">
+    <div class="card-header"
+         style="background:{% if rp.is_student %}linear-gradient(135deg,#065F46,#059669){% else %}linear-gradient(135deg,#0F4C81,#1565C0){% endif %};color:#fff">
+      <div class="card-header-left" style="color:#fff;gap:10px">
+        <i class="bi {% if rp.is_student %}bi-mortarboard-fill{% else %}bi-person-badge-fill{% endif %} me-1"></i>
+        <span style="font-weight:700;font-size:15px">{{ rp.label }}</span>
+        {% if rp.custom %}
+        <span style="font-size:10.5px;background:rgba(255,255,255,.18);padding:2px 9px;
+                     border-radius:12px;font-weight:600;letter-spacing:.3px">Custom</span>
+        {% endif %}
+        {% if rp.is_student %}
+        <span style="font-size:10.5px;background:rgba(255,255,255,.18);padding:2px 9px;
+                     border-radius:12px;font-weight:600;letter-spacing:.3px">Student-Facing</span>
+        {% endif %}
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <span style="font-size:12px;opacity:.8">
+          {{ rp.allowed|length }} / {{ rp.modules_list|length }} modules enabled
+        </span>
+        <span style="font-size:12px;opacity:.8">
+          <i class="bi bi-people-fill me-1"></i>{{ rp.user_count }}
+          {% if rp.is_student %}students{% else %}staff{% endif %}
+        </span>
+        {% if rp.deletable %}
+        <button type="button" class="btn btn-xs"
+                style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)"
+                onclick="doDelete('{{ rp.key|escapejs }}','{{ rp.label|escapejs }}',{{ rp.user_count }},{{ rp.custom|lower }})">
+          <i class="bi bi-trash3-fill me-1"></i>Delete
+        </button>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-body p-4">
+      {% if rp.is_student %}
+      <p style="font-size:12px;color:var(--text-3);margin-bottom:14px">
+        <i class="bi bi-info-circle me-1"></i>
+        Toggle which sections appear in the <strong>Student Portal</strong> sidebar. Students will only see the enabled modules.
+      </p>
+      {% endif %}
+      <div class="row g-3">
+        {% for mod_key, mod_label, mod_icon in rp.modules_list %}
+        <div class="col-md-4 col-lg-3">
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;
+                        cursor:pointer;border:2px solid {% if mod_key in rp.allowed %}#1565C0{% else %}var(--border){% endif %};
+                        background:{% if mod_key in rp.allowed %}#EBF3FF{% else %}#FAFAFA{% endif %};
+                        transition:all .15s">
+            <input type="checkbox" name="modules_{{ rp.key }}" value="{{ mod_key }}"
+                   {% if mod_key in rp.allowed %}checked{% endif %}
+                   style="width:16px;height:16px;accent-color:#1565C0"
+                   onchange="updateLabel(this)">
+            <i class="bi {{ mod_icon }}"
+               style="font-size:15px;color:{% if mod_key in rp.allowed %}#1565C0{% else %}var(--text-3){% endif %}"></i>
+            <span style="font-size:13px;font-weight:600;
+                         color:{% if mod_key in rp.allowed %}#0D47A1{% else %}var(--text-2){% endif %}">
+              {{ mod_label }}
+            </span>
+          </label>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="d-flex gap-2 mt-3">
+        <button type="button" class="btn btn-xs btn-outline-secondary"
+                onclick="toggleAll('{{ rp.key }}', true)">Select All</button>
+        <button type="button" class="btn btn-xs btn-outline-secondary"
+                onclick="toggleAll('{{ rp.key }}', false)">Deselect All</button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="d-flex gap-3 mt-2 mb-4">
+    <button type="submit" class="btn btn-primary px-5">
+      <i class="bi bi-check2-circle me-1"></i>Save All Permissions
+    </button>
+    <a href="{% url 'superadmin_dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+
+{# ── Deleted / Inactive built-in roles ── #}
+{% if deleted_roles %}
+<div class="card mb-4" style="border:1px dashed var(--border)">
+  <div class="card-header" style="background:#F8FAFF">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#F1F5F9">
+        <i class="bi bi-archive-fill" style="color:var(--text-3)"></i>
+      </div>
+      <span style="color:var(--text-2);font-weight:700">Deleted Roles</span>
+    </div>
+    <span style="font-size:12px;color:var(--text-3)">Hidden — unavailable for new staff accounts</span>
+  </div>
+  <div class="card-body p-3">
+    <div class="d-flex flex-wrap gap-3">
+      {% for dr in deleted_roles %}
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:8px;
+                  background:#F8FAFF;border:1px solid var(--border)">
+        <div>
+          <div style="font-weight:700;font-size:13px;color:var(--text-2)">{{ dr.label }}</div>
+          <div style="font-size:11px;color:var(--text-3)">
+            <i class="bi bi-people-fill me-1"></i>{{ dr.user_count }} existing staff
+          </div>
+        </div>
+        <button type="button" class="btn btn-xs btn-outline-success"
+                onclick="doRestore('{{ dr.key|escapejs }}','{{ dr.label|escapejs }}')">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div style="font-size:12px;color:var(--text-3);margin-bottom:24px">
+  <i class="bi bi-info-circle me-1"></i>
+  To add a new custom role go to
+  <a href="{% url 'staff_accounts' %}" style="color:#7C3AED;font-weight:600">Staff Accounts</a>
+  and click <strong>+ New Role</strong>.
+</div>
+
+<script>
+function updateLabel(cb) {
+  const label = cb.closest('label');
+  const icon  = label.querySelector('i');
+  const text  = label.querySelector('span');
+  if (cb.checked) {
+    label.style.borderColor = '#1565C0';
+    label.style.background  = '#EBF3FF';
+    icon.style.color        = '#1565C0';
+    text.style.color        = '#0D47A1';
+  } else {
+    label.style.borderColor = 'var(--border)';
+    label.style.background  = '#FAFAFA';
+    icon.style.color        = 'var(--text-3)';
+    text.style.color        = 'var(--text-2)';
+  }
+}
+
+function toggleAll(roleKey, state) {
+  document.querySelectorAll('input[name="modules_' + roleKey + '"]').forEach(function(cb) {
+    cb.checked = state;
+    updateLabel(cb);
+  });
+}
+
+function doDelete(key, label, userCount, isCustom) {
+  if (userCount > 0) {
+    alert('Cannot delete "' + label + '": ' + userCount + ' staff member(s) are assigned.\n'
+        + 'Reassign or deactivate them first from Staff Accounts.');
+    return;
+  }
+  const msg = isCustom
+    ? 'Permanently delete custom role "' + label + '"?\nThis cannot be undone.'
+    : 'Remove built-in role "' + label + '"?\nIt will be hidden. You can restore it anytime.';
+  if (!confirm(msg)) return;
+  document.getElementById('deleteRoleKey').value = key;
+  document.getElementById('deleteForm').submit();
+}
+
+function doRestore(key, label) {
+  if (!confirm('Restore role "' + label + '"?')) return;
+  document.getElementById('restoreRoleKey').value = key;
+  document.getElementById('restoreForm').submit();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends "base/base.html" %}
+{% block title %}{{ action }} Asset — GGI Hostel ERP{% endblock %}
+{% block page_title %}{{ action }} Asset{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EDE9FE"><i class="bi bi-box-seam-fill" style="color:#7C3AED"></i></div>
+          {% if asset %}Edit Asset — {{ asset.name }}{% else %}Add New Asset{% endif %}
+        </div>
+        <a href="{% if asset %}{% url 'asset_detail' asset.pk %}{% else %}{% url 'asset_dashboard' %}{% endif %}"
+           class="btn btn-outline-secondary btn-sm">← Back</a>
+      </div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-8">
+              <label class="form-label fw-600" style="font-size:12px">Asset Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" value="{{ asset.name|default:'' }}"
+                     placeholder="e.g. Ceiling Fan, Study Table, Almirah" required maxlength="150">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600" style="font-size:12px">Asset Code / Tag <span class="text-danger">*</span></label>
+              <input type="text" name="asset_code" class="form-control" value="{{ asset.asset_code|default:'' }}"
+                     placeholder="e.g. AST-001 / Barcode" {% if asset %}readonly{% else %}required{% endif %} maxlength="50">
+              {% if not asset %}<div class="form-text">Unique identifier — cannot be changed later.</div>{% endif %}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label fw-600" style="font-size:12px">Asset Type</label>
+              <select name="asset_type" class="form-select">
+                <option value="">— Select Type —</option>
+                {% for t in asset_types %}
+                <option value="{{ t.pk }}" {% if asset and asset.asset_type_id == t.pk %}selected{% endif %}>{{ t.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600" style="font-size:12px">Condition</label>
+              <select name="condition" class="form-select">
+                {% for val, lbl in conditions %}
+                <option value="{{ val }}" {% if asset and asset.condition == val %}selected{% elif not asset and val == 'good' %}selected{% endif %}>{{ lbl }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-600" style="font-size:12px">Assigned Date</label>
+              <input type="date" name="assigned_date" class="form-control"
+                     value="{{ asset.assigned_date|date:'Y-m-d'|default:'' }}">
+            </div>
+          </div>
+
+          <hr style="margin:20px 0">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:12px">
+            Location Assignment
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label fw-600" style="font-size:12px">Hostel</label>
+              <select name="hostel" class="form-select" id="hostel-select">
+                <option value="">— Unassigned —</option>
+                {% for h in hostels %}
+                <option value="{{ h.pk }}" {% if asset and asset.hostel_id == h.pk %}selected{% endif %}>{{ h.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-600" style="font-size:12px">Floor</label>
+              <input type="number" name="floor" class="form-control" min="0" max="20"
+                     value="{{ asset.floor|default:'' }}" placeholder="—">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600" style="font-size:12px">Room</label>
+              <select name="room" class="form-select">
+                <option value="">— No specific room —</option>
+                {% for r in rooms %}
+                <option value="{{ r.pk }}" {% if asset and asset.room_id == r.pk %}selected{% endif %}>
+                  {{ r.hostel.name }} — Floor {{ r.floor }} — Room {{ r.room_number }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <hr style="margin:20px 0">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:12px">
+            Vendor / Purchase Details
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label fw-600" style="font-size:12px">Vendor Name</label>
+              <input type="text" name="vendor_name" class="form-control" value="{{ asset.vendor_name|default:'' }}"
+                     placeholder="Supplier / manufacturer" maxlength="200">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-600" style="font-size:12px">Vendor Contact</label>
+              <input type="text" name="vendor_contact" class="form-control" value="{{ asset.vendor_contact|default:'' }}"
+                     placeholder="Phone / email" maxlength="100">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-600" style="font-size:12px">Invoice / PO Number</label>
+              <input type="text" name="vendor_invoice" class="form-control" value="{{ asset.vendor_invoice|default:'' }}"
+                     maxlength="100">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label fw-600" style="font-size:12px">Purchase Date</label>
+              <input type="date" name="purchase_date" class="form-control"
+                     value="{{ asset.purchase_date|date:'Y-m-d'|default:'' }}">
+            </div>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-600" style="font-size:12px">Purchase Cost (₹)</label>
+            <input type="number" name="purchase_cost" class="form-control" step="0.01" min="0"
+                   value="{{ asset.purchase_cost|default:'' }}" placeholder="0.00" style="max-width:200px">
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-600" style="font-size:12px">Notes</label>
+            <textarea name="notes" class="form-control" rows="3"
+                      placeholder="Additional notes, serial number, etc.">{{ asset.notes|default:'' }}</textarea>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-dark px-4">
+              <i class="bi bi-check-circle me-1"></i>{{ action }} Asset
+            </button>
+            <a href="{% if asset %}{% url 'asset_detail' asset.pk %}{% else %}{% url 'asset_dashboard' %}{% endif %}"
+               class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

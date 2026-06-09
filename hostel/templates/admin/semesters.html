@@ -1,0 +1,182 @@
+{% extends 'base/base.html' %}
+{% block title %}Semester Management{% endblock %}
+{% block page_title %}Semester Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Semester Management</h4>
+    <p>Manage academic semesters and trigger room reallotment</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'reallotment' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-shuffle me-1"></i> Reallotment
+    </a>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newSemModal">
+      <i class="bi bi-plus-lg me-1"></i> New Semester
+    </button>
+  </div>
+</div>
+
+<!-- Current semester banner -->
+{% if current %}
+<div class="d-flex align-items-center gap-3 p-3 rounded mb-4"
+     style="background:#ECFDF5;border:1.5px solid #6EE7B7">
+  <i class="bi bi-calendar2-check-fill" style="color:#059669;font-size:22px"></i>
+  <div style="flex:1">
+    <div class="fw-700" style="font-size:14px;color:#065F46">Current Semester: {{ current.name }}</div>
+    <div style="font-size:12.5px;color:#047857">
+      {{ current.get_sem_type_display }} &bull; Started {{ current.start_date }}
+      {% if current.end_date %} &bull; Ends {{ current.end_date }}{% endif %}
+    </div>
+  </div>
+  <div class="d-flex gap-2">
+    <span class="badge" style="background:#059669;color:#fff;font-size:12px">{{ active_count }} Active Residents</span>
+    <form method="post" action="{% url 'close_semester' %}" onsubmit="return confirm('This will check out ALL {{ active_count }} active residents and mark all rooms as vacant. Continue?')">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{% url 'reallotment' %}">
+      <input type="hidden" name="semester_id" value="{{ current.pk }}">
+      <button class="btn btn-sm btn-danger" {% if active_count == 0 %}disabled{% endif %}>
+        <i class="bi bi-door-open me-1"></i> Close Semester
+      </button>
+    </form>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-warning mb-4">
+  <i class="bi bi-exclamation-triangle me-2"></i>
+  No current semester set. Create one and mark it as current to enable reallotment tracking.
+</div>
+{% endif %}
+
+<!-- Semester list -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-calendar3" style="color:#1565C0"></i></div>
+      All Semesters
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Semester</th>
+          <th>Type</th>
+          <th>Start</th>
+          <th>End</th>
+          <th>Allocations</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sem in semesters %}
+        <tr>
+          <td>
+            <div class="tbl-name">{{ sem.name }}</div>
+            {% if sem.created_by %}<div class="tbl-sub">Created by {{ sem.created_by.name }}</div>{% endif %}
+          </td>
+          <td>{{ sem.get_sem_type_display }}</td>
+          <td>{{ sem.start_date }}</td>
+          <td>{{ sem.end_date|default:"—" }}</td>
+          <td>
+            <span class="fw-600">{{ sem.allocations.count }}</span>
+            <span class="tbl-sub">&nbsp;({{ sem.allocations.filter.count }} active)</span>
+          </td>
+          <td>
+            {% if sem.is_current %}
+              <span class="badge badge-paid">Current</span>
+            {% elif sem.closed_at %}
+              <span class="badge badge-absent">Closed</span>
+            {% else %}
+              <span class="badge" style="background:#F3F4F6;color:#6B7280">Past</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-2">
+              {% if not sem.is_current %}
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="set_current">
+                <input type="hidden" name="sem_id" value="{{ sem.pk }}">
+                <button class="btn btn-xs btn-outline-primary">Set Current</button>
+              </form>
+              {% endif %}
+              {% if sem.allocations.count == 0 %}
+              <form method="post" onsubmit="return confirm('Delete {{ sem.name }}?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="sem_id" value="{{ sem.pk }}">
+                <button class="btn btn-xs btn-outline-danger"><i class="bi bi-trash"></i></button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7">
+            <div class="empty-state">
+              <i class="bi bi-calendar-x"></i>
+              <p>No semesters created yet.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- New Semester Modal -->
+<div class="modal fade" id="newSemModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create">
+        <div class="modal-header">
+          <h5 class="modal-title fw-700">New Semester</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-600">Semester Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" placeholder="e.g. 2024-25 Odd Semester" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Type <span class="text-danger">*</span></label>
+            <select name="sem_type" class="form-select" required>
+              {% for val, label in sem_types %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label fw-600">Start Date <span class="text-danger">*</span></label>
+              <input type="date" name="start_date" class="form-control" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-600">End Date</label>
+              <input type="date" name="end_date" class="form-control">
+            </div>
+          </div>
+          <div class="form-check mt-3">
+            <input type="checkbox" name="is_current" class="form-check-input" id="isCurrentCheck">
+            <label class="form-check-label fw-600" for="isCurrentCheck">
+              Mark as current semester
+            </label>
+            <div class="form-text">If checked, any previously marked semester will be unset.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

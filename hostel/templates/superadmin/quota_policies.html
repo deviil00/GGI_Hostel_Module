@@ -1,0 +1,251 @@
+{% extends 'base/base.html' %}
+{% block title %}Quota Policies{% endblock %}
+{% block page_title %}Quota Policies{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Gate Pass &amp; Leave Quotas</h4>
+    <p>Limit how many gate passes or leaves a student can apply per week / month / year</p>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  {# ── Left: Create form ─────────────────────────────────────────── #}
+  <div class="col-lg-4">
+    <div class="card" id="quota-card" style="border-top:3px solid #D97706">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEF3C7"><i class="bi bi-hourglass-split" style="color:#D97706"></i></div>
+          <span id="form-heading">Add Quota Policy</span>
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" id="quota-form">
+          {% csrf_token %}
+          <input type="hidden" name="action" id="q-action" value="create">
+          <input type="hidden" name="pk"     id="q-pk"     value="">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Applies To <span class="text-danger">*</span></label>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="scope" id="scope-all" value="all" checked
+                       onchange="toggleStudentField()">
+                <label class="form-check-label" for="scope-all">All Students</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="scope" id="scope-specific" value="specific"
+                       onchange="toggleStudentField()">
+                <label class="form-check-label" for="scope-specific">Specific Student</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3 d-none" id="student-field">
+            <label class="form-label fw-semibold">Student <span class="text-danger">*</span></label>
+            <input type="text" id="stu-search" class="form-control form-control-sm mb-1"
+                   placeholder="Type name or roll…" oninput="filterStudents(this.value)">
+            <select name="student_id" id="stu-select" class="form-select form-select-sm" size="5" style="height:120px">
+              {% for s in students %}
+              <option value="{{ s.pk }}" data-name="{{ s.name|lower }}" data-roll="{{ s.roll_number|lower }}">
+                {{ s.name }} — {{ s.roll_number }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Quota Type <span class="text-danger">*</span></label>
+            <select name="policy_type" id="q-type" class="form-select form-select-sm">
+              {% for val, lbl in policy_types %}
+              <option value="{{ val }}">{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold">Period <span class="text-danger">*</span></label>
+              <select name="period" id="q-period" class="form-select form-select-sm">
+                {% for val, lbl in periods %}
+                <option value="{{ val }}">{{ lbl }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold">Max Allowed <span class="text-danger">*</span></label>
+              <input type="number" name="limit" id="q-limit" class="form-control form-control-sm"
+                     min="1" max="100" value="4" required>
+              <div class="form-text" id="limit-hint">e.g. 4 gate passes per week</div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-warning w-100 fw-semibold" id="submit-btn">
+              <i class="bi bi-plus-lg me-1"></i><span id="submit-label">Add Policy</span>
+            </button>
+            <button type="button" class="btn btn-outline-secondary d-none" id="cancel-btn" onclick="resetForm()">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {# Quick guide #}
+    <div class="card mt-3">
+      <div class="card-body p-3" style="font-size:12.5px">
+        <div class="fw-semibold mb-2">How Quotas Work</div>
+        <ul class="mb-0" style="padding-left:16px;color:var(--text-2)">
+          <li>A <strong>specific student</strong> policy overrides the global policy.</li>
+          <li>When the limit is reached, the student's Apply button is <strong>disabled</strong> until the period resets.</li>
+          <li>Rejected applications are <strong>not counted</strong> against the quota.</li>
+          <li>Only <strong>active</strong> policies are enforced.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  {# ── Right: Policies list ──────────────────────────────────────── #}
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEF3C7"><i class="bi bi-sliders" style="color:#D97706"></i></div>
+          Active Policies
+        </div>
+        <span class="text-muted" style="font-size:12px">{{ policies|length }} polic{{ policies|length|pluralize:"y,ies" }}</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Applies To</th>
+              <th>Type</th>
+              <th>Limit</th>
+              <th>Period</th>
+              <th>Status</th>
+              <th>Created By</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in policies %}
+            <tr class="{% if not p.is_active %}opacity-50{% endif %}">
+              <td>
+                {% if p.applies_to_all %}
+                <span class="badge" style="background:#DBEAFE;color:#1E40AF">All Students</span>
+                {% else %}
+                <div class="fw-semibold" style="font-size:13px">{{ p.student.name }}</div>
+                <div style="font-size:11px;color:var(--text-3)">{{ p.student.roll_number }}</div>
+                {% endif %}
+              </td>
+              <td>
+                {% if p.policy_type == 'gate_pass' %}
+                <span class="badge" style="background:#EDE9FE;color:#5B21B6">Gate Pass</span>
+                {% elif p.policy_type == 'leave' %}
+                <span class="badge" style="background:#D1FAE5;color:#065F46">Leave</span>
+                {% else %}
+                <span class="badge bg-secondary">Both</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="fw-bold" style="font-size:18px;color:#D97706">{{ p.limit }}</span>
+              </td>
+              <td style="font-size:13px">{{ p.get_period_display }}</td>
+              <td>
+                <form method="post" style="display:inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="toggle">
+                  <input type="hidden" name="pk"     value="{{ p.pk }}">
+                  <button type="submit" class="btn btn-sm {% if p.is_active %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                          style="font-size:11.5px;padding:3px 10px">
+                    {% if p.is_active %}<i class="bi bi-toggle-on me-1"></i>Active{% else %}<i class="bi bi-toggle-off me-1"></i>Inactive{% endif %}
+                  </button>
+                </form>
+              </td>
+              <td style="font-size:12px;color:var(--text-3)">
+                {{ p.created_by.name|default:"—" }}<br>
+                {{ p.created_at|date:"d M Y" }}
+              </td>
+              <td>
+                <div class="d-flex gap-1">
+                  <button class="btn btn-sm btn-outline-primary"
+                          onclick="editPolicy('{{ p.pk }}','{{ p.policy_type }}','{{ p.period }}',{{ p.limit }},'{% if p.applies_to_all %}all{% else %}specific{% endif %}','{% if not p.applies_to_all and p.student %}{{ p.student.pk }}{% endif %}')"
+                          title="Edit">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <form method="post" style="display:inline"
+                        onsubmit="return confirm('Delete this quota policy?')">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="pk"     value="{{ p.pk }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7">
+              <div class="empty-state py-4">
+                <i class="bi bi-hourglass" style="font-size:28px;opacity:.3"></i>
+                <p>No quota policies yet. Add one to start limiting applications.</p>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleStudentField() {
+  const specific = document.getElementById('scope-specific').checked;
+  document.getElementById('student-field').classList.toggle('d-none', !specific);
+}
+function filterStudents(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('#stu-select option').forEach(opt => {
+    opt.style.display = !q || opt.dataset.name.includes(q) || opt.dataset.roll.includes(q) ? '' : 'none';
+  });
+}
+function editPolicy(pk, type, period, limit, scope, studentPk) {
+  document.getElementById('form-heading').textContent = 'Edit Policy';
+  document.getElementById('submit-label').textContent = 'Save Changes';
+  document.getElementById('q-action').value = 'edit';
+  document.getElementById('q-pk').value     = pk;
+  document.getElementById('q-type').value   = type;
+  document.getElementById('q-period').value = period;
+  document.getElementById('q-limit').value  = limit;
+  if (scope === 'specific') {
+    document.getElementById('scope-specific').checked = true;
+    document.getElementById('student-field').classList.remove('d-none');
+    if (studentPk) document.getElementById('stu-select').value = studentPk;
+  } else {
+    document.getElementById('scope-all').checked = true;
+    document.getElementById('student-field').classList.add('d-none');
+  }
+  document.getElementById('cancel-btn').classList.remove('d-none');
+  document.getElementById('quota-card').scrollIntoView({behavior:'smooth'});
+}
+function resetForm() {
+  document.getElementById('quota-form').reset();
+  document.getElementById('form-heading').textContent = 'Add Quota Policy';
+  document.getElementById('submit-label').textContent = 'Add Policy';
+  document.getElementById('q-action').value = 'create';
+  document.getElementById('q-pk').value     = '';
+  document.getElementById('student-field').classList.add('d-none');
+  document.getElementById('cancel-btn').classList.add('d-none');
+}
+// Update limit hint
+document.getElementById('q-period').addEventListener('change', function() {
+  const type  = document.getElementById('q-type').value.replace('_',' ');
+  const hints = {weekly:'e.g. 4 gate passes per week', monthly:'e.g. 2 leaves per month', yearly:'e.g. 10 gate passes per year'};
+  document.getElementById('limit-hint').textContent = hints[this.value] || '';
+});
+</script>
+{% endblock %}

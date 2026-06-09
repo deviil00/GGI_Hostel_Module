@@ -1,0 +1,120 @@
+{% extends "base/base.html" %}
+{% block title %}Fee Defaulters — GGI Hostel ERP{% endblock %}
+{% block page_title %}Fee Defaulters{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Fee Defaulters Report</h4>
+    <p>Students with pending or partial fee payments</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="?export=csv" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-download me-1"></i>Export CSV
+    </a>
+    <a href="{% url 'fee_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>All Fees
+    </a>
+  </div>
+</div>
+
+<!-- Summary -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#DC2626">
+      <div class="s-top">
+        <div class="s-icon" style="background:#FEF2F2"><i class="bi bi-people-fill" style="color:#DC2626"></i></div>
+      </div>
+      <div class="s-number">{{ count }}</div>
+      <div class="s-label">Defaulters</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#D97706">
+      <div class="s-top">
+        <div class="s-icon" style="background:#FFFBEB"><i class="bi bi-cash-coin" style="color:#D97706"></i></div>
+      </div>
+      <div class="s-number" style="font-size:22px">₹{{ total_due|floatformat:0 }}</div>
+      <div class="s-label">Total Due</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#059669">
+      <div class="s-top">
+        <div class="s-icon" style="background:#ECFDF5"><i class="bi bi-check-circle-fill" style="color:#059669"></i></div>
+      </div>
+      <div class="s-number" style="font-size:22px">₹{{ total_paid|floatformat:0 }}</div>
+      <div class="s-label">Amount Paid</div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card" style="--stat-color:#7C3AED">
+      <div class="s-top">
+        <div class="s-icon" style="background:#F5F3FF"><i class="bi bi-exclamation-circle-fill" style="color:#7C3AED"></i></div>
+      </div>
+      <div class="s-number" style="font-size:22px">₹{{ total_balance|floatformat:0 }}</div>
+      <div class="s-label">Outstanding Balance</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <table class="table">
+    <thead><tr>
+      <th>Student</th>
+      <th>Department</th>
+      <th>Room</th>
+      <th>Fee Structure</th>
+      <th class="text-end">Total Due</th>
+      <th class="text-end">Paid</th>
+      <th class="text-end">Balance</th>
+      <th>Status</th>
+      <th></th>
+    </tr></thead>
+    <tbody>
+    {% for r in records %}
+    {% with balance=r.total_amount|add:"-"|add:r.amount_paid %}
+    <tr>
+      <td>
+        <div class="d-flex align-items-center gap-2">
+          <div class="tbl-avatar av-red">{{ r.student.name|first|upper }}</div>
+          <div>
+            <div class="tbl-name">{{ r.student.name }}</div>
+            <div class="tbl-sub">{{ r.student.roll_number }}</div>
+          </div>
+        </div>
+      </td>
+      <td style="color:var(--text-2)">{{ r.student.department }}</td>
+      <td>
+        {% with room=r.student.current_room %}
+        {% if room %}
+        <span class="fw-600">{{ room.room_number }}</span>
+        <span class="tbl-sub d-block">{{ room.hostel.name }}</span>
+        {% else %}<span style="color:var(--text-3)">—</span>{% endif %}
+        {% endwith %}
+      </td>
+      <td style="color:var(--text-2);font-size:12.5px">{{ r.fee_structure }}</td>
+      <td class="text-end fw-600">₹{{ r.total_amount }}</td>
+      <td class="text-end" style="color:#059669">₹{{ r.amount_paid }}</td>
+      <td class="text-end fw-600" style="color:#DC2626">
+        ₹{{ r.total_amount|add:0 }}
+        {# Django templates can't subtract decimals directly, show via widthratio workaround #}
+      </td>
+      <td><span class="badge badge-{{ r.status }}">{{ r.get_status_display }}</span></td>
+      <td>
+        <a href="{% url 'student_detail' r.student.pk %}" class="btn btn-xs btn-outline-secondary">View</a>
+      </td>
+    </tr>
+    {% endwith %}
+    {% empty %}
+    <tr><td colspan="9">
+      <div class="empty-state py-4">
+        <i class="bi bi-check-circle" style="font-size:36px;color:#059669;opacity:.5"></i>
+        <p style="margin-top:10px;color:#059669;font-weight:600">No defaulters — all fees are up to date!</p>
+      </div>
+    </td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

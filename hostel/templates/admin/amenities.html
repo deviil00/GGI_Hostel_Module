@@ -1,0 +1,444 @@
+{% extends "base/base.html" %}
+{% block title %}Room Amenities — Hostel ERP{% endblock %}
+{% block page_title %}Room Amenities{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Room Amenities</h4>
+    <p>Track amenities per room — hostel, floor, room, warden and condition</p>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  {# ── Add / Edit form ── #}
+  <div class="col-lg-4">
+    <div class="card" id="amenity-form-card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#ECFDF5">
+            <i class="bi bi-plus-circle-fill" style="color:#059669"></i>
+          </div>
+          <span id="form-card-title">Add Amenity Record</span>
+        </div>
+      </div>
+      <form method="post" class="card-body p-4" id="amenity-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add">
+        <input type="hidden" name="rec_pk" id="edit-rec-pk" value="">
+
+        {# Amenity name — free text with autocomplete from existing types #}
+        <div class="mb-3">
+          <label class="form-label fw-600">
+            Amenity Name <span class="text-danger">*</span>
+          </label>
+          <input type="text" name="amenity_name" id="edit-amenity" class="form-control"
+                 list="amenity-suggestions"
+                 placeholder="e.g. AC, Fan, WiFi, Cupboard…" required autocomplete="off">
+          <datalist id="amenity-suggestions">
+            {% for at in amenity_types %}
+            <option value="{{ at.name }}">
+            {% endfor %}
+            {# Built-in common suggestions #}
+            <option value="Air Conditioner">
+            <option value="Ceiling Fan">
+            <option value="WiFi">
+            <option value="Attached Bathroom">
+            <option value="Hot Water">
+            <option value="Study Table">
+            <option value="Chair">
+            <option value="Cupboard">
+            <option value="Bed">
+            <option value="Mattress">
+            <option value="CCTV Camera">
+            <option value="Inverter / UPS">
+            <option value="Water Purifier">
+            <option value="Locker">
+          </datalist>
+          <div class="form-text" style="color:var(--text-3)">
+            Type a name — existing types appear as suggestions. New names are created automatically.
+          </div>
+        </div>
+
+        {# Hostel filter → Room #}
+        {% if not is_warden %}
+        <div class="mb-3">
+          <label class="form-label fw-600">Hostel</label>
+          <select id="hostel-filter" class="form-select"
+                  onchange="filterRooms(this.value)">
+            <option value="">— All hostels —</option>
+            {% for h in hostels %}
+            <option value="{{ h.pk }}">{{ h.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <div class="mb-3">
+          <label class="form-label fw-600">
+            Room <span class="text-danger">*</span>
+          </label>
+          <select name="room" id="edit-room" class="form-select" required>
+            <option value="">— Select room —</option>
+            {% for r in rooms %}
+            <option value="{{ r.pk }}"
+                    data-hostel="{{ r.hostel.pk }}"
+                    data-label="{{ r.hostel.name }} · Floor {{ r.floor }} · Room {{ r.room_number }}">
+              {{ r.hostel.name }} · Fl.{{ r.floor }} · Room {{ r.room_number }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        {# Condition #}
+        <div class="mb-3">
+          <label class="form-label fw-600">Condition <span class="text-danger">*</span></label>
+          <div class="d-flex flex-wrap gap-2" id="condition-pills">
+            {% for val, label in conditions %}
+            <label style="cursor:pointer">
+              <input type="radio" name="condition" value="{{ val }}"
+                     {% if val == 'good' %}checked{% endif %}
+                     style="display:none"
+                     onchange="updateConditionPills()">
+              <span class="condition-pill" data-val="{{ val }}"
+                    style="display:inline-block;padding:4px 14px;border-radius:16px;font-size:12px;
+                           font-weight:600;border:2px solid;cursor:pointer;transition:all .15s;
+                           {% if val == 'good' %}background:#ECFDF5;color:#059669;border-color:#059669;
+                           {% elif val == 'fair' %}background:#F8FAFF;color:#64748B;border-color:#CBD5E1;
+                           {% elif val == 'poor' %}background:#F8FAFF;color:#64748B;border-color:#CBD5E1;
+                           {% elif val == 'damaged' %}background:#F8FAFF;color:#64748B;border-color:#CBD5E1;
+                           {% else %}background:#F8FAFF;color:#64748B;border-color:#CBD5E1;{% endif %}">
+                {{ label }}
+              </span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        {# Notes #}
+        <div class="mb-4">
+          <label class="form-label fw-600">Notes</label>
+          <textarea name="notes" id="edit-notes" class="form-control" rows="2"
+                    placeholder="Optional — serial no, remarks, etc."></textarea>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary flex-fill">
+            <i class="bi bi-check-lg me-1"></i><span id="submit-label">Add Record</span>
+          </button>
+          <button type="button" class="btn btn-outline-secondary" id="cancel-btn"
+                  onclick="resetForm()" style="display:none">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    {# ── Amenity type manager (collapsible) ── #}
+    <div class="card mt-3" id="type-manager" style="display:none">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF">
+            <i class="bi bi-tags-fill" style="color:#1565C0"></i>
+          </div>
+          Amenity Types
+        </div>
+        <button type="button" class="btn btn-xs btn-outline-secondary"
+                onclick="hideTypeManager()">Close</button>
+      </div>
+      <div class="card-body p-3">
+        {# Add type inline #}
+        <form method="post" class="d-flex gap-2 mb-3">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_type">
+          {# handled via a separate slim POST we'll intercept with JS → but simpler: just use same POST #}
+          {# We'll use a small separate section below #}
+        </form>
+
+        <form method="post" id="add-type-form" class="mb-3">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_type">
+          <div class="d-flex gap-2 mb-2">
+            <input type="text" name="type_name" class="form-control form-control-sm"
+                   placeholder="Amenity name e.g. AC" required>
+            <input type="text" name="type_icon" class="form-control form-control-sm"
+                   placeholder="bi-snow2" style="width:110px">
+          </div>
+          <button type="submit" class="btn btn-sm btn-success w-100">
+            <i class="bi bi-plus me-1"></i>Add Type
+          </button>
+        </form>
+
+        {% for at in amenity_types %}
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;
+                    border-bottom:1px solid var(--border)">
+          <i class="bi {{ at.icon }}" style="color:#1565C0;font-size:15px;width:18px"></i>
+          <span style="flex:1;font-size:13px;font-weight:600">{{ at.name }}</span>
+          <form method="post" style="display:inline"
+                onsubmit="return confirm('Delete type {{ at.name|escapejs }}?')">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_type">
+            <input type="hidden" name="type_pk" value="{{ at.pk }}">
+            <button type="submit" class="btn btn-xs btn-outline-danger">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </div>
+        {% empty %}
+        <p style="font-size:12px;color:var(--text-3)">No types yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Records table ── #}
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF">
+            <i class="bi bi-list-stars" style="color:#1565C0"></i>
+          </div>
+          Amenity Records
+          <span style="font-size:12px;background:#EBF3FF;color:#1565C0;padding:2px 10px;
+                       border-radius:12px;font-weight:700;margin-left:4px">
+            {{ records|length }}
+          </span>
+        </div>
+      </div>
+
+      {% if records %}
+      <div class="card-body p-0">
+        <div style="overflow-x:auto">
+          <table class="table mb-0" style="font-size:13px;min-width:700px">
+            <thead>
+              <tr>
+                <th class="ps-4">Amenity</th>
+                <th>Hostel</th>
+                <th>Floor</th>
+                <th>Room No.</th>
+                <th>Warden</th>
+                <th>Condition</th>
+                <th>Added On</th>
+                <th style="width:80px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rec in records %}
+              <tr>
+                <td class="ps-4">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <div style="width:32px;height:32px;border-radius:8px;background:#EBF3FF;
+                                display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                      <i class="bi {{ rec.amenity.icon }}" style="color:#1565C0;font-size:15px"></i>
+                    </div>
+                    <div>
+                      <div style="font-weight:700;color:var(--text-1)">{{ rec.amenity.name }}</div>
+                      {% if rec.notes %}
+                      <div style="font-size:11px;color:var(--text-3)">{{ rec.notes|truncatechars:40 }}</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span style="font-weight:600;color:var(--text-1)">{{ rec.room.hostel.name }}</span>
+                </td>
+                <td>
+                  <span style="background:#F1F5F9;padding:2px 10px;border-radius:10px;
+                               font-size:12px;font-weight:600;color:var(--text-2)">
+                    Floor {{ rec.room.floor }}
+                  </span>
+                </td>
+                <td>
+                  <span style="background:#EBF3FF;color:#1565C0;padding:2px 10px;
+                               border-radius:10px;font-size:12px;font-weight:700">
+                    Room {{ rec.room.room_number }}
+                  </span>
+                </td>
+                <td>
+                  {% if rec.room.hostel.warden %}
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <div style="width:26px;height:26px;border-radius:50%;background:#EBF3FF;
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:11px;font-weight:800;color:#1565C0;flex-shrink:0">
+                      {{ rec.room.hostel.warden.name|first|upper }}
+                    </div>
+                    <span style="font-size:12px;color:var(--text-2)">
+                      {{ rec.room.hostel.warden.name }}
+                    </span>
+                  </div>
+                  {% else %}
+                  <span style="color:var(--text-3);font-size:12px">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if rec.condition == 'good' %}
+                  <span style="background:#ECFDF5;color:#059669;padding:3px 10px;
+                               border-radius:10px;font-size:11px;font-weight:700">
+                    <i class="bi bi-check-circle-fill me-1"></i>Good
+                  </span>
+                  {% elif rec.condition == 'fair' %}
+                  <span style="background:#FFFBEB;color:#D97706;padding:3px 10px;
+                               border-radius:10px;font-size:11px;font-weight:700;
+                               border:1px solid #FCD34D">
+                    <i class="bi bi-dash-circle me-1"></i>Fair
+                  </span>
+                  {% elif rec.condition == 'poor' %}
+                  <span style="background:#FFF7ED;color:#EA580C;padding:3px 10px;
+                               border-radius:10px;font-size:11px;font-weight:700;
+                               border:1px solid #FDBA74">
+                    <i class="bi bi-exclamation-circle me-1"></i>Poor
+                  </span>
+                  {% elif rec.condition == 'damaged' %}
+                  <span style="background:#FEF2F2;color:#DC2626;padding:3px 10px;
+                               border-radius:10px;font-size:11px;font-weight:700">
+                    <i class="bi bi-x-circle-fill me-1"></i>Damaged
+                  </span>
+                  {% else %}
+                  <span style="background:#F5F3FF;color:#7C3AED;padding:3px 10px;
+                               border-radius:10px;font-size:11px;font-weight:700">
+                    <i class="bi bi-question-circle me-1"></i>Missing
+                  </span>
+                  {% endif %}
+                </td>
+                <td style="font-size:11px;color:var(--text-3);white-space:nowrap">
+                  {{ rec.created_at|date:"d M Y" }}<br>
+                  <span style="opacity:.7">{{ rec.created_at|date:"h:i A" }}</span>
+                  {% if rec.added_by %}
+                  <div style="font-size:10px;color:var(--text-3);margin-top:1px">
+                    by {{ rec.added_by.name }}
+                  </div>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    <button class="btn btn-xs btn-outline-primary"
+                            onclick="editRecord(
+                              '{{ rec.pk }}',
+                              '{{ rec.amenity.name|escapejs }}',
+                              '{{ rec.room.pk }}',
+                              '{{ rec.room.hostel.pk }}',
+                              '{{ rec.condition }}',
+                              '{{ rec.notes|escapejs }}'
+                            )"
+                            title="Edit">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <form method="post" style="display:inline"
+                          onsubmit="return confirm('Remove this amenity record?')">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="delete">
+                      <input type="hidden" name="rec_pk" value="{{ rec.pk }}">
+                      <button type="submit" class="btn btn-xs btn-outline-danger" title="Delete">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:60px">
+        <i class="bi bi-tools" style="font-size:40px;opacity:.3;display:block;margin-bottom:12px;color:var(--text-3)"></i>
+        <p style="font-size:14px;color:var(--text-2)">No amenity records yet.</p>
+        <p style="font-size:12px;color:var(--text-3)">Use the form on the left to add amenities to rooms.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+{# ── Hidden type management POST forms (handled via JS) ── #}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ── Condition pill highlight ── */
+const COND_STYLES = {
+  good:    {bg:'#ECFDF5', color:'#059669', border:'#059669'},
+  fair:    {bg:'#FFFBEB', color:'#D97706', border:'#FCD34D'},
+  poor:    {bg:'#FFF7ED', color:'#EA580C', border:'#FDBA74'},
+  damaged: {bg:'#FEF2F2', color:'#DC2626', border:'#FCA5A5'},
+  missing: {bg:'#F5F3FF', color:'#7C3AED', border:'#C4B5FD'},
+};
+const COND_INACTIVE = {bg:'#F8FAFF', color:'#64748B', border:'#E2E8F0'};
+
+function updateConditionPills() {
+  const selected = document.querySelector('input[name="condition"]:checked');
+  document.querySelectorAll('.condition-pill').forEach(pill => {
+    const val = pill.dataset.val;
+    const s   = (selected && selected.value === val) ? (COND_STYLES[val] || COND_INACTIVE) : COND_INACTIVE;
+    pill.style.background   = s.bg;
+    pill.style.color        = s.color;
+    pill.style.borderColor  = s.border;
+  });
+}
+updateConditionPills();
+
+document.querySelectorAll('input[name="condition"]').forEach(r => {
+  r.addEventListener('change', updateConditionPills);
+});
+document.querySelectorAll('.condition-pill').forEach(pill => {
+  pill.addEventListener('click', function() {
+    const radio = this.closest('label').querySelector('input[type="radio"]');
+    radio.checked = true;
+    updateConditionPills();
+  });
+});
+
+/* ── Hostel → Room filter ── */
+function filterRooms(hostelPk) {
+  const sel = document.getElementById('edit-room');
+  Array.from(sel.options).forEach(opt => {
+    if (!opt.value) return;
+    opt.style.display = (!hostelPk || opt.dataset.hostel === hostelPk) ? '' : 'none';
+  });
+  sel.value = '';
+}
+
+/* ── Edit record ── */
+function editRecord(recPk, amenName, roomPk, hostelPk, cond, notes) {
+  document.getElementById('edit-rec-pk').value   = recPk;
+  document.getElementById('edit-amenity').value  = amenName;
+  const hostelFilter = document.getElementById('hostel-filter');
+  if (hostelFilter) { hostelFilter.value = hostelPk; filterRooms(hostelPk); }
+  document.getElementById('edit-room').value     = roomPk;
+  document.getElementById('edit-notes').value    = notes || '';
+  const radio = document.querySelector(`input[name="condition"][value="${cond}"]`);
+  if (radio) { radio.checked = true; updateConditionPills(); }
+  document.getElementById('submit-label').textContent   = 'Update Record';
+  document.getElementById('form-card-title').textContent = 'Edit Amenity Record';
+  document.getElementById('cancel-btn').style.display   = '';
+  document.getElementById('amenity-form-card').scrollIntoView({behavior:'smooth'});
+}
+
+/* ── Reset form ── */
+function resetForm() {
+  document.getElementById('edit-rec-pk').value   = '';
+  document.getElementById('edit-amenity').value  = '';
+  document.getElementById('edit-amenity').placeholder = 'e.g. AC, Fan, WiFi, Cupboard…';
+  document.getElementById('edit-room').value     = '';
+  document.getElementById('edit-notes').value    = '';
+  const good = document.querySelector('input[name="condition"][value="good"]');
+  if (good) { good.checked = true; updateConditionPills(); }
+  document.getElementById('submit-label').textContent   = 'Add Record';
+  document.getElementById('form-card-title').textContent = 'Add Amenity Record';
+  document.getElementById('cancel-btn').style.display   = 'none';
+  const hf = document.getElementById('hostel-filter');
+  if (hf) { hf.value = ''; filterRooms(''); }
+}
+
+/* ── Type manager toggle ── */
+function showTypeManager() {
+  document.getElementById('type-manager').style.display = '';
+  document.getElementById('type-manager').scrollIntoView({behavior:'smooth'});
+}
+function hideTypeManager() {
+  document.getElementById('type-manager').style.display = 'none';
+}
+</script>
+{% endblock %}

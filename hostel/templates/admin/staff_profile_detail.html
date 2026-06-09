@@ -1,0 +1,260 @@
+{% extends "base/base.html" %}
+{% block title %}{{ target.name }} — Profile{% endblock %}
+{% block page_title %}Staff Profile{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>{{ target.name }}</h4>
+    <p>Full staff profile — read-only view</p>
+  </div>
+  <a href="{% url 'staff_directory' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Staff Directory
+  </a>
+</div>
+
+{% if not profile %}
+<div class="card">
+  <div class="empty-state" style="padding:60px">
+    <i class="bi bi-person-x" style="font-size:40px;opacity:.3;display:block;margin-bottom:12px;color:var(--text-3)"></i>
+    <p style="font-size:14px;color:var(--text-2)">{{ target.name }} has not set up their profile yet.</p>
+    <p style="font-size:12px;color:var(--text-3);margin-top:4px">They can do so by logging in and going to My Profile.</p>
+  </div>
+</div>
+{% else %}
+
+{# ── Hero card ── #}
+<div class="card mb-4" style="background:linear-gradient(135deg,#0F4C81,#1565C0);color:#fff;border:none">
+  <div class="card-body p-4">
+    <div class="d-flex align-items-center gap-4">
+      <div style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.2);
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:28px;font-weight:800;color:#fff;flex-shrink:0">
+        {{ target.name|first|upper }}
+      </div>
+      <div style="flex:1">
+        <div style="font-size:20px;font-weight:800">{{ target.name }}</div>
+        <div style="opacity:.8;font-size:13px;margin-top:2px">{{ target.email }}</div>
+        <div class="d-flex gap-2 mt-2 flex-wrap">
+          <span style="background:rgba(255,255,255,.2);padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600">
+            {{ target.get_role_display }}
+          </span>
+          {% if profile.employee_id %}
+          <span style="background:rgba(255,255,255,.15);padding:3px 10px;border-radius:12px;font-size:12px">
+            ID: {{ profile.employee_id }}
+          </span>
+          {% endif %}
+          {% if profile.department %}
+          <span style="background:rgba(255,255,255,.15);padding:3px 10px;border-radius:12px;font-size:12px">
+            <i class="bi bi-building me-1"></i>{{ profile.department }}
+          </span>
+          {% endif %}
+        </div>
+      </div>
+      <div style="text-align:center;flex-shrink:0">
+        <div style="font-size:28px;font-weight:800">{{ profile.completion_pct }}%</div>
+        <div style="font-size:11px;opacity:.7;margin-bottom:4px">{{ profile.completion_label }}</div>
+        <div style="width:80px;height:6px;border-radius:3px;background:rgba(255,255,255,.2);overflow:hidden">
+          <div style="width:{{ profile.completion_pct }}%;height:100%;background:#F59E0B;border-radius:3px"></div>
+        </div>
+      </div>
+    </div>
+    {% if profile.bio %}
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.15);
+                font-size:13px;opacity:.85;font-style:italic">
+      "{{ profile.bio }}"
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+
+  {# ── Personal details ── #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-person-vcard-fill" style="color:#059669"></i></div>
+          Personal Details
+        </div>
+      </div>
+      <div class="card-body p-4">
+        {% include "admin/_profile_row.html" with label="Phone" value=target.phone %}
+        {% include "admin/_profile_row.html" with label="Date of Birth" value=profile.date_of_birth|date:"d M Y" %}
+        {% include "admin/_profile_row.html" with label="Gender" value=profile.get_gender_display %}
+        {% include "admin/_profile_row.html" with label="Blood Group" value=profile.blood_group %}
+        {% if profile.aadhar_number %}
+        {% include "admin/_profile_row.html" with label="Aadhar" value=profile.aadhar_number|slice:":4"|add:"-"|add:profile.aadhar_number|slice:"4:8"|add:"-"|add:profile.aadhar_number|slice:"8:" %}
+        {% endif %}
+        {% if profile.college_id_number %}
+        {% include "admin/_profile_row.html" with label="College / Emp. ID" value=profile.college_id_number %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Professional details ── #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#F5F3FF"><i class="bi bi-briefcase-fill" style="color:#7C3AED"></i></div>
+          Professional Details
+        </div>
+      </div>
+      <div class="card-body p-4">
+        {% include "admin/_profile_row.html" with label="Qualification" value=profile.qualification %}
+        {% include "admin/_profile_row.html" with label="Department" value=profile.department %}
+        {% include "admin/_profile_row.html" with label="Date of Joining" value=profile.date_of_joining|date:"d M Y" %}
+        {% include "admin/_profile_row.html" with label="Experience" value=profile.experience_years|stringformat:"s"|add:" years" %}
+        {% include "admin/_profile_row.html" with label="Profile Updated" value=profile.updated_at|date:"d M Y, h:i A" %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Address ── #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FFFBEB"><i class="bi bi-house-fill" style="color:#D97706"></i></div>
+          Address
+        </div>
+      </div>
+      <div class="card-body p-4">
+        {% if profile.address or profile.city %}
+        {% include "admin/_profile_row.html" with label="Address" value=profile.address %}
+        {% include "admin/_profile_row.html" with label="City" value=profile.city %}
+        {% include "admin/_profile_row.html" with label="State" value=profile.state %}
+        {% include "admin/_profile_row.html" with label="Pincode" value=profile.pincode %}
+        {% else %}
+        <span style="font-size:13px;color:var(--text-3)">Not provided</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Emergency contact ── #}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEF2F2"><i class="bi bi-telephone-fill" style="color:#DC2626"></i></div>
+          Emergency Contact
+        </div>
+      </div>
+      <div class="card-body p-4">
+        {% if profile.emergency_name %}
+        {% include "admin/_profile_row.html" with label="Name" value=profile.emergency_name %}
+        {% include "admin/_profile_row.html" with label="Phone" value=profile.emergency_phone %}
+        {% include "admin/_profile_row.html" with label="Relation" value=profile.emergency_relation %}
+        {% else %}
+        <span style="font-size:13px;color:var(--text-3)">Not provided</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Official Documents ── #}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#F0F9FF"><i class="bi bi-file-earmark-lock2-fill" style="color:#0891B2"></i></div>
+          Official Documents
+        </div>
+      </div>
+      <div class="card-body p-4">
+        {% if not profile.aadhar_doc and not profile.college_id_doc and not profile.appointment_letter and not profile.qualification_doc %}
+          <span style="font-size:13px;color:var(--text-3)">No documents uploaded yet.</span>
+        {% else %}
+        <div class="row g-3">
+
+          {% if profile.aadhar_doc %}
+          <div class="col-md-3">
+            <div class="p-3" style="border:1px solid #FCA5A5;border-radius:10px;background:#FFF5F5">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi bi-credit-card-2-front-fill" style="color:#DC2626;font-size:20px"></i>
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:var(--text-1)">Aadhar Card</div>
+                  {% if profile.aadhar_number %}
+                  <div style="font-size:11px;color:var(--text-3)">
+                    {{ profile.aadhar_number|slice:":4" }}-{{ profile.aadhar_number|slice:"4:8" }}-{{ profile.aadhar_number|slice:"8:" }}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+              <a href="{{ profile.aadhar_doc.url }}" target="_blank"
+                 class="btn btn-sm w-100" style="font-size:12px;background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5">
+                <i class="bi bi-download me-1"></i>View / Download
+              </a>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if profile.college_id_doc %}
+          <div class="col-md-3">
+            <div class="p-3" style="border:1px solid #93C5FD;border-radius:10px;background:#EBF3FF">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi bi-person-badge-fill" style="color:#1565C0;font-size:20px"></i>
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:var(--text-1)">College / Emp. ID Card</div>
+                  {% if profile.college_id_number %}
+                  <div style="font-size:11px;color:var(--text-3)">{{ profile.college_id_number }}</div>
+                  {% endif %}
+                </div>
+              </div>
+              <a href="{{ profile.college_id_doc.url }}" target="_blank"
+                 class="btn btn-sm w-100" style="font-size:12px;background:#DBEAFE;color:#1E40AF;border:1px solid #93C5FD">
+                <i class="bi bi-download me-1"></i>View / Download
+              </a>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if profile.appointment_letter %}
+          <div class="col-md-3">
+            <div class="p-3" style="border:1px solid #C4B5FD;border-radius:10px;background:#F5F3FF">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi bi-file-earmark-text-fill" style="color:#7C3AED;font-size:20px"></i>
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:var(--text-1)">Appointment Letter</div>
+                  <div style="font-size:11px;color:var(--text-3)">Joining / Offer Letter</div>
+                </div>
+              </div>
+              <a href="{{ profile.appointment_letter.url }}" target="_blank"
+                 class="btn btn-sm w-100" style="font-size:12px;background:#EDE9FE;color:#5B21B6;border:1px solid #C4B5FD">
+                <i class="bi bi-download me-1"></i>View / Download
+              </a>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if profile.qualification_doc %}
+          <div class="col-md-3">
+            <div class="p-3" style="border:1px solid #6EE7B7;border-radius:10px;background:#ECFDF5">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi bi-file-earmark-check-fill" style="color:#059669;font-size:20px"></i>
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:var(--text-1)">Qualification Certificate</div>
+                  <div style="font-size:11px;color:var(--text-3)">Degree / Diploma / Mark Sheet</div>
+                </div>
+              </div>
+              <a href="{{ profile.qualification_doc.url }}" target="_blank"
+                 class="btn btn-sm w-100" style="font-size:12px;background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7">
+                <i class="bi bi-download me-1"></i>View / Download
+              </a>
+            </div>
+          </div>
+          {% endif %}
+
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endif %}
+{% endblock %}

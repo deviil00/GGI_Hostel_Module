@@ -1,0 +1,1524 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}GGI Hostel ERP{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ═══════════════════════════════════════════
+       DESIGN TOKENS
+    ═══════════════════════════════════════════ */
+    :root {
+      --blue:        #1565C0;
+      --blue-dark:   #0D47A1;
+      --blue-mid:    #1976D2;
+      --blue-soft:   #EBF3FF;
+      --green:       #059669;
+      --green-soft:  #ECFDF5;
+      --red:         #DC2626;
+      --red-soft:    #FEF2F2;
+      --amber:       #D97706;
+      --amber-soft:  #FFFBEB;
+      --purple:      #7C3AED;
+      --purple-soft: #F5F3FF;
+      --teal:        #0891B2;
+      --teal-soft:   #F0F9FF;
+
+      --sidebar-w:   260px;
+      --topbar-h:    60px;
+
+      --bg:          #F1F5FB;
+      --surface:     #FFFFFF;
+      --border:      #E2E8F0;
+      --border-light:#F1F5F9;
+
+      --text-1:      #0F172A;
+      --text-2:      #475569;
+      --text-3:      #94A3B8;
+
+      --shadow-xs:   0 1px 2px rgba(0,0,0,.05);
+      --shadow-sm:   0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.05);
+      --shadow-md:   0 4px 12px rgba(0,0,0,.08);
+      --shadow-lg:   0 8px 24px rgba(0,0,0,.10);
+
+      --radius-sm:   6px;
+      --radius:      10px;
+      --radius-lg:   14px;
+      --radius-xl:   18px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text-1);
+      line-height: 1.5;
+    }
+
+    /* ═══════════════════════════════════════════
+       SIDEBAR
+    ═══════════════════════════════════════════ */
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--sidebar-w);
+      background: linear-gradient(180deg, #0D47A1 0%, #1565C0 55%, #1976D2 100%);
+      display: flex;
+      flex-direction: column;
+      z-index: 400;
+      overflow-y: auto;
+      overflow-x: hidden;
+      box-shadow: 4px 0 24px rgba(13,71,161,.28);
+      transition: transform .28s cubic-bezier(.4,0,.2,1);
+    }
+    .sidebar::-webkit-scrollbar { width: 0; }
+
+    /* Mobile: sidebar slides in/out */
+    @media (max-width: 767px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.mob-open { transform: translateX(0); }
+    }
+
+    /* Overlay behind sidebar on mobile */
+    .sidebar-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 399;
+      backdrop-filter: blur(2px);
+    }
+    @media (max-width: 767px) {
+      .sidebar-overlay.mob-open { display: block; }
+    }
+
+    /* Logo panel */
+    .sidebar-logo {
+      background: #fff;
+      padding: 12px 14px 10px;
+      border-bottom: 3px solid #F59E0B;
+      flex-shrink: 0;
+    }
+    .sidebar-logo img {
+      width: 100%; height: auto;
+      display: block; object-fit: contain; max-height: 64px;
+    }
+
+    /* Nav */
+    .sidebar-nav { flex: 1; padding: 4px 0 20px; }
+
+    /* Group header (collapsible) */
+    .nav-group-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px 4px;
+      font-size: 9px;
+      font-weight: 800;
+      color: rgba(255,255,255,.38);
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 0;
+      transition: color .15s;
+      gap: 6px;
+    }
+    .nav-group-label:hover { color: rgba(255,255,255,.65); }
+    .nav-group-label .nav-chevron {
+      font-size: 8px;
+      opacity: .55;
+      transition: transform .22s ease, opacity .15s;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .nav-group-label.sg-open-label .nav-chevron {
+      transform: rotate(0deg);
+      opacity: .8;
+    }
+    .nav-group-label:not(.sg-open-label) .nav-chevron {
+      transform: rotate(-90deg);
+    }
+
+    /* Collapsible body */
+    .nav-group-body {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height .3s cubic-bezier(.4,0,.2,1);
+    }
+    .nav-group-body.sg-open { max-height: 2000px; }
+
+    /* Divider between groups */
+    .nav-group-body + .nav-group-label {
+      margin-top: 2px;
+    }
+
+    /* Nav links */
+    .s-link {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 9px 16px 9px 20px;
+      color: rgba(255,255,255,.7);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      border-left: 3px solid transparent;
+      margin: 1px 8px 1px 0;
+      border-radius: 0 8px 8px 0;
+      transition: background .15s, color .15s, border-color .15s;
+      letter-spacing: .01em;
+    }
+    .s-link i {
+      font-size: 14px;
+      min-width: 17px;
+      text-align: center;
+      opacity: .8;
+      flex-shrink: 0;
+    }
+    .s-link:hover {
+      background: rgba(255,255,255,.09);
+      color: #fff;
+      border-left-color: rgba(255,255,255,.35);
+    }
+    .s-link:hover i { opacity: 1; }
+    .s-link.active {
+      background: rgba(255,255,255,.14);
+      color: #fff;
+      border-left-color: #F59E0B;
+      font-weight: 600;
+    }
+    .s-link.active i { opacity: 1; }
+
+    /* Sidebar footer */
+    .sidebar-footer {
+      padding: 12px 18px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      font-size: 10px;
+      color: rgba(255,255,255,.3);
+      text-align: center;
+      font-style: italic;
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════
+       TOPBAR
+    ═══════════════════════════════════════════ */
+    .topbar {
+      position: fixed;
+      top: 0; left: var(--sidebar-w); right: 0;
+      height: var(--topbar-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 22px;
+      z-index: 300;
+      box-shadow: var(--shadow-xs);
+      transition: left .28s cubic-bezier(.4,0,.2,1);
+    }
+    @media (max-width: 767px) {
+      .topbar { left: 0; padding: 0 14px; }
+    }
+    .topbar-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .topbar-title::before {
+      content: '';
+      width: 3px; height: 18px;
+      background: var(--blue);
+      border-radius: 2px;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .topbar-right { display: flex; align-items: center; gap: 8px; }
+
+    /* Hamburger button (mobile only) */
+    .btn-hamburger {
+      display: none;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      width: 36px; height: 36px;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-2);
+      font-size: 18px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background .15s;
+    }
+    .btn-hamburger:hover { background: var(--bg); }
+    @media (max-width: 767px) { .btn-hamburger { display: flex; } }
+
+    .user-chip {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 4px 12px 4px 4px;
+    }
+    .user-avatar-top {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--blue);
+      color: #fff;
+      font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .user-chip-name {
+      font-size: 12.5px; font-weight: 600; color: var(--text-1);
+      max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    @media (max-width: 480px) { .user-chip-name { display: none; } }
+    .user-chip-role {
+      font-size: 10px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      border-radius: 20px;
+      padding: 2px 7px;
+      font-weight: 700;
+      text-transform: capitalize;
+      white-space: nowrap;
+    }
+    .btn-logout {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 13px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--text-2);
+      font-size: 12px;
+      text-decoration: none;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    .btn-logout:hover { background: var(--red-soft); color: var(--red); border-color: #fca5a5; }
+    @media (max-width: 480px) { .btn-logout span { display: none; } }
+
+    /* ═══════════════════════════════════════════
+       MAIN CONTENT
+    ═══════════════════════════════════════════ */
+    .main-content {
+      margin-left: var(--sidebar-w);
+      padding: calc(var(--topbar-h) + 24px) 24px 32px;
+      min-height: 100vh;
+      transition: margin-left .28s cubic-bezier(.4,0,.2,1);
+    }
+    @media (max-width: 767px) {
+      .main-content { margin-left: 0; padding: calc(var(--topbar-h) + 16px) 14px 24px; }
+    }
+    @media (max-width: 480px) {
+      .main-content { padding: calc(var(--topbar-h) + 12px) 10px 20px; }
+    }
+
+    /* ═══════════════════════════════════════════
+       PAGE HEADER
+    ═══════════════════════════════════════════ */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+    .page-header-left h4 {
+      font-size: 18px; font-weight: 700; color: var(--text-1); margin: 0;
+    }
+    .page-header-left p {
+      font-size: 13px; color: var(--text-2); margin: 2px 0 0;
+    }
+
+    /* ═══════════════════════════════════════════
+       CARDS
+    ═══════════════════════════════════════════ */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+    }
+    .card-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+      padding: 14px 20px;
+      font-weight: 600;
+      font-size: 13.5px;
+      color: var(--text-1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-header .ch-icon {
+      width: 28px; height: 28px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; margin-right: 8px; flex-shrink: 0;
+    }
+    .card-header-left { display: flex; align-items: center; }
+
+    /* ═══════════════════════════════════════════
+       STAT CARDS
+    ═══════════════════════════════════════════ */
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      box-shadow: var(--shadow-sm);
+      transition: transform .18s, box-shadow .18s;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--stat-color, var(--blue));
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+    .stat-card .s-top {
+      display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px;
+    }
+    .stat-card .s-icon {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .stat-card .s-number {
+      font-size: 30px; font-weight: 800; line-height: 1; color: var(--text-1);
+    }
+    .stat-card .s-label {
+      font-size: 11px; font-weight: 600;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      margin-top: 4px;
+    }
+
+    /* ═══════════════════════════════════════════
+       TABLES
+    ═══════════════════════════════════════════ */
+    .table { margin: 0; }
+    .table thead th {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: var(--text-3);
+      border-bottom: 1px solid var(--border);
+      background: #FAFBFD;
+      padding: 11px 12px;
+    }
+    .table thead th:first-child { padding-left: 20px; }
+    .table td {
+      padding: 11px 12px;
+      vertical-align: middle;
+      border-bottom: 1px solid var(--border-light);
+      color: var(--text-1);
+      font-size: 13.5px;
+    }
+    .table td:first-child { padding-left: 20px; }
+    .table tbody tr:last-child td { border-bottom: none; }
+    .table tbody tr:hover td { background: #F8FAFF; }
+
+    /* Student / user avatar in table */
+    .tbl-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+    .tbl-name { font-weight: 600; font-size: 13.5px; color: var(--text-1); }
+    .tbl-sub  { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }
+
+    /* ═══════════════════════════════════════════
+       BADGES
+    ═══════════════════════════════════════════ */
+    .badge {
+      font-size: 11px; font-weight: 600;
+      padding: 3px 9px; border-radius: 20px;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .badge-open        { background: #FEE2E2; color: #B91C1C; }
+    .badge-in_progress { background: #FEF3C7; color: #92400E; }
+    .badge-resolved    { background: #D1FAE5; color: #065F46; }
+    .badge-pending     { background: #FEF3C7; color: #92400E; }
+    .badge-paid        { background: #D1FAE5; color: #065F46; }
+    .badge-partial     { background: #DBEAFE; color: #1E40AF; }
+    .badge-waived      { background: #F3F4F6; color: #374151; }
+    .badge-vacant      { background: #D1FAE5; color: #065F46; }
+    .badge-occupied    { background: #FEE2E2; color: #B91C1C; }
+    .badge-maintenance { background: #FEF3C7; color: #92400E; }
+    .badge-present     { background: #D1FAE5; color: #065F46; }
+    .badge-absent      { background: #FEE2E2; color: #B91C1C; }
+    .badge-leave       { background: #DBEAFE; color: #1E40AF; }
+    .badge-active      { background: #D1FAE5; color: #065F46; }
+    .badge-checkout    { background: #F3F4F6; color: #374151; }
+    .badge-low         { background: #F0FDF4; color: #166534; }
+    .badge-medium      { background: #FFFBEB; color: #92400E; }
+    .badge-high        { background: #FEF2F2; color: #991B1B; }
+    .badge-resident    { background: var(--blue-soft); color: var(--blue); }
+
+    /* ═══════════════════════════════════════════
+       FILTER CARD
+    ═══════════════════════════════════════════ */
+    .filter-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-xs);
+    }
+
+    /* ═══════════════════════════════════════════
+       BUTTONS
+    ═══════════════════════════════════════════ */
+    .btn { border-radius: var(--radius-sm); font-weight: 500; font-size: 13px; }
+    .btn-primary { background: var(--blue); border-color: var(--blue); }
+    .btn-primary:hover { background: var(--blue-dark); border-color: var(--blue-dark); }
+    .btn-sm { padding: 5px 13px; font-size: 12px; }
+    .btn-xs { padding: 3px 10px; font-size: 11.5px; border-radius: 5px; }
+    .btn-icon {
+      width: 32px; height: 32px; padding: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-sm);
+    }
+
+    /* ═══════════════════════════════════════════
+       FORMS
+    ═══════════════════════════════════════════ */
+    .form-control, .form-select {
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-1);
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(21,101,192,.1);
+    }
+    .form-label { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+
+    /* ═══════════════════════════════════════════
+       ALERTS
+    ═══════════════════════════════════════════ */
+    .alert { border-radius: var(--radius); font-size: 13px; border: none; }
+    .alert-success { background: var(--green-soft); color: #065F46; }
+    .alert-warning { background: var(--amber-soft); color: #92400E; }
+    .alert-danger  { background: var(--red-soft);   color: #991B1B; }
+    .alert-info    { background: var(--teal-soft);  color: #164E63; }
+
+    /* ═══════════════════════════════════════════
+       EMPTY STATE
+    ═══════════════════════════════════════════ */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-3);
+    }
+    .empty-state i { font-size: 36px; display: block; margin-bottom: 10px; opacity: .5; }
+    .empty-state p { font-size: 13px; margin: 0; }
+
+    /* ═══════════════════════════════════════════
+       PAGINATION
+    ═══════════════════════════════════════════ */
+    .pagination { gap: 3px; }
+    .page-link {
+      border-radius: var(--radius-sm) !important;
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      font-size: 12.5px;
+      padding: 5px 11px;
+    }
+    .page-link:hover { background: var(--blue-soft); color: var(--blue); border-color: var(--blue); }
+    .page-item.active .page-link { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .page-item.disabled .page-link { color: var(--text-3); }
+
+    /* ═══════════════════════════════════════════
+       MODAL
+    ═══════════════════════════════════════════ */
+    .modal-content { border-radius: var(--radius-lg); border: none; box-shadow: var(--shadow-lg); }
+    .modal-header { border-bottom: 1px solid var(--border); padding: 14px 20px; }
+    .modal-title { font-size: 14px; font-weight: 700; }
+    .modal-footer { border-top: 1px solid var(--border); padding: 12px 20px; }
+    .modal-body { padding: 20px; font-size: 13px; }
+
+    /* ═══════════════════════════════════════════
+       MISC
+    ═══════════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+
+    a { color: var(--blue); }
+    hr { border-color: var(--border); }
+
+    .text-muted { color: var(--text-3) !important; }
+    .fw-600 { font-weight: 600; }
+    .fw-700 { font-weight: 700; }
+
+    /* avatar color variants */
+    .av-blue   { background: #1565C0; }
+    .av-green  { background: #059669; }
+    .av-purple { background: #7C3AED; }
+    .av-amber  { background: #D97706; }
+    .av-teal   { background: #0891B2; }
+    .av-red    { background: #DC2626; }
+
+    /* ═══════════════════════════════════════════
+       RESPONSIVE — TABLES & LAYOUT
+    ═══════════════════════════════════════════ */
+    @media (max-width: 767px) {
+      /* Page header stacks on mobile */
+      .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .page-header > * { width: 100%; }
+
+      /* Tables scroll horizontally */
+      .table-responsive-wrapper,
+      .card > .table-responsive,
+      .card > table {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      table { min-width: 540px; }
+
+      /* Card headers stack */
+      .card-header {
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      /* Stat cards — 2 columns on mobile */
+      .stat-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+
+      /* Hide non-essential table columns via utility */
+      .hide-mobile { display: none !important; }
+
+      /* Forms full-width */
+      .form-row-inline { flex-direction: column !important; }
+      .form-row-inline > * { width: 100% !important; }
+
+      /* Modal full-screen on mobile */
+      .modal-dialog { margin: 0; max-width: 100%; }
+      .modal-content { border-radius: 0; min-height: 100dvh; }
+    }
+
+    @media (max-width: 480px) {
+      .page-header-left h4 { font-size: 16px; }
+      .card-header strong  { font-size: 13px; }
+      .btn { font-size: 12px; }
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% if user.is_authenticated %}
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<aside class="sidebar" id="main-sidebar">
+  <div class="sidebar-logo">
+    <img src="{% static 'img/ggi_logo.png' %}" alt="GGI — Gulzar Group of Institutions">
+  </div>
+
+  <nav class="sidebar-nav">
+
+    {# ── SUPER ADMIN — full admin menu + control panel ── #}
+    {% if user.role == 'superadmin' %}
+    <span class="nav-group-label">Main</span>
+    <a href="{% url 'superadmin_dashboard' %}"
+       class="s-link {% if request.resolver_match.url_name == 'superadmin_dashboard' %}active{% endif %}">
+      <i class="bi bi-grid-1x2-fill"></i> Dashboard
+    </a>
+
+    <span class="nav-group-label">Manage</span>
+    <a href="{% url 'hostel_list' %}"
+       class="s-link {% if request.resolver_match.url_name == 'hostel_list' or request.resolver_match.url_name == 'hostel_detail' or request.resolver_match.url_name == 'create_hostel' or request.resolver_match.url_name == 'edit_hostel' %}active{% endif %}">
+      <i class="bi bi-building-fill"></i> Hostels
+    </a>
+    <a href="{% url 'bulk_upload_rooms' %}"
+       class="s-link {% if 'bulk_upload' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-file-earmark-arrow-up-fill"></i> Bulk Upload
+    </a>
+    <a href="{% url 'student_list' %}"
+       class="s-link {% if 'student' in request.resolver_match.url_name and 'gate' not in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-people-fill"></i> Students
+    </a>
+    <a href="{% url 'room_list' %}"
+       class="s-link {% if 'room' in request.resolver_match.url_name or 'checkout' in request.resolver_match.url_name or 'allocate' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-building"></i> Rooms
+    </a>
+    <a href="{% url 'attendance_list' %}"
+       class="s-link {% if 'attendance' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-calendar2-check-fill"></i> Attendance
+    </a>
+    <a href="{% url 'complaint_list' %}"
+       class="s-link {% if 'complaint' in request.resolver_match.url_name and request.resolver_match.url_name != 'raise_complaint' %}active{% endif %}">
+      <i class="bi bi-chat-square-text-fill"></i> Complaints
+    </a>
+    <a href="{% url 'raise_complaint' %}"
+       class="s-link {% if request.resolver_match.url_name == 'raise_complaint' %}active{% endif %}">
+      <i class="bi bi-wrench-adjustable-circle-fill"></i> Report Issue
+    </a>
+    <a href="{% url 'gate_pass_list' %}"
+       class="s-link {% if 'gate_pass' in request.resolver_match.url_name and 'report' not in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-pass-fill"></i> Gate Passes
+    </a>
+    <a href="{% url 'outsiders' %}"
+       class="s-link {% if request.resolver_match.url_name == 'outsiders' %}active{% endif %}">
+      <i class="bi bi-box-arrow-up-right"></i> Outsiders
+    </a>
+    <a href="{% url 'visitor_list' %}"
+       class="s-link {% if 'visitor' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-person-check-fill"></i> Visitors
+    </a>
+
+    <span class="nav-group-label">Operations</span>
+    <a href="{% url 'mess_management' %}"
+       class="s-link {% if 'mess' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-cup-hot-fill"></i> Mess Management
+    </a>
+    <a href="{% url 'discipline_list' %}"
+       class="s-link {% if 'discipline' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-exclamation-triangle-fill"></i> Discipline
+    </a>
+    <a href="{% url 'maintenance_list' %}"
+       class="s-link {% if 'maintenance' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-tools"></i> Maintenance
+    </a>
+    <a href="{% url 'fee_list' %}"
+       class="s-link {% if 'fee' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-cash-stack"></i> Fees
+    </a>
+
+    <span class="nav-group-label">Reports</span>
+    <a href="{% url 'gate_pass_report' %}"
+       class="s-link {% if request.resolver_match.url_name == 'gate_pass_report' %}active{% endif %}">
+      <i class="bi bi-pass-fill"></i> Gate Pass Report
+    </a>
+    <a href="{% url 'leave_report' %}"
+       class="s-link {% if request.resolver_match.url_name == 'leave_report' %}active{% endif %}">
+      <i class="bi bi-calendar2-x-fill"></i> Leave Report
+    </a>
+    <a href="{% url 'occupancy_report' %}"
+       class="s-link {% if request.resolver_match.url_name == 'occupancy_report' %}active{% endif %}">
+      <i class="bi bi-bar-chart-fill"></i> Occupancy Report
+    </a>
+    <a href="{% url 'reallotment' %}"
+       class="s-link {% if 'reallotment' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-shuffle"></i> Room Reallotment
+    </a>
+    <a href="{% url 'semester_list' %}"
+       class="s-link {% if 'semester' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-calendar3"></i> Semesters
+    </a>
+
+    <span class="nav-group-label">Settings</span>
+    <a href="{% url 'amenity_list' %}"
+       class="s-link {% if 'amenity' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-tags-fill"></i> Room Amenities
+    </a>
+    <a href="{% url 'announcement_list' %}"
+       class="s-link {% if 'announcement' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-megaphone-fill"></i> Announcements
+    </a>
+    <a href="{% url 'student_list' %}?open_courses=1"
+       class="s-link">
+      <i class="bi bi-mortarboard-fill"></i> Manage Courses
+    </a>
+
+    <span class="nav-group-label">Forms</span>
+    <a href="{% url 'registration_form_list' %}"
+       class="s-link {% if 'registration_form' in request.resolver_match.url_name or 'form_submissions' in request.resolver_match.url_name or 'submission_detail' in request.resolver_match.url_name or 'create_registration' in request.resolver_match.url_name or 'edit_registration' in request.resolver_match.url_name or 'form_analytics' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-file-earmark-text-fill"></i> Forms
+    </a>
+
+    <span class="nav-group-label">Leave</span>
+    <a href="{% url 'leave_list' %}"
+       class="s-link {% if request.resolver_match.url_name == 'leave_list' %}active{% endif %}">
+      <i class="bi bi-calendar2-x-fill"></i> Leave Applications
+    </a>
+
+    <span class="nav-group-label" style="background:rgba(255,215,0,.15);color:#FFD700;margin-top:8px">Admin 1</span>
+    <a href="{% url 'staff_directory' %}"
+       class="s-link {% if 'staff_directory' in request.resolver_match.url_name or request.resolver_match.url_name == 'staff_profile_detail' %}active{% endif %}"
+       style="{% if 'staff_directory' in request.resolver_match.url_name or request.resolver_match.url_name == 'staff_profile_detail' %}{% else %}color:rgba(255,215,0,.85){% endif %}">
+      <i class="bi bi-person-lines-fill"></i> Staff Directory
+    </a>
+    <a href="{% url 'staff_accounts' %}"
+       class="s-link {% if request.resolver_match.url_name == 'staff_accounts' %}active{% endif %}"
+       style="{% if request.resolver_match.url_name == 'staff_accounts' %}{% else %}color:rgba(255,215,0,.85){% endif %}">
+      <i class="bi bi-person-badge-fill"></i> Staff Accounts
+    </a>
+    <a href="{% url 'superadmin_permissions' %}"
+       class="s-link {% if request.resolver_match.url_name == 'superadmin_permissions' %}active{% endif %}"
+       style="{% if request.resolver_match.url_name == 'superadmin_permissions' %}{% else %}color:rgba(255,215,0,.85){% endif %}">
+      <i class="bi bi-shield-lock-fill"></i> Module Permissions
+    </a>
+    <a href="{% url 'asset_dashboard' %}"
+       class="s-link {% if 'asset' in request.resolver_match.url_name %}active{% endif %}"
+       style="{% if 'asset' in request.resolver_match.url_name %}{% else %}color:rgba(255,215,0,.85){% endif %}">
+      <i class="bi bi-box-seam-fill"></i> Assets
+    </a>
+    <a href="{% url 'academic_calendar' %}"
+       class="s-link {% if request.resolver_match.url_name == 'academic_calendar' %}active{% endif %}"
+       style="{% if request.resolver_match.url_name == 'academic_calendar' %}{% else %}color:rgba(255,215,0,.85){% endif %}">
+      <i class="bi bi-calendar3-fill"></i> Academic Calendar
+    </a>
+    <a href="{% url 'gp_category_list' %}"
+       class="s-link {% if request.resolver_match.url_name == 'gp_category_list' %}active{% endif %}"
+       style="{% if request.resolver_match.url_name == 'gp_category_list' %}{% else %}color:rgba(255,215,0,.85){% endif %}">
+      <i class="bi bi-pass-fill"></i> Gate Pass Config
+    </a>
+    <a href="{% url 'leave_category_list' %}"
+       class="s-link {% if request.resolver_match.url_name == 'leave_category_list' %}active{% endif %}"
+       style="{% if request.resolver_match.url_name == 'leave_category_list' %}{% else %}color:rgba(255,215,0,.85){% endif %}">
+      <i class="bi bi-calendar2-x-fill"></i> Leave Config
+    </a>
+    <a href="{% url 'restriction_list' %}"
+       class="s-link {% if 'restriction' in request.resolver_match.url_name %}active{% endif %}"
+       style="{% if 'restriction' in request.resolver_match.url_name %}{% else %}color:rgba(255,100,100,.9){% endif %}">
+      <i class="bi bi-slash-circle-fill"></i> Student Restrictions
+    </a>
+    <a href="{% url 'discipline_category_list' %}"
+       class="s-link {% if request.resolver_match.url_name == 'discipline_category_list' %}active{% endif %}"
+       style="{% if request.resolver_match.url_name == 'discipline_category_list' %}{% else %}color:rgba(255,215,0,.85){% endif %}">
+      <i class="bi bi-tags-fill"></i> Discipline Categories
+    </a>
+    <a href="{% url 'discipline_report' %}"
+       class="s-link {% if request.resolver_match.url_name == 'discipline_report' %}active{% endif %}"
+       style="{% if request.resolver_match.url_name == 'discipline_report' %}{% else %}color:rgba(255,215,0,.85){% endif %}">
+      <i class="bi bi-bar-chart-fill"></i> Discipline Reports
+    </a>
+    <a href="{% url 'quota_policy_list' %}"
+       class="s-link {% if request.resolver_match.url_name == 'quota_policy_list' %}active{% endif %}"
+       style="{% if request.resolver_match.url_name == 'quota_policy_list' %}{% else %}color:rgba(255,215,0,.85){% endif %}">
+      <i class="bi bi-hourglass-split"></i> Quota Policies
+    </a>
+    <a href="{% url 'reports_download_center' %}"
+       class="s-link {% if 'reports_download' in request.resolver_match.url_name %}active{% endif %}"
+       style="{% if 'reports_download' in request.resolver_match.url_name %}{% else %}color:rgba(255,215,0,.85){% endif %}">
+      <i class="bi bi-download"></i> Download Reports
+    </a>
+
+    {# ── ADMIN / WARDEN (with module permission checks) ── #}
+    {% elif user.is_admin_or_warden %}
+    <span class="nav-group-label">Main</span>
+    <a href="{% url 'admin_dashboard' %}"
+       class="s-link {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
+      <i class="bi bi-grid-1x2-fill"></i> Dashboard
+    </a>
+
+    <span class="nav-group-label">Manage</span>
+    {% if 'hostels' in visible_modules and user.role == 'admin' %}
+    <a href="{% url 'hostel_list' %}"
+       class="s-link {% if request.resolver_match.url_name == 'hostel_list' or request.resolver_match.url_name == 'hostel_detail' or request.resolver_match.url_name == 'create_hostel' or request.resolver_match.url_name == 'edit_hostel' %}active{% endif %}">
+      <i class="bi bi-building-fill"></i> Hostels
+    </a>
+    <a href="{% url 'bulk_upload_rooms' %}"
+       class="s-link {% if 'bulk_upload' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-file-earmark-arrow-up-fill"></i> Bulk Upload
+    </a>
+    {% endif %}
+    {% if 'students' in visible_modules %}
+    <a href="{% url 'student_list' %}"
+       class="s-link {% if 'student' in request.resolver_match.url_name and 'gate' not in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-people-fill"></i> Students
+    </a>
+    {% endif %}
+    {% if 'hostels' in visible_modules %}
+    <a href="{% url 'room_list' %}"
+       class="s-link {% if 'room' in request.resolver_match.url_name or 'checkout' in request.resolver_match.url_name or 'allocate' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-building"></i> Rooms
+    </a>
+    {% endif %}
+    {% if 'attendance' in visible_modules %}
+    <a href="{% url 'attendance_list' %}"
+       class="s-link {% if 'attendance' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-calendar2-check-fill"></i> Attendance
+    </a>
+    {% endif %}
+    {% if 'complaints' in visible_modules %}
+    <a href="{% url 'complaint_list' %}"
+       class="s-link {% if 'complaint' in request.resolver_match.url_name and request.resolver_match.url_name != 'raise_complaint' %}active{% endif %}">
+      <i class="bi bi-chat-square-text-fill"></i> Complaints
+    </a>
+    <a href="{% url 'raise_complaint' %}"
+       class="s-link {% if request.resolver_match.url_name == 'raise_complaint' %}active{% endif %}">
+      <i class="bi bi-wrench-adjustable-circle-fill"></i> Report Issue
+    </a>
+    {% endif %}
+    {% if 'gate_passes' in visible_modules %}
+    <a href="{% url 'gate_pass_list' %}"
+       class="s-link {% if 'gate_pass' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-pass-fill"></i> Gate Passes
+    </a>
+    {% endif %}
+    {% if 'outsiders' in visible_modules %}
+    <a href="{% url 'outsiders' %}"
+       class="s-link {% if request.resolver_match.url_name == 'outsiders' %}active{% endif %}">
+      <i class="bi bi-box-arrow-up-right"></i> Outsiders
+    </a>
+    {% endif %}
+    {% if 'visitors' in visible_modules %}
+    <a href="{% url 'visitor_list' %}"
+       class="s-link {% if 'visitor' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-person-check-fill"></i> Visitors
+    </a>
+    {% endif %}
+
+    <span class="nav-group-label">Operations</span>
+    {% if 'mess' in visible_modules %}
+    <a href="{% url 'mess_management' %}"
+       class="s-link {% if 'mess' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-cup-hot-fill"></i> Mess Management
+    </a>
+    {% endif %}
+    {% if 'discipline' in visible_modules and user.role == 'admin' %}
+    <a href="{% url 'discipline_list' %}"
+       class="s-link {% if 'discipline' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-exclamation-triangle-fill"></i> Discipline
+    </a>
+    {% endif %}
+    {% if 'maintenance' in visible_modules %}
+    <a href="{% url 'maintenance_list' %}"
+       class="s-link {% if 'maintenance' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-tools"></i> Maintenance
+    </a>
+    {% endif %}
+    {% if 'fees' in visible_modules and user.role == 'admin' %}
+    <a href="{% url 'fee_list' %}"
+       class="s-link {% if 'fee' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-cash-stack"></i> Fees
+    </a>
+    {% endif %}
+
+    {% if 'reports' in visible_modules %}
+    <span class="nav-group-label">Reports</span>
+    <a href="{% url 'gate_pass_report' %}"
+       class="s-link {% if request.resolver_match.url_name == 'gate_pass_report' %}active{% endif %}">
+      <i class="bi bi-pass-fill"></i> Gate Pass Report
+    </a>
+    <a href="{% url 'leave_report' %}"
+       class="s-link {% if request.resolver_match.url_name == 'leave_report' %}active{% endif %}">
+      <i class="bi bi-calendar2-x-fill"></i> Leave Report
+    </a>
+    <a href="{% url 'occupancy_report' %}"
+       class="s-link {% if request.resolver_match.url_name == 'occupancy_report' %}active{% endif %}">
+      <i class="bi bi-bar-chart-fill"></i> Occupancy Report
+    </a>
+    {% if user.role == 'admin' %}
+    <a href="{% url 'reallotment' %}"
+       class="s-link {% if 'reallotment' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-shuffle"></i> Room Reallotment
+    </a>
+    <a href="{% url 'semester_list' %}"
+       class="s-link {% if 'semester' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-calendar3"></i> Semesters
+    </a>
+    {% endif %}
+    {% if 'reports_download' in visible_modules %}
+    <a href="{% url 'reports_download_center' %}"
+       class="s-link {% if 'reports_download' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-download"></i> Download Reports
+    </a>
+    {% endif %}
+    {% endif %}
+
+    {% if 'assets' in visible_modules %}
+    <a href="{% url 'asset_dashboard' %}"
+       class="s-link {% if 'asset' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-box-seam-fill"></i> Assets
+    </a>
+    {% endif %}
+
+    <span class="nav-group-label">Settings</span>
+    {% if user.role == 'admin' %}
+    <a href="{% url 'amenity_list' %}"
+       class="s-link {% if 'amenity' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-tags-fill"></i> Room Amenities
+    </a>
+    {% endif %}
+    {% if 'announcements' in visible_modules %}
+    <a href="{% url 'announcement_list' %}"
+       class="s-link {% if 'announcement' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-megaphone-fill"></i> Announcements
+    </a>
+    {% endif %}
+    {% if user.role == 'admin' %}
+    <a href="{% url 'student_list' %}?open_courses=1"
+       class="s-link">
+      <i class="bi bi-mortarboard-fill"></i> Manage Courses
+    </a>
+    {% endif %}
+
+    {% if 'registrations' in visible_modules %}
+    <span class="nav-group-label">Forms</span>
+    <a href="{% url 'registration_form_list' %}"
+       class="s-link {% if 'registration_form' in request.resolver_match.url_name or 'form_submissions' in request.resolver_match.url_name or 'submission_detail' in request.resolver_match.url_name or 'create_registration' in request.resolver_match.url_name or 'edit_registration' in request.resolver_match.url_name or 'form_analytics' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-file-earmark-text-fill"></i> Forms
+    </a>
+    {% endif %}
+
+    {% if 'leave' in visible_modules %}
+    <span class="nav-group-label">Leave</span>
+    <a href="{% url 'leave_list' %}"
+       class="s-link {% if 'leave' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-calendar2-x-fill"></i> Leave Applications
+    </a>
+    {% endif %}
+
+    <span class="nav-group-label">Account</span>
+    <a href="{% url 'my_staff_profile' %}"
+       class="s-link {% if request.resolver_match.url_name == 'my_staff_profile' %}active{% endif %}">
+      <i class="bi bi-person-circle"></i> My Profile
+    </a>
+
+    {# ── MAINTENANCE role ── #}
+    {% elif user.role == 'maintenance' %}
+    <span class="nav-group-label">Maintenance Portal</span>
+    <a href="{% url 'maintenance_incharge_dashboard' %}"
+       class="s-link {% if request.resolver_match.url_name == 'maintenance_incharge_dashboard' or request.resolver_match.url_name == 'staff_dashboard' %}active{% endif %}">
+      <i class="bi bi-grid-1x2-fill"></i> Dashboard
+    </a>
+    {% if 'complaints' in visible_modules %}
+    <a href="{% url 'maintenance_incharge_dashboard' %}"
+       class="s-link {% if 'complaint' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-chat-square-text-fill"></i> Assigned Complaints
+    </a>
+    {% endif %}
+    {% if 'maintenance' in visible_modules %}
+    <a href="{% url 'maintenance_list' %}"
+       class="s-link {% if request.resolver_match.url_name == 'maintenance_list' %}active{% endif %}">
+      <i class="bi bi-tools"></i> Maintenance Records
+    </a>
+    {% endif %}
+    {% if 'announcements' in visible_modules %}
+    <a href="{% url 'announcement_list' %}"
+       class="s-link {% if 'announcement' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-megaphone-fill"></i> Announcements
+    </a>
+    {% endif %}
+    <span class="nav-group-label">Account</span>
+    <a href="{% url 'my_staff_profile' %}"
+       class="s-link {% if request.resolver_match.url_name == 'my_staff_profile' %}active{% endif %}">
+      <i class="bi bi-person-circle"></i> My Profile
+    </a>
+
+    {# ── MESS MANAGEMENT role ── #}
+    {% elif user.role == 'mess' %}
+    <span class="nav-group-label">Mess Portal</span>
+    <a href="{% url 'staff_dashboard' %}"
+       class="s-link {% if request.resolver_match.url_name == 'staff_dashboard' %}active{% endif %}">
+      <i class="bi bi-grid-1x2-fill"></i> Dashboard
+    </a>
+    {% if 'mess' in visible_modules %}
+    <a href="{% url 'mess_incharge_dashboard' %}"
+       class="s-link {% if 'mess' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-cup-hot-fill"></i> Mess Management
+    </a>
+    {% endif %}
+    {% if 'announcements' in visible_modules %}
+    <a href="{% url 'announcement_list' %}"
+       class="s-link {% if 'announcement' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-megaphone-fill"></i> Announcements
+    </a>
+    {% endif %}
+    <span class="nav-group-label">Account</span>
+    <a href="{% url 'my_staff_profile' %}"
+       class="s-link {% if request.resolver_match.url_name == 'my_staff_profile' %}active{% endif %}">
+      <i class="bi bi-person-circle"></i> My Profile
+    </a>
+
+    {# ── CUSTOM STAFF ROLE — dynamic sidebar based on permitted modules ── #}
+    {% elif user.is_custom_staff_role %}
+    <span class="nav-group-label">Staff Portal</span>
+    <a href="{% url 'staff_dashboard' %}"
+       class="s-link {% if request.resolver_match.url_name == 'staff_dashboard' %}active{% endif %}">
+      <i class="bi bi-grid-1x2-fill"></i> Dashboard
+    </a>
+    {% if 'students' in visible_modules %}
+    <a href="{% url 'student_list' %}"
+       class="s-link {% if 'student' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-people-fill"></i> Students
+    </a>
+    {% endif %}
+    {% if 'hostels' in visible_modules %}
+    <a href="{% url 'hostel_list' %}"
+       class="s-link {% if request.resolver_match.url_name == 'hostel_list' %}active{% endif %}">
+      <i class="bi bi-building-fill"></i> Hostels
+    </a>
+    <a href="{% url 'room_list' %}"
+       class="s-link {% if 'room' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-building"></i> Rooms
+    </a>
+    {% endif %}
+    {% if 'attendance' in visible_modules %}
+    <a href="{% url 'attendance_list' %}"
+       class="s-link {% if 'attendance' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-calendar2-check-fill"></i> Attendance
+    </a>
+    {% endif %}
+    {% if 'complaints' in visible_modules %}
+    <a href="{% url 'complaint_list' %}"
+       class="s-link {% if 'complaint' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-chat-square-text-fill"></i> Complaints
+    </a>
+    {% endif %}
+    {% if 'gate_passes' in visible_modules %}
+    <a href="{% url 'gate_pass_list' %}"
+       class="s-link {% if 'gate_pass' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-pass-fill"></i> Gate Passes
+    </a>
+    {% endif %}
+    {% if 'outsiders' in visible_modules %}
+    <a href="{% url 'outsiders' %}"
+       class="s-link {% if request.resolver_match.url_name == 'outsiders' %}active{% endif %}">
+      <i class="bi bi-box-arrow-up-right"></i> Outsiders
+    </a>
+    {% endif %}
+    {% if 'visitors' in visible_modules %}
+    <a href="{% url 'visitor_list' %}"
+       class="s-link {% if 'visitor' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-person-check-fill"></i> Visitors
+    </a>
+    {% endif %}
+    {% if 'fees' in visible_modules %}
+    <a href="{% url 'fee_list' %}"
+       class="s-link {% if 'fee' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-cash-stack"></i> Fees
+    </a>
+    {% endif %}
+    {% if 'mess' in visible_modules %}
+    <a href="{% url 'mess_management' %}"
+       class="s-link {% if 'mess' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-cup-hot-fill"></i> Mess Management
+    </a>
+    {% endif %}
+    {% if 'discipline' in visible_modules %}
+    <a href="{% url 'discipline_list' %}"
+       class="s-link {% if 'discipline' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-exclamation-triangle-fill"></i> Discipline
+    </a>
+    {% endif %}
+    {% if 'maintenance' in visible_modules %}
+    <a href="{% url 'maintenance_list' %}"
+       class="s-link {% if 'maintenance' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-tools"></i> Maintenance
+    </a>
+    {% endif %}
+    {% if 'leave' in visible_modules %}
+    <a href="{% url 'leave_list' %}"
+       class="s-link {% if 'leave' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-calendar2-x-fill"></i> Leave Applications
+    </a>
+    {% endif %}
+    {% if 'reports' in visible_modules %}
+    <a href="{% url 'occupancy_report' %}"
+       class="s-link {% if 'report' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-bar-chart-fill"></i> Reports
+    </a>
+    {% endif %}
+    {% if 'reports_download' in visible_modules %}
+    <a href="{% url 'reports_download_center' %}"
+       class="s-link {% if 'reports_download' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-download"></i> Download Reports
+    </a>
+    {% endif %}
+    {% if 'registrations' in visible_modules %}
+    <a href="{% url 'registration_form_list' %}"
+       class="s-link {% if 'registration_form' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-file-earmark-text-fill"></i> Registration Forms
+    </a>
+    {% endif %}
+    {% if 'announcements' in visible_modules %}
+    <a href="{% url 'announcement_list' %}"
+       class="s-link {% if 'announcement' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-megaphone-fill"></i> Announcements
+    </a>
+    {% endif %}
+    <span class="nav-group-label">Account</span>
+    <a href="{% url 'my_staff_profile' %}"
+       class="s-link {% if request.resolver_match.url_name == 'my_staff_profile' %}active{% endif %}">
+      <i class="bi bi-person-circle"></i> My Profile
+    </a>
+
+    {% elif user.is_security %}
+    <span class="nav-group-label">Security Portal</span>
+    <a href="{% url 'security_dashboard' %}"
+       class="s-link {% if request.resolver_match.url_name == 'security_dashboard' %}active{% endif %}">
+      <i class="bi bi-shield-fill-check"></i> Guard Dashboard
+    </a>
+    <a href="{% url 'scan_qr' %}"
+       class="s-link {% if request.resolver_match.url_name in 'scan_qr,verify_qr' %}active{% endif %}">
+      <i class="bi bi-qr-code-scan"></i> Scan QR Code
+    </a>
+    <a href="{% url 'security_announcements' %}"
+       class="s-link {% if request.resolver_match.url_name == 'security_announcements' %}active{% endif %}">
+      <i class="bi bi-megaphone-fill"></i> Announcements
+    </a>
+    <span class="nav-group-label">Account</span>
+    <a href="{% url 'my_staff_profile' %}"
+       class="s-link {% if request.resolver_match.url_name == 'my_staff_profile' %}active{% endif %}">
+      <i class="bi bi-person-circle"></i> My Profile
+    </a>
+
+    {# ── HOD role ── #}
+    {% elif user.role == 'hod' %}
+    <span class="nav-group-label">HOD Portal</span>
+    <a href="{% url 'staff_dashboard' %}"
+       class="s-link {% if request.resolver_match.url_name == 'staff_dashboard' %}active{% endif %}">
+      <i class="bi bi-grid-1x2-fill"></i> Dashboard
+    </a>
+    <a href="{% url 'hod_leave_list' %}"
+       class="s-link {% if 'hod_leave' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-calendar2-x-fill"></i> Leave Approvals
+      {# pending badge injected via context processor if needed #}
+    </a>
+    <span class="nav-group-label">Account</span>
+    <a href="{% url 'my_staff_profile' %}"
+       class="s-link {% if request.resolver_match.url_name == 'my_staff_profile' %}active{% endif %}">
+      <i class="bi bi-person-circle"></i> My Profile
+    </a>
+
+    {% else %}
+    <span class="nav-group-label">Student Portal</span>
+    <a href="{% url 'student_dashboard' %}"
+       class="s-link {% if request.resolver_match.url_name == 'student_dashboard' %}active{% endif %}">
+      <i class="bi bi-grid-1x2-fill"></i> My Dashboard
+    </a>
+    <a href="{% url 'my_profile' %}"
+       class="s-link {% if request.resolver_match.url_name in 'my_profile,student_edit_profile' %}active{% endif %}">
+      <i class="bi bi-person-circle"></i> My Profile
+    </a>
+    {% if 'complaints' in visible_modules %}
+    <a href="{% url 'my_complaints' %}"
+       class="s-link {% if request.resolver_match.url_name == 'my_complaints' or request.resolver_match.url_name == 'complaint_detail' %}active{% endif %}">
+      <i class="bi bi-chat-square-text-fill"></i> My Complaints
+    </a>
+    <a href="{% url 'raise_complaint' %}"
+       class="s-link {% if request.resolver_match.url_name == 'raise_complaint' %}active{% endif %}">
+      <i class="bi bi-plus-circle-fill"></i> Raise Complaint
+    </a>
+    {% endif %}
+    {% if 'announcements' in visible_modules %}
+    <a href="{% url 'student_announcements' %}"
+       class="s-link {% if request.resolver_match.url_name == 'student_announcements' %}active{% endif %}">
+      <i class="bi bi-megaphone-fill"></i> Announcements
+    </a>
+    {% endif %}
+
+    {% if 'registrations' in visible_modules %}
+    <span class="nav-group-label">Registration</span>
+    <a href="{% url 'available_forms' %}"
+       class="s-link {% if 'available_forms' in request.resolver_match.url_name or 'apply_form' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-file-earmark-text-fill"></i> Apply for Room
+    </a>
+    <a href="{% url 'my_applications' %}"
+       class="s-link {% if request.resolver_match.url_name == 'my_applications' %}active{% endif %}">
+      <i class="bi bi-clock-history"></i> My Applications
+    </a>
+    {% endif %}
+
+    {% if 'gate_passes' in visible_modules %}
+    <span class="nav-group-label">Gate Pass</span>
+    <a href="{% url 'apply_gate_pass' %}"
+       class="s-link {% if request.resolver_match.url_name == 'apply_gate_pass' %}active{% endif %}">
+      <i class="bi bi-pass-fill"></i> Apply Gate Pass
+    </a>
+    <a href="{% url 'my_gate_passes' %}"
+       class="s-link {% if request.resolver_match.url_name == 'my_gate_passes' %}active{% endif %}">
+      <i class="bi bi-clock-history"></i> My Gate Passes
+    </a>
+    {% endif %}
+
+    {% if 'leave' in visible_modules %}
+    <span class="nav-group-label">Leave</span>
+    <a href="{% url 'apply_leave' %}"
+       class="s-link {% if request.resolver_match.url_name == 'apply_leave' %}active{% endif %}">
+      <i class="bi bi-calendar2-x-fill"></i> Apply for Leave
+    </a>
+    <a href="{% url 'my_leaves' %}"
+       class="s-link {% if request.resolver_match.url_name == 'my_leaves' %}active{% endif %}">
+      <i class="bi bi-clock-history"></i> My Leaves
+    </a>
+    {% endif %}
+
+    {% if 'mess' in visible_modules or 'visitors' in visible_modules %}
+    <span class="nav-group-label">Mess & Visitors</span>
+    {% if 'mess' in visible_modules %}
+    <a href="{% url 'mess_menu_student' %}"
+       class="s-link {% if request.resolver_match.url_name == 'mess_menu_student' %}active{% endif %}">
+      <i class="bi bi-cup-hot-fill"></i> Mess Menu
+    </a>
+    {% endif %}
+    {% if 'visitors' in visible_modules %}
+    <a href="{% url 'my_visitors' %}"
+       class="s-link {% if 'visitor' in request.resolver_match.url_name %}active{% endif %}">
+      <i class="bi bi-people-fill"></i> My Visitors
+    </a>
+    <a href="{% url 'register_visitor' %}"
+       class="s-link {% if request.resolver_match.url_name == 'register_visitor' %}active{% endif %}">
+      <i class="bi bi-person-plus-fill"></i> Register Visitor
+    </a>
+    {% endif %}
+    {% endif %}
+    {% endif %}
+  </nav>
+
+  <div class="sidebar-footer">Sharpening Minds, Brightening Tomorrow.</div>
+</aside>
+
+<!-- ═══════════ TOPBAR ═══════════ -->
+<header class="topbar">
+  <div style="display:flex;align-items:center;gap:12px;min-width:0">
+    <button class="btn-hamburger" onclick="toggleSidebar()" aria-label="Menu">
+      <i class="bi bi-list"></i>
+    </button>
+    <div class="topbar-title">{% block page_title %}{% endblock %}</div>
+  </div>
+  <div class="topbar-right">
+    <div class="user-chip">
+      <div class="user-avatar-top">{{ user.name|first|upper }}</div>
+      <span class="user-chip-name">{{ user.name }}</span>
+      <span class="user-chip-role">{{ user.get_role_display }}</span>
+    </div>
+    <!-- Notification Bell -->
+    <a href="{% url 'notification_list' %}" class="btn-logout" style="position:relative;padding:7px 12px"
+       title="Notifications">
+      <i class="bi bi-bell-fill"></i>
+      <span id="notif-bell-badge"
+            style="position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;background:#DC2626;
+                   color:#fff;font-size:9px;font-weight:700;display:{% if unread_notifications_count > 0 %}flex{% else %}none{% endif %};align-items:center;justify-content:center;
+                   border:2px solid #fff">{{ unread_notifications_count }}</span>
+    </a>
+    <a href="{% url 'logout' %}" class="btn-logout">
+      <i class="bi bi-box-arrow-right"></i><span class="ms-1"> Logout</span>
+    </a>
+  </div>
+</header>
+{% endif %}
+
+<!-- ═══════════ CONTENT ═══════════ -->
+<main class="{% if user.is_authenticated %}main-content{% endif %}">
+  {% for msg in messages %}
+  <div class="alert alert-{% if msg.tags == 'error' %}danger{% else %}{{ msg.tags }}{% endif %} alert-dismissible fade show mb-3" role="alert">
+    <i class="bi bi-{% if msg.tags == 'error' %}exclamation-circle{% elif msg.tags == 'success' %}check-circle{% else %}info-circle{% endif %} me-2"></i>
+    {{ msg }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+
+<!-- ── Live Notification Toasts ── -->
+{% if user.is_authenticated %}
+<div id="toast-container"
+     style="position:fixed;top:74px;right:18px;z-index:9999;display:flex;flex-direction:column;gap:10px;min-width:320px;max-width:400px">
+</div>
+
+<style>
+.notif-toast {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: toastIn .35s cubic-bezier(.34,1.56,.64,1);
+  border: 1px solid #E2E8F0;
+}
+.notif-toast.hide { animation: toastOut .3s ease forwards; }
+.notif-toast-bar  { height: 4px; }
+.notif-toast-body { padding: 12px 14px 10px; display: flex; gap: 10px; align-items: flex-start; }
+.notif-toast-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; margin-top:1px; }
+.notif-toast-text { flex: 1; }
+.notif-toast-title { font-weight: 700; font-size: 13px; color: #1E293B; line-height: 1.3; }
+.notif-toast-msg   { font-size: 12px; color: #64748B; margin-top: 2px; line-height: 1.4; }
+.notif-toast-close { background: none; border: none; color: #94A3B8; font-size: 16px; cursor: pointer; padding: 0; line-height: 1; flex-shrink: 0; }
+.notif-toast-footer { padding: 4px 14px 8px; display: flex; align-items: center; justify-content: space-between; }
+.notif-toast-time { font-size: 10px; color: #94A3B8; }
+.notif-toast-link { font-size: 11px; font-weight: 600; text-decoration: none; }
+@keyframes toastIn  { from { opacity:0; transform: translateX(60px) scale(.92); } to { opacity:1; transform: translateX(0) scale(1); } }
+@keyframes toastOut { from { opacity:1; transform: translateX(0) scale(1); } to { opacity:0; transform: translateX(60px) scale(.92); } }
+</style>
+
+<script>
+// dismissToast must be global (called from inline onclick)
+function dismissToast(el) {
+  if (!el || !el.parentNode) return;
+  el.classList.add('hide');
+  setTimeout(() => el.parentNode && el.parentNode.removeChild(el), 310);
+}
+
+(function(){
+  const POLL_URL = "{% url 'poll_notifications' %}";
+
+  const TYPE_META = {
+    gate_pass:    { color:'#1565C0', bg:'#EFF6FF', icon:'bi-pass-fill' },
+    complaint:    { color:'#DC2626', bg:'#FEF2F2', icon:'bi-chat-square-text-fill' },
+    announcement: { color:'#7C3AED', bg:'#F5F3FF', icon:'bi-megaphone-fill' },
+    visitor:      { color:'#0891B2', bg:'#ECFEFF', icon:'bi-person-badge-fill' },
+    discipline:   { color:'#DC2626', bg:'#FEF2F2', icon:'bi-exclamation-triangle-fill' },
+    mess:         { color:'#059669', bg:'#F0FDF4', icon:'bi-egg-fried' },
+    general:      { color:'#D97706', bg:'#FFFBEB', icon:'bi-bell-fill' },
+    leave:        { color:'#F59E0B', bg:'#FFFBEB', icon:'bi-calendar2-check-fill' },
+  };
+
+  function showToast(n) {
+    const meta  = TYPE_META[n.notification_type] || TYPE_META.general;
+    const toast = document.createElement('div');
+    toast.className = 'notif-toast';
+    toast.innerHTML = `
+      <div class="notif-toast-bar" style="background:${meta.color}"></div>
+      <div class="notif-toast-body">
+        <div class="notif-toast-icon" style="background:${meta.bg};color:${meta.color}">
+          <i class="bi ${meta.icon}"></i>
+        </div>
+        <div class="notif-toast-text">
+          <div class="notif-toast-title">${escHtml(n.title)}</div>
+          <div class="notif-toast-msg">${escHtml(n.message)}</div>
+        </div>
+        <button class="notif-toast-close" onclick="dismissToast(this.closest('.notif-toast'))">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="notif-toast-footer">
+        <span class="notif-toast-time">Just now</span>
+        ${n.link ? `<a href="${n.link}" class="notif-toast-link" style="color:${meta.color}">View →</a>` : ''}
+      </div>`;
+    document.getElementById('toast-container').appendChild(toast);
+    setTimeout(() => dismissToast(toast), 7000);
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function updateBell(count) {
+    let badge = document.getElementById('notif-bell-badge');
+    if (!badge) return;
+    badge.textContent = count;
+    badge.style.display = count > 0 ? 'flex' : 'none';
+  }
+
+  async function poll() {
+    try {
+      const res  = await fetch(POLL_URL, {headers:{'X-Requested-With':'XMLHttpRequest'}});
+      const data = await res.json();
+      if (data.notifications && data.notifications.length) {
+        data.notifications.forEach(showToast);
+      }
+      updateBell(data.unread_count || 0);
+    } catch(e) { console.warn('[notifications] poll error:', e); }
+  }
+
+  // Small delay on first load so Bootstrap/DOM is fully ready, then every 30 s
+  setTimeout(poll, 1500);
+  setInterval(poll, 30000);
+})();
+</script>
+{% endif %}
+
+<script>
+/* ── Mobile sidebar ─────────────────────────────────────────────────────── */
+function toggleSidebar() {
+  var sb = document.getElementById('main-sidebar');
+  var ov = document.getElementById('sidebar-overlay');
+  if (!sb) return;
+  var open = sb.classList.toggle('mob-open');
+  if (ov) ov.classList.toggle('mob-open', open);
+  document.body.style.overflow = open ? 'hidden' : '';
+}
+function closeSidebar() {
+  var sb = document.getElementById('main-sidebar');
+  var ov = document.getElementById('sidebar-overlay');
+  if (sb) sb.classList.remove('mob-open');
+  if (ov) ov.classList.remove('mob-open');
+  document.body.style.overflow = '';
+}
+/* Close sidebar when a nav link is tapped on mobile */
+document.addEventListener('click', function (e) {
+  var link = e.target.closest('.s-link');
+  if (link && window.innerWidth < 768) closeSidebar();
+});
+
+/* ── Collapsible sidebar groups ─────────────────────────────────────────── */
+(function () {
+  function initSidebar() {
+    var nav = document.querySelector('.sidebar-nav');
+    if (!nav) return;
+    var labels = Array.from(nav.querySelectorAll('.nav-group-label'));
+
+    labels.forEach(function (label, idx) {
+      var key = 'sg_' + label.textContent.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+
+      /* chevron icon */
+      var chev = document.createElement('i');
+      chev.className = 'bi bi-chevron-down nav-chevron';
+      label.appendChild(chev);
+
+      /* collect following .s-link siblings until next label */
+      var body = document.createElement('div');
+      body.className = 'nav-group-body';
+      var siblings = [];
+      var el = label.nextElementSibling;
+      while (el && !el.classList.contains('nav-group-label')) {
+        siblings.push(el);
+        el = el.nextElementSibling;
+      }
+      if (!siblings.length) return;
+      label.parentNode.insertBefore(body, siblings[0]);
+      siblings.forEach(function (s) { body.appendChild(s); });
+
+      var hasActive = !!body.querySelector('.s-link.active');
+      var saved = localStorage.getItem(key);
+      /* First section open by default; others closed unless active or saved open */
+      var open = hasActive ? true : (saved !== null ? saved === '1' : idx === 0);
+
+      function setOpen(val) {
+        body.classList.toggle('sg-open', val);
+        label.classList.toggle('sg-open-label', val);
+        localStorage.setItem(key, val ? '1' : '0');
+      }
+      setOpen(open);
+
+      label.addEventListener('click', function () {
+        setOpen(!body.classList.contains('sg-open'));
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSidebar);
+  } else {
+    initSidebar();
+  }
+})();
+</script>
+</body>
+</html>

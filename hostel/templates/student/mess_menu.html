@@ -1,0 +1,103 @@
+{% extends 'base/base.html' %}
+{% block title %}Mess Menu{% endblock %}
+{% block page_title %}Mess Menu{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>This Week's Mess Menu</h4>
+    <p>{% if hostel %}{{ hostel.name }}{% else %}All Hostels{% endif %}</p>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-cup-hot-fill" style="color:#059669"></i></div>
+      Weekly Schedule
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Day</th>
+          {% for day_data in menu_grid|slice:":1" %}
+            {% for meal_data in day_data.meals %}
+            <th>{{ meal_data.meal_label }}</th>
+            {% endfor %}
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for day_data in menu_grid %}
+        <tr>
+          <td class="fw-600" style="white-space:nowrap">{{ day_data.day_label }}</td>
+          {% for meal_data in day_data.meals %}
+          <td style="font-size:12.5px;vertical-align:top;min-width:140px">
+            {% if meal_data.menu %}
+            <div style="white-space:pre-wrap;color:var(--text-1)">{{ meal_data.menu.items }}</div>
+            {% else %}
+            <span class="text-muted" style="font-size:11px">Not set</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Feedback Form -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#F5F3FF"><i class="bi bi-star-fill" style="color:#7C3AED"></i></div>
+      Submit Today's Feedback
+    </div>
+  </div>
+  <div class="card-body p-4">
+    <form method="post">
+      {% csrf_token %}
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label">Meal <span class="text-danger">*</span></label>
+          <select name="meal_type" class="form-select" required>
+            {% for val, label in meals %}
+            <option value="{{ val }}" {% if val in already_rated %}disabled{% endif %}>
+              {{ label }} {% if val in already_rated %}(Rated ✓){% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Rating <span class="text-danger">*</span></label>
+          <select name="rating" class="form-select" required>
+            <option value="5">⭐⭐⭐⭐⭐ Excellent</option>
+            <option value="4">⭐⭐⭐⭐ Good</option>
+            <option value="3" selected>⭐⭐⭐ Average</option>
+            <option value="2">⭐⭐ Poor</option>
+            <option value="1">⭐ Very Poor</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Comment</label>
+          <input type="text" name="comment" class="form-control" placeholder="Optional comment...">
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-send"></i> Submit
+          </button>
+        </div>
+      </div>
+    </form>
+    {% if already_rated %}
+    <div class="alert alert-success mt-3 mb-0" style="font-size:12.5px">
+      <i class="bi bi-check-circle me-1"></i>
+      You have already submitted feedback for: {{ already_rated|join:", " }}.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

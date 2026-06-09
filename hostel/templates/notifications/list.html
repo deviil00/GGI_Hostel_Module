@@ -1,0 +1,79 @@
+{% extends 'base/base.html' %}
+{% block title %}Notifications{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Notifications</h4>
+    <p>All your system updates and alerts</p>
+  </div>
+  {% if page.object_list %}
+  <form method="post" action="{% url 'clear_all_notifications' %}">
+    {% csrf_token %}
+    <button class="btn btn-outline-danger btn-sm" onclick="return confirm('Clear all notifications?')">
+      <i class="bi bi-trash"></i> Clear All
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-bell-fill" style="color:#1565C0"></i></div>
+      All Notifications
+    </div>
+    <span class="text-muted" style="font-size:12px">{{ page.paginator.count }} total</span>
+  </div>
+
+  {% if page.object_list %}
+  <div>
+    {% for notif in page %}
+    <div class="d-flex align-items-start gap-3 px-4 py-3" style="border-bottom:1px solid var(--border-light)">
+      <div style="width:38px;height:38px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;
+        background:{% if notif.notification_type == 'gate_pass' %}#EBF3FF{% elif notif.notification_type == 'complaint' %}#FEF2F2{% elif notif.notification_type == 'visitor' %}#ECFDF5{% elif notif.notification_type == 'discipline' %}#FEF3C7{% elif notif.notification_type == 'announcement' %}#EDE9FE{% else %}#F1F5F9{% endif %};
+        color:{% if notif.notification_type == 'gate_pass' %}#1565C0{% elif notif.notification_type == 'complaint' %}#DC2626{% elif notif.notification_type == 'visitor' %}#059669{% elif notif.notification_type == 'discipline' %}#D97706{% elif notif.notification_type == 'announcement' %}#7C3AED{% else %}#64748B{% endif %}">
+        <i class="bi bi-{% if notif.notification_type == 'gate_pass' %}pass-fill{% elif notif.notification_type == 'complaint' %}chat-square-text-fill{% elif notif.notification_type == 'visitor' %}person-check-fill{% elif notif.notification_type == 'discipline' %}exclamation-triangle-fill{% elif notif.notification_type == 'announcement' %}megaphone-fill{% elif notif.notification_type == 'mess' %}cup-hot-fill{% else %}bell-fill{% endif %}"></i>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="fw-600" style="font-size:13.5px">{{ notif.title }}</div>
+        <div style="font-size:12.5px;color:var(--text-2);margin-top:2px">{{ notif.message }}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:5px">
+          <i class="bi bi-clock me-1"></i>{{ notif.created_at|date:"d M Y, H:i" }}
+          <span class="badge ms-2" style="background:#F1F5F9;color:#64748B;font-size:10px">{{ notif.notification_type|title }}</span>
+        </div>
+      </div>
+      {% if notif.link %}
+      <a href="{{ notif.link }}" class="btn btn-xs btn-outline-secondary flex-shrink-0">View</a>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if page.has_other_pages %}
+  <div class="d-flex justify-content-center py-3 border-top">
+    <nav><ul class="pagination mb-0">
+      {% if page.has_previous %}
+      <li class="page-item"><a class="page-link" href="?page={{ page.previous_page_number }}"><i class="bi bi-chevron-left"></i></a></li>
+      {% endif %}
+      {% for n in page.paginator.page_range %}
+      <li class="page-item {% if n == page.number %}active{% endif %}">
+        <a class="page-link" href="?page={{ n }}">{{ n }}</a>
+      </li>
+      {% endfor %}
+      {% if page.has_next %}
+      <li class="page-item"><a class="page-link" href="?page={{ page.next_page_number }}"><i class="bi bi-chevron-right"></i></a></li>
+      {% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state" style="padding:60px 20px">
+    <i class="bi bi-bell-slash" style="font-size:40px;color:#CBD5E1;display:block;margin-bottom:12px"></i>
+    <p style="color:var(--text-3)">You have no notifications.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

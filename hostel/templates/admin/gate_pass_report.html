@@ -1,0 +1,158 @@
+{% extends "base/base.html" %}
+{% block title %}Gate Pass Report{% endblock %}
+{% block page_title %}Gate Pass Report{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Gate Pass Report</h4>
+    <p>Hostel-wise gate passes by departure date — history stored permanently</p>
+  </div>
+  <a href="{% url 'admin_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Dashboard
+  </a>
+</div>
+
+<!-- Filters -->
+<div class="filter-card mb-4">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label fw-semibold" style="font-size:12px">Date</label>
+      <input type="date" name="date" value="{{ report_date|date:'Y-m-d' }}"
+             class="form-control form-control-sm" max="{{ today|date:'Y-m-d' }}">
+    </div>
+    {% if not is_warden %}
+    <div class="col-md-3">
+      <label class="form-label fw-semibold" style="font-size:12px">Hostel</label>
+      <select name="hostel" class="form-select form-select-sm">
+        <option value="">All Hostels</option>
+        {% for h in all_hostels %}
+        <option value="{{ h.pk }}" {% if sel_hostel_pk == h.pk|stringformat:'s' %}selected{% endif %}>{{ h.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary btn-sm px-4">Apply</button>
+    </div>
+    <div class="col-auto">
+      <a href="{% url 'gate_pass_report' %}?date={{ today|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary">Today</a>
+    </div>
+    <div class="col-auto ms-auto d-flex gap-1">
+      <a href="#" class="btn btn-xs btn-outline-secondary" onclick="event.preventDefault();navDay(-1)">
+        <i class="bi bi-chevron-left"></i> Prev
+      </a>
+      <a href="#" class="btn btn-xs btn-outline-secondary" onclick="event.preventDefault();navDay(1)"
+         {% if report_date == today %}style="opacity:.4;pointer-events:none"{% endif %}>
+        Next <i class="bi bi-chevron-right"></i>
+      </a>
+    </div>
+  </form>
+</div>
+
+<!-- Summary cards -->
+<div class="row g-3 mb-4">
+  {% for row in hostel_rows %}
+  <div class="col-md-3 col-xl-2">
+    <div class="card" style="border-top:3px solid #0D9488">
+      <div class="card-body py-3 px-3">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3)">{{ row.hostel.name }}</div>
+        <div style="font-size:28px;font-weight:800;color:#0D9488;line-height:1.2;margin-top:4px">{{ row.gp_count }}</div>
+        <div style="font-size:10.5px;color:var(--text-3)">Gate Pass{{ row.gp_count|pluralize:"es" }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Per-hostel tables -->
+{% for row in hostel_rows %}
+<div class="card mb-4">
+  <div class="card-header" style="background:linear-gradient(135deg,#0F4C81,#1565C0);color:#fff">
+    <div class="card-header-left" style="color:#fff">
+      <i class="bi bi-building-fill me-2"></i>
+      <span style="font-size:15px;font-weight:700">{{ row.hostel.name }}</span>
+      <span style="font-size:12px;opacity:.8;margin-left:8px">{{ row.hostel.get_type_display }}</span>
+    </div>
+    <span class="badge" style="background:rgba(255,255,255,.2);font-size:12px">
+      {{ row.gp_count }} Gate Pass{{ row.gp_count|pluralize:"es" }} on {{ report_date }}
+    </span>
+  </div>
+
+  {% if row.gp_list %}
+  <div class="table-responsive">
+    <table class="table" style="font-size:13px">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Destination</th>
+          <th>Departure</th>
+          <th>Expected Return</th>
+          <th>Reason</th>
+          <th>Approved By</th>
+          <th>Status</th>
+          <th>Guardian Phone</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for gp in row.gp_list %}
+        <tr {% if gp.is_overstayed %}style="background:#FEF2F2"{% endif %}>
+          <td>
+            <a href="{% url 'student_detail' gp.student.pk %}" style="text-decoration:none">
+              <div class="tbl-name" style="color:var(--blue)">{{ gp.student.name }}</div>
+            </a>
+            <div class="tbl-sub">{{ gp.student.roll_number }}</div>
+            {% if gp.is_overstayed %}
+            <div style="margin-top:3px">
+              <span style="background:#FEE2E2;color:#B91C1C;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;display:inline-flex;align-items:center;gap:3px">
+                <i class="bi bi-exclamation-triangle-fill"></i> Overstayed — due {{ gp.expected_return_date }}
+              </span>
+            </div>
+            {% endif %}
+          </td>
+          <td style="color:var(--text-2)">{{ gp.destination }}</td>
+          <td>{{ gp.departure_date }}<br><span class="tbl-sub">{{ gp.departure_time|time:"h:i A" }}</span></td>
+          <td>{{ gp.expected_return_date }}<br><span class="tbl-sub">{{ gp.expected_return_time|time:"h:i A" }}</span></td>
+          <td style="max-width:160px;color:var(--text-2)">{{ gp.reason|truncatechars:55 }}</td>
+          <td style="color:var(--text-2)">{{ gp.approved_by.name|default:"—" }}</td>
+          <td>
+            {% if gp.status == 'approved' %}<span class="badge badge-paid">Approved</span>
+            {% elif gp.status == 'pending' %}<span class="badge badge-pending">Pending</span>
+            {% elif gp.status == 'rejected' %}<span class="badge" style="background:#FEF2F2;color:#DC2626">Rejected</span>
+            {% else %}<span class="badge" style="background:#ECFDF5;color:#059669">Returned</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if gp.student.guardian_phone %}
+              <span style="color:#D97706;font-weight:600"><i class="bi bi-person-hearts" style="font-size:11px"></i> {{ gp.student.guardian_phone }}</span>
+            {% else %}<span style="color:#CBD5E1;font-size:11px">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="padding:36px;text-align:center;color:var(--text-3);font-size:13px">
+    <i class="bi bi-pass" style="font-size:26px;opacity:.25;display:block;margin-bottom:6px"></i>
+    No gate passes with departure date {{ report_date }}
+  </div>
+  {% endif %}
+</div>
+{% empty %}
+<div class="card"><div style="padding:48px;text-align:center;color:var(--text-3)">
+  <i class="bi bi-building" style="font-size:36px;opacity:.25;display:block;margin-bottom:10px"></i>No hostels found.
+</div></div>
+{% endfor %}
+
+<script>
+function navDay(delta) {
+  const d = new Date(document.querySelector('input[name="date"]').value || '{{ report_date|date:"Y-m-d" }}');
+  d.setDate(d.getDate() + delta);
+  const iso = d.toISOString().slice(0, 10);
+  if (iso > '{{ today|date:"Y-m-d" }}') return;
+  const hs = document.querySelector('select[name="hostel"]');
+  window.location.href = '{% url "gate_pass_report" %}?date=' + iso + (hs && hs.value ? '&hostel=' + hs.value : '');
+}
+</script>
+{% endblock %}

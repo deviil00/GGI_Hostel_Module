@@ -1,0 +1,133 @@
+{% extends "base/base.html" %}
+{% block title %}Submissions — {{ form_obj.title }} — GGI Hostel ERP{% endblock %}
+{% block page_title %}Form Submissions{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>{{ form_obj.title }}</h4>
+    <p>
+      {% if form_obj.form_category %}
+      <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;
+                   padding:2px 10px;border-radius:8px;background:{{ form_obj.form_category.color }}18;
+                   color:{{ form_obj.form_category.color }}">
+        <i class="bi {{ form_obj.form_category.icon }}"></i>{{ form_obj.form_category.name }}
+      </span>&nbsp;
+      {% endif %}
+      {{ form_obj.fields.count }} field{{ form_obj.fields.count|pluralize }}
+      {% if form_obj.deadline %} &nbsp;·&nbsp; Deadline: {{ form_obj.deadline|date:"d M Y" }}{% endif %}
+    </p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'form_analytics' form_obj.pk %}" class="btn btn-sm btn-outline-success">
+      <i class="bi bi-bar-chart-line me-1"></i>Analytics
+    </a>
+    <a href="{% url 'export_form_excel' form_obj.pk %}" class="btn btn-sm btn-success">
+      <i class="bi bi-file-earmark-excel me-1"></i>Export Excel
+    </a>
+    {% if request.user.role == 'superadmin' %}
+    <a href="{% url 'edit_registration_form' form_obj.pk %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-pencil me-1"></i>Edit Form
+    </a>
+    {% endif %}
+    <a href="{% url 'registration_form_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+  </div>
+</div>
+
+<!-- Status summary cards -->
+<div class="row g-3 mb-4">
+  {% for val, label in status_choices %}
+  <div class="col">
+    <div class="stat-card" style="--stat-color:{% if val == 'submitted' %}#D97706{% elif val == 'approved' %}#059669{% elif val == 'rejected' %}#DC2626{% elif val == 'waitlisted' %}#7C3AED{% else %}#1565C0{% endif %}">
+      <div class="s-top">
+        <div class="s-icon" style="background:{% if val == 'submitted' %}#FFFBEB{% elif val == 'approved' %}#ECFDF5{% elif val == 'rejected' %}#FEF2F2{% elif val == 'waitlisted' %}#F5F3FF{% else %}var(--blue-soft){% endif %}">
+          <i class="bi bi-{% if val == 'submitted' %}inbox{% elif val == 'approved' %}check-circle{% elif val == 'rejected' %}x-circle{% elif val == 'waitlisted' %}clock{% else %}search{% endif %}"
+             style="color:{% if val == 'submitted' %}#D97706{% elif val == 'approved' %}#059669{% elif val == 'rejected' %}#DC2626{% elif val == 'waitlisted' %}#7C3AED{% else %}#1565C0{% endif %}"></i>
+        </div>
+      </div>
+      <div class="s-number" style="font-size:24px">
+        {% for k, v in status_counts.items %}{% if k == val %}{{ v }}{% endif %}{% endfor %}
+      </div>
+      <div class="s-label">{{ label }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Filter -->
+<div class="filter-card">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <select name="status" class="form-select form-select-sm">
+        <option value="">All Status</option>
+        {% for val, label in status_choices %}
+        <option value="{{ val }}" {% if filters.status == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm px-3">Filter</button></div>
+    <div class="col-auto"><a href="{% url 'form_submissions' form_obj.pk %}" class="btn btn-sm btn-outline-secondary">Clear</a></div>
+  </form>
+</div>
+
+<div class="card">
+  <table class="table">
+    <thead><tr>
+      <th>Student</th><th>Department</th><th>Preferences</th><th>Status</th><th>Submitted</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for sub in page_obj %}
+    <tr>
+      <td>
+        <div class="d-flex align-items-center gap-2">
+          <div class="tbl-avatar av-blue">{{ sub.student.name|first|upper }}</div>
+          <div>
+            <div class="tbl-name">{{ sub.student.name }}</div>
+            <div class="tbl-sub">{{ sub.student.roll_number }}</div>
+          </div>
+        </div>
+      </td>
+      <td style="color:var(--text-2)">{{ sub.student.department }}</td>
+      <td>
+        {% with sub.preferences.count as pc %}
+        {% if pc %}
+          <span class="badge" style="background:#EBF3FF;color:var(--blue)">{{ pc }} pref{{ pc|pluralize }}</span>
+        {% else %}
+          <span style="color:var(--text-3);font-size:12px">—</span>
+        {% endif %}
+        {% endwith %}
+        {% if sub.allocated_room %}
+        <span class="badge badge-paid ms-1"><i class="bi bi-house-fill me-1"></i>{{ sub.allocated_room.room_number }}</span>
+        {% endif %}
+      </td>
+      <td>
+        <span class="badge badge-{{ sub.status }}">{{ sub.get_status_display }}</span>
+      </td>
+      <td style="color:var(--text-3)">{{ sub.submitted_at|date:"d M Y" }}</td>
+      <td>
+        <a href="{% url 'submission_detail' sub.pk %}" class="btn btn-xs btn-outline-secondary">
+          Review
+        </a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6">
+      <div class="empty-state"><i class="bi bi-inbox"></i><p>No submissions yet.</p></div>
+    </td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-3 d-flex align-items-center justify-content-between">
+  <span style="font-size:12.5px;color:var(--text-3)">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+  <ul class="pagination pagination-sm mb-0">
+    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ filters.status }}"><i class="bi bi-chevron-left"></i></a></li>{% endif %}
+    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ filters.status }}"><i class="bi bi-chevron-right"></i></a></li>{% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

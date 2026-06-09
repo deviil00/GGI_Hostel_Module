@@ -1,0 +1,314 @@
+{% extends 'base/base.html' %}
+{% block title %}Gate Passes — GGI Hostel ERP{% endblock %}
+{% block page_title %}Gate Pass Requests{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Gate Pass Requests</h4>
+    <p>Review and manage student gate pass applications</p>
+  </div>
+</div>
+
+<!-- Stat chips -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-2">
+    <a href="?status=" class="text-decoration-none">
+      <div class="stat-card text-center py-3" style="--stat-color:#1565C0">
+        <div class="s-number" style="font-size:22px">{{ counts.all }}</div>
+        <div class="s-label">All</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=pending" class="text-decoration-none">
+      <div class="stat-card text-center py-3" style="--stat-color:#D97706">
+        <div class="s-number" style="font-size:22px;color:#D97706">{{ counts.pending }}</div>
+        <div class="s-label">Pending</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=approved" class="text-decoration-none">
+      <div class="stat-card text-center py-3" style="--stat-color:#059669">
+        <div class="s-number" style="font-size:22px;color:#059669">{{ counts.approved }}</div>
+        <div class="s-label">Approved</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=rejected" class="text-decoration-none">
+      <div class="stat-card text-center py-3" style="--stat-color:#DC2626">
+        <div class="s-number" style="font-size:22px;color:#DC2626">{{ counts.rejected }}</div>
+        <div class="s-label">Rejected</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=returned" class="text-decoration-none">
+      <div class="stat-card text-center py-3" style="--stat-color:#0891B2">
+        <div class="s-number" style="font-size:22px;color:#0891B2">{{ counts.returned }}</div>
+        <div class="s-label">Returned</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- Filter panel -->
+<div class="card mb-3">
+  <div class="card-body py-3">
+    <form method="get" id="gp-filter-form">
+      <!-- Status chips row -->
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+        <i class="bi bi-funnel text-muted"></i>
+        <span class="fw-600" style="font-size:12.5px">Status:</span>
+        <a href="?{% if q %}q={{ q }}&{% endif %}{% if hostel_id %}hostel={{ hostel_id }}&{% endif %}{% if f_department %}department={{ f_department }}&{% endif %}{% if f_category %}category={{ f_category }}&{% endif %}{% if f_room %}room={{ f_room }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}{% if year_filter %}year={{ year_filter }}&{% endif %}status="
+           class="badge text-decoration-none {% if not status_filter %}badge-resident{% else %}bg-light text-dark border{% endif %}">All</a>
+        {% for val, label in statuses %}
+        <a href="?{% if q %}q={{ q }}&{% endif %}{% if hostel_id %}hostel={{ hostel_id }}&{% endif %}{% if f_department %}department={{ f_department }}&{% endif %}{% if f_category %}category={{ f_category }}&{% endif %}{% if f_room %}room={{ f_room }}&{% endif %}{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}&{% endif %}{% if year_filter %}year={{ year_filter }}&{% endif %}status={{ val }}"
+           class="badge text-decoration-none {% if status_filter == val %}badge-resident{% else %}bg-light text-dark border{% endif %}">{{ label }}</a>
+        {% endfor %}
+        {% if active_filters %}
+        <a href="?status={{ status_filter }}" class="ms-auto btn btn-xs btn-outline-danger" style="font-size:11.5px">
+          <i class="bi bi-x-circle me-1"></i>Clear filters
+        </a>
+        {% endif %}
+      </div>
+
+      <!-- Advanced filters grid -->
+      <input type="hidden" name="status" value="{{ status_filter }}">
+      <div class="row g-2">
+        <!-- Search -->
+        <div class="col-12 col-md-4">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" name="q" class="form-control" placeholder="Name, roll no, GP-ID, destination…" value="{{ q }}">
+          </div>
+        </div>
+
+        <!-- Hostel (hidden for wardens scoped to one hostel) -->
+        {% if all_hostels %}
+        <div class="col-6 col-md-2">
+          <select name="hostel" class="form-select form-select-sm">
+            <option value="">All Hostels</option>
+            {% for h in all_hostels %}
+            <option value="{{ h.pk }}" {% if hostel_id == h.pk|stringformat:"s" %}selected{% endif %}>{{ h.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <!-- Department -->
+        <div class="col-6 col-md-2">
+          <select name="department" class="form-select form-select-sm">
+            <option value="">All Departments</option>
+            {% for dept in departments %}
+            <option value="{{ dept }}" {% if f_department == dept %}selected{% endif %}>{{ dept }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Year -->
+        <div class="col-4 col-md-1">
+          <select name="year" class="form-select form-select-sm">
+            <option value="">All Years</option>
+            {% for val, label in years %}
+            <option value="{{ val }}" {% if year_filter == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Category -->
+        <div class="col-8 col-md-2">
+          <select name="category" class="form-select form-select-sm">
+            <option value="">All Categories</option>
+            {% for cat in gp_categories %}
+            <option value="{{ cat.pk }}" {% if f_category == cat.pk|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Room -->
+        <div class="col-6 col-md-2">
+          <input type="text" name="room" class="form-control form-control-sm" placeholder="Room no…" value="{{ f_room }}">
+        </div>
+
+        <!-- Date From -->
+        <div class="col-6 col-md-2">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white" style="font-size:11px">From</span>
+            <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+          </div>
+        </div>
+
+        <!-- Date To -->
+        <div class="col-6 col-md-2">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white" style="font-size:11px">To</span>
+            <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="col-6 col-md-1 d-flex gap-1">
+          <button type="submit" class="btn btn-sm btn-primary flex-fill">
+            <i class="bi bi-search"></i>
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon bg-success bg-opacity-10"><i class="bi bi-pass-fill" style="color:#16A34A"></i></div>
+      Gate Passes
+    </div>
+    <span class="text-muted" style="font-size:12px">{{ page.paginator.count }} record{{ page.paginator.count|pluralize }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Student</th>
+          <th>Type / Destination</th>
+          <th>Departure</th>
+          <th>Expected Return</th>
+          <th>OUT Scan</th>
+          <th>IN Scan</th>
+          <th>Status / Approved By</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for gp in page %}
+        <tr>
+          <td>
+            <span class="badge" style="background:#EFF6FF;color:#1E40AF;font-size:11px;font-weight:700;letter-spacing:.3px">
+              {{ gp.gp_id }}
+            </span>
+          </td>
+          <td style="min-width:190px">
+            <div class="d-flex align-items-start gap-2">
+              {% if gp.student.photo %}
+              <img src="{{ gp.student.photo.url }}"
+                   style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #E2E8F0;margin-top:1px">
+              {% else %}
+              <div class="tbl-avatar av-blue" style="flex-shrink:0">{{ gp.student.name|first|upper }}</div>
+              {% endif %}
+              <div>
+                <div class="tbl-name">{{ gp.student.name }}</div>
+                <div class="tbl-sub">{{ gp.student.roll_number }}</div>
+                <div style="font-size:11px;color:var(--text-2);margin-top:1px">
+                  {{ gp.student.department }}{% if gp.student.year %} · {{ gp.student.get_year_display }}{% endif %}
+                </div>
+                {% with alloc=gp.student.active_allocs|first %}
+                {% if alloc %}
+                <div style="font-size:11px;color:var(--text-3);margin-top:1px">
+                  <i class="bi bi-building" style="font-size:10px"></i>
+                  {{ alloc.room.hostel.name }}
+                  <span style="color:#1E40AF;font-weight:600"> · {{ alloc.room.room_number }}</span>
+                </div>
+                {% endif %}
+                {% endwith %}
+              </div>
+            </div>
+          </td>
+          <td style="max-width:180px">
+            {% if gp.category %}
+            <div style="font-size:11px;font-weight:600;color:#16A34A;margin-bottom:2px">{{ gp.category.name }}</div>
+            {% endif %}
+            <div class="tbl-name">{{ gp.destination }}</div>
+            <div class="tbl-sub text-truncate" title="{{ gp.reason }}">{{ gp.reason|truncatechars:40 }}</div>
+          </td>
+          <td>
+            <div class="tbl-name">{{ gp.departure_date|date:"d M Y" }}</div>
+            <div class="tbl-sub">{{ gp.departure_time|time:"h:i A" }}</div>
+          </td>
+          <td>
+            <div class="tbl-name">{{ gp.expected_return_date|date:"d M Y" }}</div>
+            <div class="tbl-sub">{{ gp.expected_return_time|time:"h:i A" }}</div>
+          </td>
+          <td>
+            {% if gp.exit_time %}
+            <div class="tbl-name">{{ gp.exit_time|date:"d M Y" }}</div>
+            <div class="tbl-sub">{{ gp.exit_time|date:"h:i A" }}</div>
+            {% if gp.exit_allowed_by %}
+            <div style="font-size:10.5px;color:var(--text-3)">by {{ gp.exit_allowed_by.name|default:gp.exit_allowed_by.email }}</div>
+            {% endif %}
+            {% else %}
+            <span class="text-muted" style="font-size:12px">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if gp.entry_time %}
+            <div class="tbl-name">{{ gp.entry_time|date:"d M Y" }}</div>
+            <div class="tbl-sub">{{ gp.entry_time|date:"h:i A" }}</div>
+            {% if gp.entry_allowed_by %}
+            <div style="font-size:10.5px;color:var(--text-3)">by {{ gp.entry_allowed_by.name|default:gp.entry_allowed_by.email }}</div>
+            {% endif %}
+            {% elif gp.actual_return_date %}
+            <div class="tbl-name">{{ gp.actual_return_date|date:"d M Y" }}</div>
+            <div class="tbl-sub">{{ gp.actual_return_time|time:"h:i A" }}</div>
+            {% else %}
+            <span class="text-muted" style="font-size:12px">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if gp.status == 'pending' %}
+              <span class="badge badge-pending"><i class="bi bi-clock"></i> Pending</span>
+            {% elif gp.status == 'approved' %}
+              <span class="badge badge-paid"><i class="bi bi-check-circle"></i> Approved</span>
+            {% elif gp.status == 'rejected' %}
+              <span class="badge badge-open"><i class="bi bi-x-circle"></i> Rejected</span>
+            {% elif gp.status == 'returned' %}
+              <span class="badge" style="background:#CFFAFE;color:#155E75"><i class="bi bi-house-check"></i> Returned</span>
+            {% endif %}
+            {% if gp.approved_by %}
+            <div style="font-size:10.5px;color:var(--text-3);margin-top:2px">
+              <i class="bi bi-person-check me-1"></i>{{ gp.approved_by.name|default:gp.approved_by.email }}
+            </div>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'gate_pass_detail' gp.pk %}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-eye"></i> Review
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9">
+          <div class="empty-state">
+            <i class="bi bi-pass"></i>
+            <p>No gate pass requests found.</p>
+          </div>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page.has_other_pages %}
+  {% with bp="status="|add:status_filter|add:"&q="|add:q|add:"&hostel="|add:hostel_id|add:"&department="|add:f_department|add:"&category="|add:f_category|add:"&room="|add:f_room|add:"&date_from="|add:date_from|add:"&date_to="|add:date_to|add:"&year="|add:year_filter %}
+  <div class="d-flex justify-content-center py-3 border-top">
+    <nav><ul class="pagination mb-0">
+      {% if page.has_previous %}
+      <li class="page-item"><a class="page-link" href="?{{ bp }}&page={{ page.previous_page_number }}"><i class="bi bi-chevron-left"></i></a></li>
+      {% endif %}
+      {% for n in page.paginator.page_range %}
+      <li class="page-item {% if n == page.number %}active{% endif %}">
+        <a class="page-link" href="?{{ bp }}&page={{ n }}">{{ n }}</a>
+      </li>
+      {% endfor %}
+      {% if page.has_next %}
+      <li class="page-item"><a class="page-link" href="?{{ bp }}&page={{ page.next_page_number }}"><i class="bi bi-chevron-right"></i></a></li>
+      {% endif %}
+    </ul></nav>
+  </div>
+  {% endwith %}
+  {% endif %}
+</div>
+{% endblock %}

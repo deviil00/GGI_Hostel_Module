@@ -1,0 +1,304 @@
+{% extends "base/base.html" %}
+{% block title %}Forms — GGI Hostel ERP{% endblock %}
+{% block page_title %}Forms{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-card { transition:box-shadow .15s,transform .15s; }
+.form-card:hover { box-shadow:0 6px 24px rgba(0,0,0,.1);transform:translateY(-2px); }
+.cat-pill {
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 12px;border-radius:20px;font-size:11.5px;font-weight:700;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ════════ PAGE HEADER ════════ #}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Forms</h4>
+    <p>
+      {% if is_superadmin %}Create and manage forms for students
+      {% else %}Forms published by the superadmin{% endif %}
+      &nbsp;·&nbsp; {{ forms|length }} form{{ forms|length|pluralize }}
+    </p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% if is_superadmin %}
+    <button class="btn btn-sm btn-outline-secondary" onclick="toggleCatManager()">
+      <i class="bi bi-tags-fill me-1"></i>Categories
+    </button>
+    <a href="{% url 'create_registration_form' %}" class="btn btn-sm btn-primary">
+      <i class="bi bi-plus-lg me-1"></i>New Form
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{# ════════ CATEGORY MANAGER (superadmin only) ════════ #}
+{% if is_superadmin %}
+<div id="cat-manager" style="display:none" class="card mb-4">
+  <div class="card-header" style="background:linear-gradient(135deg,#0F4C81,#1565C0);color:#fff;border:none">
+    <div class="card-header-left" style="color:#fff">
+      <i class="bi bi-tags-fill me-2"></i><strong>Form Categories</strong>
+      <span style="font-size:11px;opacity:.75;margin-left:6px">Define who sees each form — by year, hostel, or department</span>
+    </div>
+    <button type="button" class="btn btn-xs"
+            style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)"
+            onclick="toggleCatManager()">Close</button>
+  </div>
+  <div class="card-body p-4">
+    <div class="row g-4">
+
+      {# ── Add / Edit form ── #}
+      <div class="col-lg-6">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_form_category">
+
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:12px">Category / Audience Name <span class="text-danger">*</span></label>
+            <input type="text" name="cat_name" class="form-control form-control-sm"
+                   placeholder="e.g. 1st Year Boys, All Girls, 3rd Year CSE" required
+                   list="cat-suggestions">
+            <datalist id="cat-suggestions">
+              <option value="1st Year Students"><option value="2nd Year Students">
+              <option value="3rd Year Students"><option value="4th Year Students">
+              <option value="All Boys Hostel"><option value="All Girls Hostel">
+              <option value="Final Year"><option value="All Students"><option value="General">
+            </datalist>
+          </div>
+
+
+          {# ── Year targeting ── #}
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:12px">
+              <i class="bi bi-calendar2-week me-1" style="color:#0891B2"></i>Target Year(s)
+              <span style="font-size:10.5px;color:var(--text-3);font-weight:400"> — leave blank for all years</span>
+            </label>
+            <div class="d-flex flex-wrap gap-2">
+              {% for yr in "1234" %}
+              <label style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;
+                            padding:4px 12px;border-radius:20px;border:1.5px solid #E2E8F0;
+                            background:#fff;font-size:12px;font-weight:600;color:#64748B;
+                            transition:all .12s" class="year-chip">
+                <input type="checkbox" name="cat_years" value="{{ yr }}" style="display:none"
+                       onchange="highlightChip(this)">
+                Year {{ yr }}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          {# ── Hostel targeting ── #}
+          {% if hostels_by_type %}
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:12px">
+              <i class="bi bi-building-fill me-1" style="color:#0891B2"></i>Target Hostel(s)
+              <span style="font-size:10.5px;color:var(--text-3);font-weight:400"> — blank = all hostels</span>
+            </label>
+            <div style="border:1px solid #BAE6FD;border-radius:8px;padding:10px 12px;background:#F0F9FF">
+              {% for htype, hlist in hostels_by_type.items %}
+              <div class="mb-2">
+                <div style="font-size:10.5px;font-weight:800;color:#0891B2;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">
+                  {% if htype == 'boys' %}🔵 Boys{% elif htype == 'girls' %}🔴 Girls{% elif htype == 'staff' %}⚪ Staff{% else %}🏠 {{ htype|title }}{% endif %}
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                  {% for h in hlist %}
+                  <label style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;
+                                padding:3px 10px;border-radius:16px;border:1.5px solid #E2E8F0;
+                                background:#fff;font-size:11.5px;font-weight:500;color:#64748B;
+                                transition:all .12s" class="hostel-chip">
+                    <input type="checkbox" name="cat_hostels" value="{{ h.pk }}" style="display:none"
+                           onchange="highlightChip(this)">
+                    {{ h.name }}
+                  </label>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          {# ── Department targeting ── #}
+          {% if all_depts %}
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:12px">
+              <i class="bi bi-mortarboard me-1" style="color:#0891B2"></i>Target Department(s)
+              <span style="font-size:10.5px;color:var(--text-3);font-weight:400"> — blank = all</span>
+            </label>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;max-height:120px;overflow-y:auto;
+                        border:1px solid #BAE6FD;border-radius:8px;padding:8px;background:#F0F9FF">
+              {% for dept in all_depts %}
+              <label style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;
+                            padding:3px 10px;border-radius:16px;border:1.5px solid #E2E8F0;
+                            background:#fff;font-size:11.5px;font-weight:500;color:#64748B;
+                            transition:all .12s" class="dept-chip">
+                <input type="checkbox" name="cat_depts" value="{{ dept }}" style="display:none"
+                       onchange="highlightChip(this)">
+                {{ dept }}
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          <button type="submit" class="btn btn-sm btn-success w-100">
+            <i class="bi bi-plus-circle me-1"></i>Save Category / Audience
+          </button>
+        </form>
+      </div>
+
+      {# ── Existing categories ── #}
+      <div class="col-lg-6">
+        <div style="font-size:12px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">
+          Existing Audience Categories
+        </div>
+        {% if form_categories %}
+        <div style="display:flex;flex-direction:column;gap:10px">
+          {% for cat in form_categories %}
+          <div style="padding:12px 14px;border-radius:10px;background:#F8FAFF;border:1.5px solid {{ cat.color }}30">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <div style="width:30px;height:30px;border-radius:8px;background:{{ cat.color }}20;
+                          display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="bi {{ cat.icon }}" style="color:{{ cat.color }};font-size:14px"></i>
+              </div>
+              <div style="flex:1;font-size:13px;font-weight:700;color:var(--text-1)">{{ cat.name }}</div>
+              <span style="font-size:11px;color:var(--text-3)">{{ cat.forms.count }} form{{ cat.forms.count|pluralize }}</span>
+              <form method="post" style="display:inline"
+                    onsubmit="return confirm('Delete \'{{ cat.name|escapejs }}\'?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_form_category">
+                <input type="hidden" name="cat_pk" value="{{ cat.pk }}">
+                <button type="submit" class="btn btn-xs btn-outline-danger" style="padding:2px 6px">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </div>
+            {# Show targeting summary #}
+            <div class="d-flex flex-wrap gap-1">
+              {% if cat.target_years %}
+              {% for yr in cat.target_years %}
+              <span style="font-size:10.5px;padding:1px 8px;border-radius:6px;background:#EFF6FF;color:#1D4ED8;font-weight:600">
+                Year {{ yr }}
+              </span>
+              {% endfor %}
+              {% else %}
+              <span style="font-size:10.5px;padding:1px 8px;border-radius:6px;background:#F1F5F9;color:#64748B">All Years</span>
+              {% endif %}
+              {% if cat.target_depts %}
+              {% for dp in cat.target_depts %}
+              <span style="font-size:10.5px;padding:1px 8px;border-radius:6px;background:#ECFDF5;color:#065F46;font-weight:600">{{ dp }}</span>
+              {% endfor %}
+              {% endif %}
+              {% if cat.target_hostels %}
+              <span style="font-size:10.5px;padding:1px 8px;border-radius:6px;background:#FDF4FF;color:#7E22CE;font-weight:600">
+                {{ cat.target_hostels|length }} hostel{{ cat.target_hostels|length|pluralize }}
+              </span>
+              {% else %}
+              <span style="font-size:10.5px;padding:1px 8px;border-radius:6px;background:#F1F5F9;color:#64748B">All Hostels</span>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="font-size:13px;color:var(--text-3);padding:16px 0">
+          No audience categories yet — create one to start targeting forms.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ════════ FORMS BY CATEGORY ════════ #}
+{% if categorized or uncategorized %}
+
+  {# Render each category group #}
+  {% for cat, cat_forms in categorized.items %}
+  <div class="mb-5">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <div style="width:34px;height:34px;border-radius:9px;background:{{ cat.color }}18;
+                  display:flex;align-items:center;justify-content:center">
+        <i class="bi {{ cat.icon }}" style="color:{{ cat.color }};font-size:16px"></i>
+      </div>
+      <div>
+        <span style="font-size:15px;font-weight:800;color:var(--text-1)">{{ cat.name }}</span>
+        <span style="font-size:12px;color:var(--text-3);margin-left:8px">{{ cat_forms|length }} form{{ cat_forms|length|pluralize }}</span>
+      </div>
+      <div style="flex:1;height:1px;background:var(--border-light);margin-left:8px"></div>
+    </div>
+
+    <div class="row g-3">
+      {% for f in cat_forms %}
+      {% include "admin/_form_card.html" with f=f cat=cat %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+
+  {# Uncategorised forms #}
+  {% if uncategorized %}
+  <div class="mb-4">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <div style="width:34px;height:34px;border-radius:9px;background:#F1F5F9;
+                  display:flex;align-items:center;justify-content:center">
+        <i class="bi bi-file-earmark-text" style="color:#94A3B8;font-size:16px"></i>
+      </div>
+      <span style="font-size:15px;font-weight:800;color:var(--text-1)">Uncategorised</span>
+      <span style="font-size:12px;color:var(--text-3);margin-left:4px">{{ uncategorized|length }} form{{ uncategorized|length|pluralize }}</span>
+      <div style="flex:1;height:1px;background:var(--border-light);margin-left:8px"></div>
+    </div>
+    <div class="row g-3">
+      {% for f in uncategorized %}
+      {% include "admin/_form_card.html" with f=f %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+{% else %}
+<div class="card">
+  <div class="empty-state py-5">
+    <i class="bi bi-file-earmark-plus" style="font-size:44px;color:var(--blue);opacity:.3"></i>
+    <p style="margin-top:12px;font-size:14px">No forms yet.</p>
+    {% if is_superadmin %}
+    <a href="{% url 'create_registration_form' %}" class="btn btn-primary btn-sm mt-2">
+      <i class="bi bi-plus-lg me-1"></i>Create First Form
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleCatManager() {
+  const el = document.getElementById('cat-manager');
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+  if (el.style.display !== 'none') el.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+/* Highlight year / hostel / dept chips when checked */
+function highlightChip(input) {
+  const lbl = input.closest('label');
+  if (input.checked) {
+    lbl.style.background   = '#0891B2';
+    lbl.style.color        = '#fff';
+    lbl.style.borderColor  = '#0891B2';
+  } else {
+    lbl.style.background   = '#fff';
+    lbl.style.color        = '#64748B';
+    lbl.style.borderColor  = '#E2E8F0';
+  }
+}
+</script>
+{% endblock %}

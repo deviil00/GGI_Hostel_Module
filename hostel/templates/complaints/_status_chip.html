@@ -1,0 +1,12 @@
+{% comment %}Reusable status chip. Pass `status` variable.{% endcomment %}
+<span class="status-chip"
+      style="background:{% if status == 'submitted' %}#F1F5F9{% elif status == 'verified' %}#DBEAFE{% elif status == 'forwarded' %}#EDE9FE{% elif status == 'in_progress' %}#FFFBEB{% elif status == 'resolved' %}#DCFCE7{% elif status == 'closed' %}#F1F5F9{% else %}#F1F5F9{% endif %};
+             color:{% if status == 'submitted' %}#475569{% elif status == 'verified' %}#1565C0{% elif status == 'forwarded' %}#6D28D9{% elif status == 'in_progress' %}#92400E{% elif status == 'resolved' %}#166534{% elif status == 'closed' %}#374151{% else %}#64748B{% endif %}">
+  {% if status == 'submitted' %}Submitted
+  {% elif status == 'verified' %}Verified
+  {% elif status == 'forwarded' %}Forwarded to Maintenance
+  {% elif status == 'in_progress' %}In Progress
+  {% elif status == 'resolved' %}Resolved
+  {% elif status == 'closed' %}Closed
+  {% else %}{{ status|capfirst }}{% endif %}
+</span>

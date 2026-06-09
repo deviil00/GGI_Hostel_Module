@@ -1,0 +1,391 @@
+{% extends "base/base.html" %}
+{% block title %}Staff Accounts{% endblock %}
+{% block page_title %}Staff Accounts{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Staff Accounts</h4>
+    <p>Create and manage login accounts for all staff roles</p>
+  </div>
+  <div class="d-flex gap-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleRolePanel()"
+            id="addRoleBtn" style="border-color:#7C3AED;color:#7C3AED">
+      <i class="bi bi-plus-circle-fill me-1"></i>New Role
+    </button>
+    <a href="{% url 'superadmin_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Dashboard
+    </a>
+  </div>
+</div>
+
+{# ══ Quick-Add Custom Role (collapsible) ══ #}
+<div id="rolePanel" style="display:none;margin-bottom:20px">
+  <div class="card" style="border:2px solid #7C3AED">
+    <div class="card-header" style="background:linear-gradient(135deg,#6D28D9,#7C3AED);color:#fff">
+      <div class="card-header-left" style="color:#fff">
+        <i class="bi bi-plus-circle-fill me-2"></i>
+        <span style="font-weight:700;font-size:14px">Create New Custom Role</span>
+      </div>
+      <button type="button" onclick="toggleRolePanel()"
+              style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:6px;
+                     padding:3px 10px;font-size:12px;cursor:pointer">
+        <i class="bi bi-x-lg"></i> Close
+      </button>
+    </div>
+    <div class="card-body p-4">
+      <form method="post" id="createRoleForm" onsubmit="return validateRoleForm()">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_role">
+
+        <!-- Role name -->
+        <div class="row g-3 mb-4 align-items-end">
+          <div class="col-md-5">
+            <label class="form-label fw-600" style="font-size:12px">Role Name *</label>
+            <input type="text" name="role_name" id="roleNameInput"
+                   class="form-control form-control-sm"
+                   placeholder="e.g. Senior Warden, Deputy Warden, Hostel Supervisor…"
+                   oninput="previewKey(this.value)" autocomplete="off">
+            <div id="keyPreview" style="font-size:11px;color:var(--text-3);margin-top:4px"></div>
+          </div>
+          <div class="col-md-7" style="font-size:12px;color:var(--text-3);padding-bottom:8px">
+            <i class="bi bi-info-circle me-1"></i>
+            The role name is shown as a label. Modules selected below control what this role can see in the sidebar.
+          </div>
+        </div>
+
+        <!-- Module checkboxes -->
+        <div style="font-weight:700;font-size:12px;color:var(--text-2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">
+          <i class="bi bi-grid-1x2 me-1"></i>Select Modules for this Role
+        </div>
+        <div class="row g-2 mb-3">
+          {% for mod_key, mod_label, mod_icon in all_modules %}
+          <div class="col-6 col-md-4 col-lg-3">
+            <label class="mod-label"
+                   style="display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;
+                          cursor:pointer;border:2px solid var(--border);background:#FAFAFA;
+                          transition:all .15s;user-select:none">
+              <input type="checkbox" name="modules_new" value="{{ mod_key }}"
+                     style="width:15px;height:15px;accent-color:#1565C0;flex-shrink:0"
+                     onchange="updateModLabel(this,'#1565C0','#0D47A1','#EBF3FF')">
+              <i class="bi {{ mod_icon }}" style="font-size:14px;color:var(--text-3);flex-shrink:0"></i>
+              <span style="font-size:12px;font-weight:600;color:var(--text-2)">{{ mod_label }}</span>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Select/deselect helpers -->
+        <div class="d-flex gap-2 mb-4">
+          <button type="button" class="btn btn-xs btn-outline-secondary"
+                  onclick="toggleNewMods(true)">Select All</button>
+          <button type="button" class="btn btn-xs btn-outline-secondary"
+                  onclick="toggleNewMods(false)">Deselect All</button>
+        </div>
+
+        <div class="d-flex gap-3 align-items-center">
+          <button type="submit" class="btn btn-sm px-4"
+                  style="background:#7C3AED;color:#fff;border-color:#7C3AED">
+            <i class="bi bi-plus-circle-fill me-1"></i>Create Role
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary"
+                  onclick="toggleRolePanel()">Cancel</button>
+          <span style="font-size:12px;color:var(--text-3)">
+            The new role will immediately appear in the Role dropdown below.
+          </span>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# ══ Create Account ══ #}
+<div class="card mb-4">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#ECFDF5">
+        <i class="bi bi-person-plus-fill" style="color:#059669"></i>
+      </div>
+      Create New Staff Account
+    </div>
+  </div>
+  <div class="card-body p-4">
+    <form method="post" class="row g-3">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create">
+      <div class="col-md-3">
+        <label class="form-label fw-600" style="font-size:12px">Full Name *</label>
+        <input type="text" name="name" class="form-control form-control-sm"
+               placeholder="e.g. Ravi Kumar" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-600" style="font-size:12px">Email Address *</label>
+        <input type="email" name="email" class="form-control form-control-sm"
+               placeholder="staff@college.edu" required>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-600" style="font-size:12px">Role *</label>
+        <select name="role" class="form-select form-select-sm" required>
+          <option value="">— Select —</option>
+          <optgroup label="Built-in Roles">
+            {% for key, label in builtin_roles %}
+            <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+          </optgroup>
+          {% if custom_roles %}
+          <optgroup label="Custom Roles">
+            {% for key, label in custom_roles %}
+            <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+          </optgroup>
+          {% endif %}
+        </select>
+        {% if not custom_roles %}
+        <div style="font-size:10.5px;color:#7C3AED;margin-top:4px;cursor:pointer"
+             onclick="toggleRolePanel()">
+          <i class="bi bi-plus-circle me-1"></i>Add a custom role
+        </div>
+        {% endif %}
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-600" style="font-size:12px">Phone</label>
+        <input type="text" name="phone" class="form-control form-control-sm" placeholder="Optional">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-600" style="font-size:12px">Password *</label>
+        <div style="position:relative">
+          <input type="password" name="password" id="createPassword"
+                 class="form-control form-control-sm" style="padding-right:34px"
+                 placeholder="Min 6 chars" minlength="6" required>
+          <button type="button" onclick="togglePwd()"
+                  style="position:absolute;right:6px;top:50%;transform:translateY(-50%);
+                         background:none;border:none;color:var(--text-3);cursor:pointer;padding:0;font-size:14px"
+                  title="Show / Hide password">
+            <i class="bi bi-eye-fill" id="pwdEyeIcon"></i>
+          </button>
+        </div>
+      </div>
+      <div class="col-12">
+        <button type="submit" class="btn btn-sm btn-success px-4">
+          <i class="bi bi-person-plus-fill me-1"></i>Create Account
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ══ Staff List ══ #}
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#EBF3FF">
+        <i class="bi bi-people-fill" style="color:#1565C0"></i>
+      </div>
+      All Staff Accounts
+    </div>
+    <span style="font-size:12px;color:var(--text-3)">{{ staff|length }} account{{ staff|length|pluralize }}</span>
+  </div>
+
+  {% if staff %}
+  <div class="table-responsive">
+    <table class="table mb-0" style="font-size:13px">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Phone</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in staff %}
+        <tr {% if not s.is_active %}style="opacity:.55"{% endif %}>
+          <td>
+            <div style="font-weight:700">{{ s.name }}</div>
+            <div style="font-size:11px;color:var(--text-3)">{{ s.created_at|date:"d M Y" }}</div>
+          </td>
+          <td style="color:var(--text-2)">{{ s.email }}</td>
+          <td>
+            {% if s.role == 'admin' %}
+              <span class="badge" style="background:#EBF3FF;color:#1565C0">Admin 2</span>
+            {% elif s.role == 'warden' %}
+              <span class="badge" style="background:#ECFDF5;color:#059669">Warden</span>
+            {% elif s.role == 'security' %}
+              <span class="badge" style="background:#FEF2F2;color:#DC2626">Security Guard</span>
+            {% elif s.role == 'maintenance' %}
+              <span class="badge" style="background:#FFFBEB;color:#D97706">Maintenance</span>
+            {% elif s.role == 'mess' %}
+              <span class="badge" style="background:#F5F3FF;color:#7C3AED">Mess Mgmt</span>
+            {% else %}
+              <span class="badge" style="background:#EDE9FE;color:#6D28D9">
+                <i class="bi bi-person-plus-fill me-1" style="font-size:10px"></i>
+                {% for key, label in custom_roles %}{% if key == s.role %}{{ label }}{% endif %}{% endfor %}
+              </span>
+            {% endif %}
+          </td>
+          <td style="color:var(--text-2)">{{ s.phone|default:"—" }}</td>
+          <td>
+            {% if s.is_active %}
+              <span class="badge badge-paid">Active</span>
+            {% else %}
+              <span class="badge" style="background:#F1F5F9;color:var(--text-3)">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1 flex-wrap">
+              <form method="post" style="display:inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="toggle_active">
+                <input type="hidden" name="user_id" value="{{ s.pk }}">
+                <button type="submit"
+                        class="btn btn-xs {% if s.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %}">
+                  {% if s.is_active %}Deactivate{% else %}Activate{% endif %}
+                </button>
+              </form>
+              <button type="button" class="btn btn-xs btn-outline-secondary"
+                      onclick="showReset('{{ s.pk }}', '{{ s.name|escapejs }}')">
+                <i class="bi bi-key-fill me-1"></i>Reset Password
+              </button>
+              <button type="button" class="btn btn-xs btn-outline-danger"
+                      onclick="doDeleteStaff('{{ s.pk }}', '{{ s.name|escapejs }}')">
+                <i class="bi bi-trash3-fill me-1"></i>Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="padding:48px;text-align:center;color:var(--text-3)">
+    <i class="bi bi-people" style="font-size:32px;opacity:.3;display:block;margin-bottom:8px"></i>
+    No staff accounts yet. Create one above.
+  </div>
+  {% endif %}
+</div>
+
+{# ══ Shared delete form (outside any other form to avoid nesting) ══ #}
+<form method="post" id="deleteStaffForm" style="display:none">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="delete_staff">
+  <input type="hidden" name="user_id" id="deleteStaffId">
+</form>
+
+{# ══ Reset Password Modal ══ #}
+<div id="resetModal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;
+            align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;padding:28px;width:360px;
+              box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="font-weight:700;font-size:15px;margin-bottom:4px">Reset Password</div>
+    <div id="resetName" style="font-size:13px;color:var(--text-2);margin-bottom:16px"></div>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="reset_password">
+      <input type="hidden" name="user_id" id="resetUserId">
+      <div class="mb-3">
+        <label class="form-label fw-600" style="font-size:12px">New Password (min 6 chars)</label>
+        <input type="password" name="new_password" class="form-control form-control-sm"
+               minlength="6" required placeholder="Enter new password">
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-primary flex-fill">Reset Password</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary"
+                onclick="closeReset()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+/* ── Role panel toggle ── */
+function toggleRolePanel() {
+  const panel = document.getElementById('rolePanel');
+  const btn   = document.getElementById('addRoleBtn');
+  const open  = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  btn.style.background = open ? '#7C3AED' : '';
+  btn.style.color      = open ? '#fff'    : '#7C3AED';
+  if (open) {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById('roleNameInput').focus();
+  }
+}
+
+/* ── Key preview ── */
+function previewKey(val) {
+  const key = val.toLowerCase().replace(/[^a-z0-9]+/g, '_')
+                 .replace(/^_+|_+$/g, '').substring(0, 40);
+  const el  = document.getElementById('keyPreview');
+  el.innerHTML = key ? 'Internal key: <strong>' + key + '</strong>' : '';
+}
+
+/* ── Module checkbox styling ── */
+function updateModLabel(cb, borderColor, textColor, bgColor) {
+  const label = cb.closest('label');
+  const icon  = label.querySelector('i');
+  const text  = label.querySelector('span');
+  if (cb.checked) {
+    label.style.borderColor = borderColor;
+    label.style.background  = bgColor;
+    icon.style.color        = borderColor;
+    text.style.color        = textColor;
+  } else {
+    label.style.borderColor = 'var(--border)';
+    label.style.background  = '#FAFAFA';
+    icon.style.color        = 'var(--text-3)';
+    text.style.color        = 'var(--text-2)';
+  }
+}
+
+function toggleNewMods(state) {
+  document.querySelectorAll('input[name="modules_new"]').forEach(function(cb) {
+    cb.checked = state;
+    updateModLabel(cb, '#1565C0', '#0D47A1', '#EBF3FF');
+  });
+}
+
+/* ── Form validation ── */
+function validateRoleForm() {
+  const name = document.getElementById('roleNameInput').value.trim();
+  if (!name) { alert('Please enter a role name.'); return false; }
+  return true;
+}
+
+/* ── Password visibility toggle ── */
+function togglePwd() {
+  const inp  = document.getElementById('createPassword');
+  const icon = document.getElementById('pwdEyeIcon');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.className = 'bi bi-eye-slash-fill';
+  } else {
+    inp.type = 'password';
+    icon.className = 'bi bi-eye-fill';
+  }
+}
+
+/* ── Delete staff account ── */
+function doDeleteStaff(id, name) {
+  if (!confirm('Permanently delete account for "' + name + '"?\n\nThis cannot be undone. All data associated with this account will be removed.')) return;
+  document.getElementById('deleteStaffId').value = id;
+  document.getElementById('deleteStaffForm').submit();
+}
+
+/* ── Reset password modal ── */
+function showReset(id, name) {
+  document.getElementById('resetUserId').value = id;
+  document.getElementById('resetName').textContent = name;
+  document.getElementById('resetModal').style.display = 'flex';
+}
+function closeReset() {
+  document.getElementById('resetModal').style.display = 'none';
+}
+document.getElementById('resetModal').addEventListener('click', function(e) {
+  if (e.target === this) closeReset();
+});
+</script>
+{% endblock %}

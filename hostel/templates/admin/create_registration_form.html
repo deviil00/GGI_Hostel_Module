@@ -1,0 +1,234 @@
+{% extends "base/base.html" %}
+{% block title %}{% if edit_mode %}Edit{% else %}Create{% endif %} Form — GGI Hostel ERP{% endblock %}
+{% block page_title %}{% if edit_mode %}Edit{% else %}New{% endif %} Form{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>{% if edit_mode %}Edit Form{% else %}Create Form{% endif %}</h4>
+    <p>{% if edit_mode %}Update form details and custom fields{% else %}Define a form that students will fill{% endif %}</p>
+  </div>
+  <a href="{% url 'registration_form_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back to Forms
+  </a>
+</div>
+
+<form method="post" id="regForm">
+  {% csrf_token %}
+  <input type="hidden" name="field_count" id="field_count" value="{% if edit_mode %}{{ existing_fields|length }}{% else %}0{% endif %}">
+
+  <!-- ── Form Details ── -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="ch-icon" style="background:var(--blue-soft)"><i class="bi bi-file-earmark-text-fill" style="color:var(--blue)"></i></div>
+        Form Details
+      </div>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label">Form Title <span class="text-danger">*</span></label>
+          <input type="text" name="title" class="form-control" required
+                 value="{% if edit_mode %}{{ form_obj.title }}{% endif %}"
+                 placeholder="e.g. Indian Students Hostel Registration 2024-25">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Category</label>
+          <select name="form_category" class="form-select">
+            <option value="">— No category —</option>
+            {% for cat in form_categories %}
+            <option value="{{ cat.pk }}"
+              {% if edit_mode and form_obj.form_category_id == cat.pk %}selected{% endif %}>
+              {{ cat.name }}
+            </option>
+            {% endfor %}
+          </select>
+          <div class="form-text">
+            Group this form under a category.
+            <a href="{% url 'registration_form_list' %}" onclick="sessionStorage.setItem('openCatMgr','1')">Manage categories</a>
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-control" rows="2"
+                    placeholder="Brief instructions or criteria for this registration form…">{% if edit_mode %}{{ form_obj.description }}{% endif %}</textarea>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Submission Deadline</label>
+          <input type="date" name="deadline" class="form-control"
+                 value="{% if edit_mode and form_obj.deadline %}{{ form_obj.deadline|date:'Y-m-d' }}{% endif %}">
+          <div class="form-text">Leave blank for no deadline.</div>
+        </div>
+        <div class="col-md-4 d-flex align-items-end pb-1">
+          <div class="form-check">
+            <input type="checkbox" name="is_active" id="is_active" class="form-check-input"
+                   {% if not edit_mode or form_obj.is_active %}checked{% endif %}>
+            <label class="form-check-label" for="is_active" style="font-size:13px;font-weight:600">
+              Active — visible to students
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Custom Fields Builder ── -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="ch-icon" style="background:var(--purple-soft)"><i class="bi bi-ui-checks" style="color:var(--purple)"></i></div>
+        Custom Form Fields
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" onclick="addField()">
+        <i class="bi bi-plus-lg me-1"></i>Add Field
+      </button>
+    </div>
+    <div class="card-body p-3">
+      <div id="fields-container">
+
+        {% if edit_mode %}
+          {% for field in existing_fields %}
+          <div class="field-row card mb-2" id="field_{{ forloop.counter0 }}">
+            <div class="card-body p-3">
+              <div class="row g-2 align-items-start">
+                <div class="col-md-4">
+                  <label class="form-label" style="font-size:11px">Field Label *</label>
+                  <input type="text" name="field_label_{{ forloop.counter0 }}" class="form-control form-control-sm"
+                         value="{{ field.label }}" placeholder="e.g. Full Name" required>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label" style="font-size:11px">Type</label>
+                  <select name="field_type_{{ forloop.counter0 }}" class="form-select form-select-sm"
+                          onchange="toggleOptions(this, {{ forloop.counter0 }})">
+                    {% for val, label in field_types %}
+                    <option value="{{ val }}" {% if field.field_type == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label" style="font-size:11px">Help Text</label>
+                  <input type="text" name="field_help_{{ forloop.counter0 }}" class="form-control form-control-sm"
+                         value="{{ field.help_text }}" placeholder="Optional hint shown to student">
+                </div>
+                <div class="col-md-1 pt-4">
+                  <div class="form-check">
+                    <input type="checkbox" name="field_required_{{ forloop.counter0 }}"
+                           id="req_{{ forloop.counter0 }}" class="form-check-input"
+                           {% if field.is_required %}checked{% endif %}>
+                    <label class="form-check-label" for="req_{{ forloop.counter0 }}" style="font-size:11px">Req.</label>
+                  </div>
+                </div>
+                <div class="col-md-1 text-end pt-4">
+                  <button type="button" class="btn btn-xs btn-outline-danger" onclick="removeField({{ forloop.counter0 }})">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="row mt-2" id="options_{{ forloop.counter0 }}"
+                   {% if field.field_type not in 'select,radio,checkbox' %}style="display:none"{% endif %}>
+                <div class="col-12">
+                  <label class="form-label" style="font-size:11px">Options (one per line)</label>
+                  <textarea name="field_options_{{ forloop.counter0 }}" class="form-control form-control-sm" rows="3"
+                            placeholder="Option 1&#10;Option 2&#10;Option 3">{% for o in field.options %}{{ o }}
+{% endfor %}</textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+        <div class="empty-state py-4" id="empty-msg">
+          <i class="bi bi-layout-text-sidebar" style="font-size:32px;opacity:.3"></i>
+          <p style="margin-top:8px">No fields yet. Click <strong>Add Field</strong> to start building your form.</p>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 justify-content-end mb-5">
+    <a href="{% url 'registration_form_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary px-4">
+      <i class="bi bi-check-lg me-1"></i>{% if edit_mode %}Update Form{% else %}Create Form{% endif %}
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const OPTION_TYPES = ['select', 'radio', 'checkbox'];
+let fieldCount = parseInt(document.getElementById('field_count').value, 10);
+
+const fieldTypeOptions = `
+  {% for val, label in field_types %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+`;
+
+function addField() {
+  const container = document.getElementById('fields-container');
+  const emptyMsg  = document.getElementById('empty-msg');
+  if (emptyMsg) emptyMsg.style.display = 'none';
+
+  const idx = fieldCount++;
+  document.getElementById('field_count').value = fieldCount;
+
+  container.insertAdjacentHTML('beforeend', `
+    <div class="field-row card mb-2" id="field_${idx}">
+      <div class="card-body p-3">
+        <div class="row g-2 align-items-start">
+          <div class="col-md-4">
+            <label class="form-label" style="font-size:11px">Field Label *</label>
+            <input type="text" name="field_label_${idx}" class="form-control form-control-sm"
+                   placeholder="e.g. Date of Birth" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label" style="font-size:11px">Type</label>
+            <select name="field_type_${idx}" class="form-select form-select-sm"
+                    onchange="toggleOptions(this, ${idx})">
+              ${fieldTypeOptions}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" style="font-size:11px">Help Text</label>
+            <input type="text" name="field_help_${idx}" class="form-control form-control-sm"
+                   placeholder="Optional hint shown to student">
+          </div>
+          <div class="col-md-1 pt-4">
+            <div class="form-check">
+              <input type="checkbox" name="field_required_${idx}" id="req_${idx}"
+                     class="form-check-input" checked>
+              <label class="form-check-label" for="req_${idx}" style="font-size:11px">Req.</label>
+            </div>
+          </div>
+          <div class="col-md-1 text-end pt-4">
+            <button type="button" class="btn btn-xs btn-outline-danger"
+                    onclick="removeField(${idx})">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        </div>
+        <div class="row mt-2" id="options_${idx}" style="display:none">
+          <div class="col-12">
+            <label class="form-label" style="font-size:11px">Options (one per line)</label>
+            <textarea name="field_options_${idx}" class="form-control form-control-sm" rows="3"
+                      placeholder="Option 1&#10;Option 2&#10;Option 3"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+function removeField(idx) {
+  const el = document.getElementById(`field_${idx}`);
+  if (el) el.remove();
+}
+
+function toggleOptions(select, idx) {
+  const div = document.getElementById(`options_${idx}`);
+  if (div) div.style.display = OPTION_TYPES.includes(select.value) ? '' : 'none';
+}
+</script>
+{% endblock %}

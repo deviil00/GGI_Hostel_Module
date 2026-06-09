@@ -1,0 +1,158 @@
+{% extends "base/base.html" %}
+{% block title %}{% if is_staff_reporter %}Report Infrastructure Issue{% else %}Raise Complaint{% endif %} — GGI Hostel ERP{% endblock %}
+{% block page_title %}{% if is_staff_reporter %}Report Infrastructure / Maintenance Issue{% else %}Raise a Complaint{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+  .form-section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .6px; color: var(--text-3); margin-bottom: 10px;
+  }
+  .forward-panel {
+    background: #EDE9FE; border: 1.5px solid #C4B5FD; border-radius: 10px;
+    padding: 16px; margin-top: 12px;
+  }
+</style>
+
+<div class="row justify-content-center">
+  <div class="col-md-{% if is_staff_reporter %}7{% else %}6{% endif %}">
+
+    <div class="card">
+      <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:{% if is_staff_reporter %}#EDE9FE{% else %}#DBEAFE{% endif %}">
+            <i class="bi {% if is_staff_reporter %}bi-wrench-adjustable-circle-fill{% else %}bi-megaphone-fill{% endif %}"
+               style="color:{% if is_staff_reporter %}#7C3AED{% else %}#1565C0{% endif %}"></i>
+          </div>
+          {% if is_staff_reporter %}Report Infrastructure / Maintenance Issue{% else %}New Complaint{% endif %}
+        </div>
+        <a href="{% if is_staff_reporter %}{% url 'complaint_list' %}{% else %}{% url 'my_complaints' %}{% endif %}"
+           class="btn btn-outline-secondary btn-sm">← Back</a>
+      </div>
+
+      <div class="card-body p-4">
+        {% if messages %}
+        {% for msg in messages %}
+        <div class="alert alert-{{ msg.tags }} alert-dismissible fade show mb-3" role="alert">
+          {{ msg }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <div class="form-section-title">Category</div>
+            <select name="category" class="form-select" required>
+              <option value="">Select category…</option>
+              {% if is_staff_reporter %}
+              {# Staff: show infra-focused categories first, then all #}
+              <optgroup label="Infrastructure">
+                {% for val, lbl in categories %}
+                {% if val in "infrastructure,civil,painting,pest_control,ac,security_infra,electrical,plumbing,carpentry" %}
+                <option value="{{ val }}">{{ lbl }}</option>
+                {% endif %}
+                {% endfor %}
+              </optgroup>
+              <optgroup label="General">
+                {% for val, lbl in categories %}
+                {% if val not in "infrastructure,civil,painting,pest_control,ac,security_infra,electrical,plumbing,carpentry" %}
+                <option value="{{ val }}">{{ lbl }}</option>
+                {% endif %}
+                {% endfor %}
+              </optgroup>
+              {% else %}
+              {% for val, lbl in categories %}
+              <option value="{{ val }}">{{ lbl }}</option>
+              {% endfor %}
+              {% endif %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <div class="form-section-title">Title</div>
+            <input type="text" name="title" class="form-control"
+                   placeholder="Short description of the issue" required maxlength="200">
+          </div>
+
+          <div class="mb-3">
+            <div class="form-section-title">Description</div>
+            <textarea name="description" class="form-control" rows="4"
+                      placeholder="Describe the problem in detail — what happened, since when, severity…" required></textarea>
+          </div>
+
+          {% if is_staff_reporter %}
+
+          <div class="mb-3">
+            <div class="form-section-title">Location / Area</div>
+            <input type="text" name="location" class="form-control"
+                   placeholder="e.g. Block B — Corridor 2, Hostel 3 ground floor bathroom…" maxlength="300">
+            <div class="form-text">Specify the hostel block, floor, or area. Leave blank if campus-wide.</div>
+          </div>
+
+          <div class="mb-3">
+            <div class="form-section-title">Priority</div>
+            <select name="priority" class="form-select">
+              <option value="">— Set later —</option>
+              {% for val, lbl in priorities %}
+              <option value="{{ val }}" {% if val == 'medium' %}selected{% endif %}>{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Forward directly to maintenance -->
+          <div class="mb-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="forwardNow" name="forward_now" value="1"
+                     onchange="document.getElementById('maintenancePanel').style.display=this.checked?'block':'none'">
+              <label class="form-check-label fw-600" for="forwardNow" style="font-size:13px">
+                Forward directly to Maintenance Incharge
+              </label>
+            </div>
+            <div class="form-text mb-1">Skip the verification queue and assign immediately.</div>
+
+            <div id="maintenancePanel" style="display:none">
+              <div class="forward-panel">
+                <div class="form-section-title" style="color:#6D28D9">Assign To</div>
+                <select name="maintenance_user" class="form-select form-select-sm">
+                  <option value="">— Select maintenance incharge —</option>
+                  {% for mi in maintenance_users %}
+                  <option value="{{ mi.pk }}">{{ mi.name }}{% if mi.email %} ({{ mi.email }}){% endif %}</option>
+                  {% endfor %}
+                </select>
+                {% if not maintenance_users %}
+                <div class="form-text mt-1" style="color:#7C3AED">No active maintenance staff found.</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-dark w-100 mt-2">
+            <i class="bi bi-send-fill me-2"></i>Submit Report
+          </button>
+
+          {% else %}
+
+          <button type="submit" class="btn btn-dark w-100">
+            <i class="bi bi-send-fill me-2"></i>Submit Complaint
+          </button>
+
+          {% endif %}
+        </form>
+
+      </div>
+    </div>
+
+    {% if is_staff_reporter %}
+    <div class="mt-3 p-3 rounded" style="background:#FFFBEB;border:1px solid #FDE68A;font-size:12.5px;color:#92400E">
+      <i class="bi bi-info-circle-fill me-1"></i>
+      Complaints you raise are visible in the admin complaint list and can be tracked through the standard workflow.
+      Students will not be associated with these reports.
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

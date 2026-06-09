@@ -1,0 +1,241 @@
+{% extends "base/base.html" %}
+{% block title %}Submission — {{ submission.student.name }} — GGI Hostel ERP{% endblock %}
+{% block page_title %}Application Review{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Application Review</h4>
+    <p>{{ submission.form.title }} &nbsp;·&nbsp; Submitted {{ submission.submitted_at|date:"d M Y, h:i A" }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <span class="badge badge-{{ submission.status }}" style="font-size:13px;padding:6px 14px">{{ submission.get_status_display }}</span>
+    <a href="{% url 'form_submissions' submission.form.pk %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <!-- Left: Student info + responses -->
+  <div class="col-lg-7">
+
+    <!-- Student profile card -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:var(--blue-soft)"><i class="bi bi-person-fill" style="color:var(--blue)"></i></div>
+          Student Information
+        </div>
+        <a href="{% url 'student_detail' submission.student.pk %}" class="btn btn-xs btn-outline-secondary">
+          View Profile
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <div class="d-flex align-items-center gap-3 p-4" style="border-bottom:1px solid var(--border)">
+          <div style="width:56px;height:56px;border-radius:50%;background:var(--blue);color:#fff;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            {{ submission.student.name|first|upper }}
+          </div>
+          <div>
+            <div style="font-size:17px;font-weight:700">{{ submission.student.name }}</div>
+            <div style="font-size:12px;color:var(--text-3)">{{ submission.student.roll_number }} &nbsp;·&nbsp; {{ submission.student.department }}</div>
+            <div style="font-size:12px;color:var(--text-2)">Year {{ submission.student.year }} &nbsp;·&nbsp; Sem {{ submission.student.semester }}</div>
+          </div>
+        </div>
+        <table class="table table-sm mb-0" style="font-size:13px">
+          <tr><td class="ps-3" style="color:var(--text-3);padding-top:10px">Email</td><td style="padding-top:10px">{{ submission.student.email|default:"—" }}</td></tr>
+          <tr><td class="ps-3" style="color:var(--text-3)">Phone</td><td>{{ submission.student.phone|default:"—" }}</td></tr>
+          <tr><td class="ps-3" style="color:var(--text-3);padding-bottom:10px">Current Room</td>
+            <td style="padding-bottom:10px">
+              {% if submission.student.current_room %}
+                <span class="fw-600">{{ submission.student.current_room.room_number }}</span>
+                <span style="color:var(--text-3)"> — {{ submission.student.current_room.hostel.name }}</span>
+              {% else %}<span style="color:var(--text-3)">Not allocated</span>{% endif %}
+            </td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Form responses -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:var(--purple-soft)"><i class="bi bi-ui-checks" style="color:var(--purple)"></i></div>
+          Application Responses
+        </div>
+      </div>
+      <div class="card-body p-0">
+        {% if responses %}
+        <table class="table mb-0" style="font-size:13px">
+          {% for r in responses %}
+          <tr>
+            <td class="ps-3 fw-600" style="color:var(--text-2);width:35%;padding-top:12px;padding-bottom:12px;vertical-align:top">
+              {{ r.field.label }}
+              {% if r.field.is_required %}<span class="text-danger">*</span>{% endif %}
+            </td>
+            <td style="padding-top:12px;padding-bottom:12px">
+              {% if r.value %}{{ r.value }}{% else %}<span style="color:var(--text-3)">—</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </table>
+        {% else %}
+        <div class="empty-state py-4"><i class="bi bi-file-earmark"></i><p>No responses recorded.</p></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Room preferences -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#ECFDF5"><i class="bi bi-house-fill" style="color:#059669"></i></div>
+          Room Preferences
+        </div>
+      </div>
+      <div class="card-body p-0">
+        {% if pref_matches %}
+        {% for pm in pref_matches %}
+        <div style="padding:16px 20px;{% if not forloop.last %}border-bottom:1px solid var(--border-light){% endif %}">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="fw-600" style="font-size:13px">
+              <span style="background:var(--blue);color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-right:8px">{{ pm.pref.preference_number }}</span>
+              {% if pm.pref.hostel %}{{ pm.pref.hostel.name }}{% else %}Any Hostel{% endif %}
+              {% if pm.pref.room_type %} &nbsp;·&nbsp; {{ pm.pref.get_room_type_display }}{% endif %}
+              {% if pm.pref.floor %} &nbsp;·&nbsp; Floor {{ pm.pref.floor }}{% endif %}
+            </div>
+            {% if pm.count > 0 %}
+            <span class="badge badge-paid">{{ pm.count }} room{{ pm.count|pluralize }} available</span>
+            {% else %}
+            <span class="badge badge-open">No matching rooms</span>
+            {% endif %}
+          </div>
+          {% if pm.rooms %}
+          <div class="d-flex flex-wrap gap-2">
+            {% for room in pm.rooms %}
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px">
+              <span class="fw-600">{{ room.room_number }}</span>
+              <span style="color:var(--text-3)"> — {{ room.hostel.name }}</span>
+              <span class="badge" style="background:#D1FAE5;color:#065F46;margin-left:4px">{{ room.beds_available }} bed{{ room.beds_available|pluralize }}</span>
+            </div>
+            {% endfor %}
+            {% if pm.count > 6 %}
+            <div style="font-size:11.5px;color:var(--text-3);align-self:center">+{{ pm.count|add:"-6" }} more…</div>
+            {% endif %}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state py-4"><i class="bi bi-house-slash"></i><p>No room preferences given.</p></div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right: Action panel -->
+  <div class="col-lg-5">
+
+    <!-- Allocated room (if already allocated) -->
+    {% if submission.allocated_room %}
+    <div class="card mb-3" style="border-color:#A7F3D0">
+      <div class="card-header" style="background:#ECFDF5;border-color:#A7F3D0">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#D1FAE5"><i class="bi bi-house-check-fill" style="color:#059669"></i></div>
+          Room Allocated
+        </div>
+      </div>
+      <div class="card-body p-3 text-center">
+        <div style="font-size:36px;font-weight:800;color:#059669;line-height:1">{{ submission.allocated_room.room_number }}</div>
+        <div style="font-size:13px;color:var(--text-2);margin-top:4px">{{ submission.allocated_room.hostel.name }}</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Review notes (if already reviewed) -->
+    {% if submission.reviewed_by %}
+    <div class="card mb-3" style="border-color:#E0E7FF;background:#F8F9FF">
+      <div class="card-body p-3" style="font-size:12.5px;color:#4338CA">
+        <i class="bi bi-person-check-fill me-1"></i>
+        Reviewed by <strong>{{ submission.reviewed_by.name }}</strong> on {{ submission.reviewed_at|date:"d M Y, h:i A" }}
+        {% if submission.admin_notes %}
+        <div class="mt-2 p-2 rounded" style="background:#fff;border:1px solid #C7D2FE;color:var(--text-1);font-size:12px">
+          {{ submission.admin_notes }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Action form -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FFFBEB"><i class="bi bi-check2-square" style="color:#D97706"></i></div>
+          Take Action
+        </div>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="card-body p-4">
+
+          <!-- Room selector for allocation -->
+          <div class="mb-3" id="room-selector">
+            <label class="form-label fw-600">Allocate a Room <span style="color:var(--text-3);font-weight:400">(optional)</span></label>
+            <p style="font-size:12px;color:var(--text-2)">Select a room to auto-allocate when approving. Leave blank to approve without allocation.</p>
+            <select name="allocate_room_id" class="form-select form-select-sm">
+              <option value="">— No immediate allocation —</option>
+              {% for pm in pref_matches %}
+              {% if pm.rooms %}
+              <optgroup label="Preference {{ pm.pref.preference_number }}{% if pm.pref.hostel %} — {{ pm.pref.hostel.name }}{% endif %}">
+                {% for room in pm.rooms %}
+                <option value="{{ room.pk }}">
+                  Room {{ room.room_number }} — {{ room.hostel.name }} ({{ room.beds_available }} bed{{ room.beds_available|pluralize }} free)
+                </option>
+                {% endfor %}
+              </optgroup>
+              {% endif %}
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-600">Admin Notes</label>
+            <textarea name="admin_notes" class="form-control form-control-sm" rows="3"
+                      placeholder="Internal notes or reason for decision…">{{ submission.admin_notes }}</textarea>
+          </div>
+
+          <div class="d-grid gap-2">
+            <button type="submit" name="action" value="approve"
+                    class="btn btn-primary"
+                    {% if submission.status == 'approved' %}disabled{% endif %}>
+              <i class="bi bi-check-circle me-1"></i>Approve{% if submission.status == 'approved' %} (already approved){% endif %}
+            </button>
+            <div class="row g-2">
+              <div class="col">
+                <button type="submit" name="action" value="review" class="btn btn-outline-secondary w-100">
+                  <i class="bi bi-eye me-1"></i>Under Review
+                </button>
+              </div>
+              <div class="col">
+                <button type="submit" name="action" value="waitlist" class="btn btn-outline-secondary w-100">
+                  <i class="bi bi-clock me-1"></i>Waitlist
+                </button>
+              </div>
+            </div>
+            <button type="submit" name="action" value="reject"
+                    class="btn btn-outline-danger"
+                    {% if submission.status == 'rejected' %}disabled{% endif %}>
+              <i class="bi bi-x-circle me-1"></i>Reject{% if submission.status == 'rejected' %} (already rejected){% endif %}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

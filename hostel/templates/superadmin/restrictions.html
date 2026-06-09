@@ -1,0 +1,243 @@
+{% extends 'base/base.html' %}
+{% block title %}Student Restrictions{% endblock %}
+{% block page_title %}Student Restrictions{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Student Restrictions</h4>
+    <p>Block specific students from applying for gate passes or leaves</p>
+  </div>
+  {% if active_count %}
+  <span class="badge bg-danger" style="font-size:13px;padding:6px 14px">
+    {{ active_count }} active restriction{{ active_count|pluralize }}
+  </span>
+  {% endif %}
+</div>
+
+<div class="row g-4">
+
+  {# ── Left: Add restriction form ───────────────────────────── #}
+  <div class="col-lg-4">
+    <div class="card" style="border-top:3px solid #DC2626">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEE2E2"><i class="bi bi-slash-circle-fill" style="color:#DC2626"></i></div>
+          Apply Restriction
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <form method="post" action="{% url 'restriction_add' %}">
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Search & Select Student <span class="text-danger">*</span></label>
+            <input type="text" id="stu-search" class="form-control form-control-sm mb-2"
+                   placeholder="Type name or roll number…" autocomplete="off"
+                   oninput="filterStudents(this.value)">
+            <select name="student_id" id="stu-select" class="form-select form-select-sm" required size="5"
+                    style="height:140px">
+              {% for s in students %}
+              <option value="{{ s.pk }}" data-name="{{ s.name|lower }}" data-roll="{{ s.roll_number|lower }}">
+                {{ s.name }} — {{ s.roll_number }}
+              </option>
+              {% empty %}
+              <option disabled>No allocated students found</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Restriction Type <span class="text-danger">*</span></label>
+            <select name="restriction_type" class="form-select form-select-sm" required>
+              <option value="">— Select —</option>
+              {% for val, lbl in restriction_types %}
+              <option value="{{ val }}">{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
+            <textarea name="reason" class="form-control form-control-sm" rows="4" required
+                      placeholder="Explain clearly why this restriction is being applied. This will be shown to the student."></textarea>
+            <div class="form-text">The student will see this reason when they try to apply.</div>
+          </div>
+
+          <button type="submit" class="btn btn-danger w-100"
+                  onclick="return confirm('Apply this restriction? The student will be notified.')">
+            <i class="bi bi-slash-circle me-2"></i>Apply Restriction
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ── Right: Active / all restrictions list ────────────────── #}
+  <div class="col-lg-8">
+
+    {# Filter bar #}
+    <div class="filter-card d-flex align-items-center gap-2 flex-wrap mb-3">
+      <form method="get" class="d-flex gap-2 align-items-center flex-wrap w-100">
+        <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+               style="max-width:200px" placeholder="Search student…">
+        <select name="type" class="form-select form-select-sm" style="max-width:160px">
+          <option value="">All Types</option>
+          {% for val, lbl in restriction_types %}
+          <option value="{{ val }}" {% if filter_type == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+        <select name="status" class="form-select form-select-sm" style="max-width:130px">
+          <option value="active" {% if filter_status == 'active' %}selected{% endif %}>Active</option>
+          <option value="lifted" {% if filter_status == 'lifted' %}selected{% endif %}>Lifted</option>
+          <option value="all"    {% if filter_status == 'all'    %}selected{% endif %}>All</option>
+        </select>
+        <button type="submit" class="btn btn-sm btn-dark"><i class="bi bi-search"></i></button>
+        <a href="{% url 'restriction_list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-header py-3">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEE2E2"><i class="bi bi-ban" style="color:#DC2626"></i></div>
+          Restrictions
+        </div>
+        <span class="text-muted" style="font-size:12px">{{ page.paginator.count }} record{{ page.paginator.count|pluralize }}</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Type</th>
+              <th>Reason</th>
+              <th>Restricted By</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in page.object_list %}
+            <tr>
+              <td>
+                <div class="tbl-name">{{ r.student.name }}</div>
+                <div class="tbl-sub">{{ r.student.roll_number }}</div>
+              </td>
+              <td>
+                {% if r.restriction_type == 'gate_pass' %}
+                <span class="badge" style="background:#FEF3C7;color:#92400E">Gate Pass</span>
+                {% elif r.restriction_type == 'leave' %}
+                <span class="badge" style="background:#EDE9FE;color:#5B21B6">Leave</span>
+                {% else %}
+                <span class="badge bg-danger">Both</span>
+                {% endif %}
+              </td>
+              <td style="font-size:12.5px;max-width:220px">
+                {{ r.reason|truncatechars:80 }}
+              </td>
+              <td style="font-size:12px;color:var(--text-2)">
+                {{ r.restricted_by.name|default:"—" }}
+              </td>
+              <td style="font-size:12px;color:var(--text-3)">
+                {{ r.restricted_at|date:"d M Y" }}
+              </td>
+              <td>
+                {% if r.is_active %}
+                <span class="badge bg-danger"><i class="bi bi-slash-circle me-1"></i>Active</span>
+                {% else %}
+                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Lifted</span>
+                {% if r.lift_reason %}
+                <div style="font-size:10.5px;color:var(--text-3);margin-top:2px" title="{{ r.lift_reason }}">
+                  {{ r.lift_reason|truncatechars:30 }}
+                </div>
+                {% endif %}
+                {% endif %}
+              </td>
+              <td>
+                {% if r.is_active %}
+                <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal"
+                        data-bs-target="#liftModal{{ r.pk }}">
+                  <i class="bi bi-unlock-fill"></i> Lift
+                </button>
+                <!-- Lift modal -->
+                <div class="modal fade" id="liftModal{{ r.pk }}" tabindex="-1">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title">Lift Restriction — {{ r.student.name }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body">
+                        <div class="p-3 mb-3 rounded" style="background:#FEF2F2;border:1px solid #FECACA;font-size:13px">
+                          <strong>Current restriction:</strong> {{ r.get_restriction_type_display }}<br>
+                          <strong>Reason given:</strong> {{ r.reason }}
+                        </div>
+                        <form method="post" action="{% url 'restriction_lift' r.pk %}" id="liftForm{{ r.pk }}">
+                          {% csrf_token %}
+                          <label class="form-label fw-semibold">Reason for Lifting <span class="text-danger">*</span></label>
+                          <textarea name="lift_reason" class="form-control" rows="3" required
+                                    placeholder="Why is this restriction being removed?"></textarea>
+                        </form>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" form="liftForm{{ r.pk }}" class="btn btn-success">
+                          <i class="bi bi-unlock-fill me-1"></i>Lift Restriction
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% else %}
+                <span style="font-size:11px;color:var(--text-3)">
+                  {{ r.lifted_at|date:"d M Y" }}<br>
+                  by {{ r.lifted_by.name|default:"—" }}
+                </span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7">
+              <div class="empty-state py-4">
+                <i class="bi bi-check-circle" style="font-size:28px;opacity:.3"></i>
+                <p>No restrictions found.</p>
+              </div>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if page.has_other_pages %}
+      <div class="d-flex justify-content-center py-3 border-top">
+        <nav><ul class="pagination mb-0">
+          {% if page.has_previous %}
+          <li class="page-item"><a class="page-link" href="?q={{ q }}&type={{ filter_type }}&status={{ filter_status }}&page={{ page.previous_page_number }}"><i class="bi bi-chevron-left"></i></a></li>
+          {% endif %}
+          {% for n in page.paginator.page_range %}
+          <li class="page-item {% if n == page.number %}active{% endif %}">
+            <a class="page-link" href="?q={{ q }}&type={{ filter_type }}&status={{ filter_status }}&page={{ n }}">{{ n }}</a>
+          </li>
+          {% endfor %}
+          {% if page.has_next %}
+          <li class="page-item"><a class="page-link" href="?q={{ q }}&type={{ filter_type }}&status={{ filter_status }}&page={{ page.next_page_number }}"><i class="bi bi-chevron-right"></i></a></li>
+          {% endif %}
+        </ul></nav>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+function filterStudents(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('#stu-select option').forEach(opt => {
+    const match = !q || opt.dataset.name.includes(q) || opt.dataset.roll.includes(q);
+    opt.style.display = match ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

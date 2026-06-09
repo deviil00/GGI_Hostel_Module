@@ -1,0 +1,171 @@
+{% extends 'base/base.html' %}
+{% block title %}Edit Profile — GGI Hostel{% endblock %}
+{% block page_title %}Edit My Profile{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Edit My Profile</h4>
+    <p>Update your contact info, guardian details, and documents</p>
+  </div>
+  <a href="{% url 'my_profile' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Cancel
+  </a>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  <div class="row g-3">
+
+    {# Personal Info #}
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-left">
+            <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-person-fill" style="color:var(--blue)"></i></div>
+            Personal Information
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" style="font-size:12.5px;font-weight:600">Profile Photo</label>
+              {% if student.photo %}
+              <div class="mb-2">
+                <img src="{{ student.photo.url }}" alt="Current photo"
+                     style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid var(--border)">
+                <span style="font-size:11.5px;color:var(--text-3);margin-left:8px">Current photo</span>
+              </div>
+              {% endif %}
+              <input type="file" name="photo" class="form-control form-control-sm" accept="image/*">
+              <div style="font-size:11px;color:var(--text-3);margin-top:3px">JPG or PNG, max 2MB</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" style="font-size:12.5px;font-weight:600">Phone Number</label>
+              <input type="tel" name="phone" class="form-control form-control-sm"
+                     value="{{ student.phone }}" placeholder="10-digit mobile">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" style="font-size:12.5px;font-weight:600">Email Address</label>
+              <input type="email" name="email" class="form-control form-control-sm"
+                     value="{{ student.email }}" placeholder="Your email">
+            </div>
+            <div class="col-12">
+              <label class="form-label" style="font-size:12.5px;font-weight:600">Address</label>
+              <textarea name="address" class="form-control form-control-sm" rows="2"
+                        placeholder="Home address">{{ student.address }}</textarea>
+            </div>
+          </div>
+
+          <div style="margin-top:12px;padding:10px 14px;background:#F8FAFC;border-radius:8px;font-size:12px;color:var(--text-3)">
+            <i class="bi bi-info-circle me-1"></i>
+            Name, Roll Number, Branch, Year, Semester, Hostel and Room are managed by the administration.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Guardian Details #}
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-left">
+            <div class="ch-icon" style="background:#FDF4FF"><i class="bi bi-person-hearts" style="color:#7E22CE"></i></div>
+            Guardian / Parent Details
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" style="font-size:12.5px;font-weight:600">Guardian Name</label>
+              <input type="text" name="guardian_name" class="form-control form-control-sm"
+                     value="{{ student.guardian_name }}" placeholder="Full name">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" style="font-size:12.5px;font-weight:600">Relation</label>
+              <select name="guardian_relation" class="form-select form-select-sm">
+                <option value="">— Select —</option>
+                <option value="Father"   {% if student.guardian_relation == "Father"   %}selected{% endif %}>Father</option>
+                <option value="Mother"   {% if student.guardian_relation == "Mother"   %}selected{% endif %}>Mother</option>
+                <option value="Sibling"  {% if student.guardian_relation == "Sibling"  %}selected{% endif %}>Sibling</option>
+                <option value="Guardian" {% if student.guardian_relation == "Guardian" %}selected{% endif %}>Guardian</option>
+                <option value="Relative" {% if student.guardian_relation == "Relative" %}selected{% endif %}>Relative</option>
+                <option value="Other"    {% if student.guardian_relation == "Other"    %}selected{% endif %}>Other</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" style="font-size:12.5px;font-weight:600">Guardian Phone</label>
+              <input type="tel" name="guardian_phone" class="form-control form-control-sm"
+                     value="{{ student.guardian_phone }}" placeholder="Mobile number">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" style="font-size:12.5px;font-weight:600">Guardian Email</label>
+              <input type="email" name="guardian_email" class="form-control form-control-sm"
+                     value="{{ student.guardian_email }}" placeholder="Email (optional)">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# Documents #}
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-left">
+            <div class="ch-icon" style="background:#F0F9FF"><i class="bi bi-file-earmark-person-fill" style="color:#0891B2"></i></div>
+            Identity Documents
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label" style="font-size:12.5px;font-weight:600">Aadhaar Number</label>
+              <input type="text" name="aadhar_number" class="form-control form-control-sm"
+                     value="{{ student.aadhar_number }}" placeholder="12-digit number" maxlength="12">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" style="font-size:12.5px;font-weight:600">Upload Aadhaar <span style="color:#DC2626">*</span></label>
+              {% if student.aadhar_doc %}
+              <div class="mb-1">
+                <a href="{{ student.aadhar_doc.url }}" target="_blank" style="font-size:11.5px;color:var(--blue)">
+                  <i class="bi bi-paperclip me-1"></i>Current file
+                </a>
+              </div>
+              {% endif %}
+              <input type="file" name="aadhar_doc" class="form-control form-control-sm" accept="image/*,.pdf">
+              <div style="font-size:11px;color:var(--text-3);margin-top:3px">JPG, PNG, or PDF</div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" style="font-size:12.5px;font-weight:600">College ID Number</label>
+              <input type="text" name="college_id_number" class="form-control form-control-sm"
+                     value="{{ student.college_id_number }}" placeholder="ID number">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" style="font-size:12.5px;font-weight:600">Upload College ID Card</label>
+              {% if student.college_id_doc %}
+              <div class="mb-1">
+                <a href="{{ student.college_id_doc.url }}" target="_blank" style="font-size:11.5px;color:var(--blue)">
+                  <i class="bi bi-paperclip me-1"></i>Current file
+                </a>
+              </div>
+              {% endif %}
+              <input type="file" name="college_id_doc" class="form-control form-control-sm" accept="image/*,.pdf">
+              <div style="font-size:11px;color:var(--text-3);margin-top:3px">JPG, PNG, or PDF</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 d-flex gap-2 justify-content-end pb-3">
+      <a href="{% url 'my_profile' %}" class="btn btn-outline-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check-lg me-1"></i>Save Profile
+      </button>
+    </div>
+
+  </div>
+</form>
+{% endblock %}

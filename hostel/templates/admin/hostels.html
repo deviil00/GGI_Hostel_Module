@@ -1,0 +1,280 @@
+{% extends 'base/base.html' %}
+{% block title %}Hostel Management{% endblock %}
+{% block page_title %}Hostel Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Hostel Management</h4>
+    <p>Create hostels and assign wardens</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'bulk_upload_rooms' %}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-file-earmark-arrow-up me-1"></i> Bulk Upload
+    </a>
+    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#addWardenModal">
+      <i class="bi bi-person-plus me-1"></i> Create Warden
+    </button>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addHostelModal">
+      <i class="bi bi-plus-lg me-1"></i> Add Hostel
+    </button>
+  </div>
+</div>
+
+<!-- Hostel cards -->
+<div class="row g-3">
+  {% for hd in hostels_data %}
+  {% with h=hd.hostel %}
+  <div class="col-xl-4 col-md-6">
+    <div class="card h-100" style="border-top:3px solid {% if h.type == 'boys' %}#1565C0{% elif h.type == 'girls' %}#9D174D{% else %}#065F46{% endif %}">
+      <div class="card-body p-4">
+
+        <!-- Header -->
+        <div class="d-flex align-items-start justify-content-between mb-3">
+          <div class="d-flex align-items-center gap-3">
+            <div style="background:{% if h.type == 'boys' %}#EBF3FF{% elif h.type == 'girls' %}#FDF2F8{% else %}#ECFDF5{% endif %};width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="bi bi-building-fill" style="font-size:20px;color:{% if h.type == 'boys' %}#1565C0{% elif h.type == 'girls' %}#9D174D{% else %}#065F46{% endif %}"></i>
+            </div>
+            <div>
+              <a href="{% url 'hostel_detail' h.pk %}" class="text-decoration-none" style="color:var(--text-1)">
+                <div class="fw-700" style="font-size:15px;line-height:1.3">{{ h.name }}</div>
+              </a>
+              <span class="badge mt-1" style="background:{% if h.type == 'boys' %}#EBF3FF{% elif h.type == 'girls' %}#FDF2F8{% else %}#ECFDF5{% endif %};color:{% if h.type == 'boys' %}#1565C0{% elif h.type == 'girls' %}#9D174D{% else %}#065F46{% endif %};font-size:10.5px">
+                {{ h.get_type_display }} Hostel
+              </span>
+            </div>
+          </div>
+          <div class="dropdown">
+            <button class="btn btn-xs btn-outline-secondary" data-bs-toggle="dropdown">
+              <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="{% url 'hostel_detail' h.pk %}"><i class="bi bi-layers me-2"></i>View Floors & Rooms</a></li>
+              <li><a class="dropdown-item" href="{% url 'edit_hostel' h.pk %}"><i class="bi bi-pencil me-2"></i>Edit Hostel</a></li>
+              <li><a class="dropdown-item" href="{% url 'admin_dashboard' %}?hostel={{ h.pk }}"><i class="bi bi-speedometer2 me-2"></i>Hostel Dashboard</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <form method="post" action="{% url 'delete_hostel' h.pk %}" onsubmit="return confirm('Delete {{ h.name }}? This cannot be undone.')">
+                  {% csrf_token %}
+                  <button class="dropdown-item text-danger" type="submit"><i class="bi bi-trash me-2"></i>Delete</button>
+                </form>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Address -->
+        {% if h.address %}
+        <div class="mb-3" style="font-size:12px;color:var(--text-3)">
+          <i class="bi bi-geo-alt me-1"></i>{{ h.address }}
+        </div>
+        {% endif %}
+
+        <!-- Key stats: 4 tiles -->
+        <div class="row g-2 mb-3">
+          <div class="col-3 text-center p-2 rounded" style="background:var(--bg-2)">
+            <div class="fw-700" style="font-size:17px;color:var(--text-1)">{{ hd.floor_count }}</div>
+            <div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Floors</div>
+          </div>
+          <div class="col-3 text-center p-2 rounded" style="background:var(--bg-2)">
+            <div class="fw-700" style="font-size:17px;color:var(--text-1)">{{ hd.room_count }}</div>
+            <div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Rooms</div>
+          </div>
+          <div class="col-3 text-center p-2 rounded" style="background:var(--bg-2)">
+            <div class="fw-700" style="font-size:17px;color:var(--text-1)">{{ hd.total_beds }}</div>
+            <div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Beds</div>
+          </div>
+          <div class="col-3 text-center p-2 rounded" style="background:var(--bg-2)">
+            <div class="fw-700" style="font-size:17px;color:#059669">{{ hd.resident_count }}</div>
+            <div style="font-size:10px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Residents</div>
+          </div>
+        </div>
+
+        <!-- Room breakdown -->
+        <div class="mb-3 p-2 rounded" style="background:var(--bg-2)">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:8px">Room Status</div>
+          <div class="d-flex gap-3">
+            <div>
+              <span style="font-size:13px;font-weight:700;color:#059669">{{ hd.vacant_rooms }}</span>
+              <span style="font-size:11px;color:var(--text-3)"> vacant</span>
+            </div>
+            <div>
+              <span style="font-size:13px;font-weight:700;color:#D97706">{{ hd.occ_rooms }}</span>
+              <span style="font-size:11px;color:var(--text-3)"> occupied</span>
+            </div>
+            {% if hd.maint_rooms %}
+            <div>
+              <span style="font-size:13px;font-weight:700;color:#DC2626">{{ hd.maint_rooms }}</span>
+              <span style="font-size:11px;color:var(--text-3)"> maint.</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Bed occupancy bar -->
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1">
+            <span style="font-size:11px;color:var(--text-3);font-weight:600">Bed Occupancy</span>
+            <span style="font-size:11px;font-weight:700;color:{% if hd.pct >= 90 %}#DC2626{% elif hd.pct >= 60 %}#D97706{% else %}#059669{% endif %}">
+              {{ hd.occ_beds }}/{{ hd.total_beds }} ({{ hd.pct }}%)
+            </span>
+          </div>
+          <div style="height:6px;background:var(--bg-3);border-radius:4px;overflow:hidden">
+            <div style="width:{{ hd.pct }}%;height:100%;background:{% if hd.pct >= 90 %}#DC2626{% elif hd.pct >= 60 %}#D97706{% else %}#059669{% endif %};border-radius:4px;transition:width .4s"></div>
+          </div>
+          <div class="d-flex justify-content-between mt-1">
+            <span style="font-size:10px;color:var(--text-3)">{{ hd.vacant_beds }} beds available</span>
+            {% if hd.floors %}
+            <span style="font-size:10px;color:var(--text-3)">Floors: {{ hd.floors|join:", " }}</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Warden -->
+        <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:var(--bg-2)">
+          <div class="tbl-avatar av-blue" style="width:30px;height:30px;font-size:12px;flex-shrink:0">
+            {% if h.warden %}{{ h.warden.name|first|upper }}{% else %}?{% endif %}
+          </div>
+          <div style="min-width:0;flex:1">
+            {% if h.warden %}
+            <div class="fw-600" style="font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ h.warden.name }}</div>
+            <div style="font-size:11px;color:var(--text-3)">{{ h.warden.email }}</div>
+            {% else %}
+            <div style="font-size:12.5px;color:var(--text-3);font-style:italic">No warden assigned</div>
+            {% endif %}
+          </div>
+          <a href="{% url 'edit_hostel' h.pk %}" class="btn btn-xs btn-outline-secondary flex-shrink-0">
+            {% if h.warden %}Change{% else %}Assign{% endif %}
+          </a>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="d-flex gap-2 mt-3">
+          <a href="{% url 'hostel_detail' h.pk %}" class="btn btn-sm btn-primary flex-fill">
+            <i class="bi bi-layers me-1"></i>Floors & Rooms
+          </a>
+          <a href="{% url 'admin_dashboard' %}?hostel={{ h.pk }}" class="btn btn-sm btn-outline-secondary flex-fill">
+            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  {% endwith %}
+  {% empty %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <div class="empty-state">
+          <i class="bi bi-building"></i>
+          <p>No hostels created yet.</p>
+          <button class="btn btn-primary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#addHostelModal">
+            <i class="bi bi-plus-lg me-1"></i> Create First Hostel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Add Hostel Modal -->
+<div class="modal fade" id="addHostelModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'create_hostel' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title fw-700">Add New Hostel</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-600">Hostel Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" placeholder="e.g. Block A Boys Hostel" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Type <span class="text-danger">*</span></label>
+            <select name="type" class="form-select" required>
+              <option value="">Select type...</option>
+              <option value="boys">Boys Hostel</option>
+              <option value="girls">Girls Hostel</option>
+              <option value="staff">Staff Hostel</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Assign Warden</label>
+            <select name="warden" class="form-select">
+              <option value="">— Assign later —</option>
+              {% for w in all_wardens %}
+              <option value="{{ w.pk }}">{{ w.name }} ({{ w.email }})</option>
+              {% endfor %}
+            </select>
+            <div class="form-text">You can assign or change the warden later from the Edit page.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Assign Mess Incharge</label>
+            <select name="mess_incharge" class="form-select">
+              <option value="">— Assign later —</option>
+              {% for mi in all_mess_incharge %}
+              <option value="{{ mi.pk }}">{{ mi.name }} ({{ mi.email }})</option>
+              {% endfor %}
+            </select>
+            <div class="form-text">Can be assigned or changed later from the Edit page.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Address</label>
+            <textarea name="address" class="form-control" rows="2" placeholder="Campus location / block"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Create Hostel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Create Warden Modal -->
+<div class="modal fade" id="addWardenModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'create_warden' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title fw-700">Create Warden Account</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-600">Full Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" placeholder="e.g. Dr. Ramesh Kumar" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Email <span class="text-danger">*</span></label>
+            <input type="email" name="email" class="form-control" placeholder="warden@college.edu" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Phone</label>
+            <input type="text" name="phone" class="form-control" placeholder="Optional">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Password <span class="text-danger">*</span></label>
+            <input type="password" name="password" class="form-control" placeholder="Set a strong password" required>
+          </div>
+          <div class="alert alert-info mb-0" style="font-size:12.5px">
+            <i class="bi bi-info-circle me-1"></i>
+            After creating the warden, click <strong>Edit</strong> on any hostel to assign them.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-person-check me-1"></i>Create Warden</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

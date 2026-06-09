@@ -1,0 +1,244 @@
+{% extends "base/base.html" %}
+{% block title %}Occupancy Report — Hostel ERP{% endblock %}
+{% block page_title %}Occupancy Report{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Hostel Occupancy Overview</h4>
+    <p>All-hostel room occupancy — click a card to view full details</p>
+  </div>
+</div>
+
+{# ── Overall summary stats ── #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="s-top">
+        <div class="s-icon" style="background:#EBF3FF">
+          <i class="bi bi-building-fill" style="color:#1565C0"></i>
+        </div>
+      </div>
+      <div class="s-number">{{ overall.total }}</div>
+      <div class="s-label">Total Rooms</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="s-top">
+        <div class="s-icon" style="background:#FEF2F2">
+          <i class="bi bi-door-closed-fill" style="color:#DC2626"></i>
+        </div>
+      </div>
+      <div class="s-number" style="color:#DC2626">{{ overall.occupied }}</div>
+      <div class="s-label">Fully Occupied</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="s-top">
+        <div class="s-icon" style="background:#FFFBEB">
+          <i class="bi bi-door-open" style="color:#D97706"></i>
+        </div>
+      </div>
+      <div class="s-number" style="color:#D97706">{{ overall.partial }}</div>
+      <div class="s-label">Partially Occupied</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="s-top">
+        <div class="s-icon" style="background:#ECFDF5">
+          <i class="bi bi-door-open-fill" style="color:#059669"></i>
+        </div>
+      </div>
+      <div class="s-number" style="color:#059669">{{ overall.vacant }}</div>
+      <div class="s-label">Vacant</div>
+    </div>
+  </div>
+</div>
+
+{# ── Summary bar chart (all hostels) ── #}
+{% if cards %}
+<div class="card mb-4">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#EBF3FF">
+        <i class="bi bi-bar-chart-fill" style="color:#1565C0"></i>
+      </div>
+      Room Status Comparison — All Hostels
+    </div>
+    <span style="font-size:12px;color:var(--text-3)">
+      Overall occupancy: <strong style="color:#1565C0">{{ overall.pct }}%</strong>
+    </span>
+  </div>
+  <div class="card-body p-4">
+    <canvas id="overviewChart" style="max-height:300px"></canvas>
+  </div>
+</div>
+{% endif %}
+
+{# ── Hostel cards ── #}
+{% if not cards %}
+<div class="card">
+  <div class="empty-state" style="padding:60px">
+    <i class="bi bi-building" style="font-size:40px;opacity:.3;display:block;margin-bottom:12px;color:var(--text-3)"></i>
+    <p style="font-size:14px;color:var(--text-2)">No hostels found.</p>
+  </div>
+</div>
+{% else %}
+<div class="row g-4">
+  {% for c in cards %}
+  <div class="col-md-6 col-xl-4">
+    <a href="{% url 'hostel_occupancy_detail' c.hostel.pk %}" style="text-decoration:none">
+      <div class="card h-100" style="transition:box-shadow .15s;cursor:pointer"
+           onmouseenter="this.style.boxShadow='0 4px 20px rgba(0,0,0,.12)'"
+           onmouseleave="this.style.boxShadow=''">
+        {# Card header #}
+        <div class="card-header"
+             style="background:linear-gradient(135deg,#0F4C81,#1565C0);color:#fff;border:none">
+          <div class="card-header-left" style="color:#fff">
+            <i class="bi bi-building-fill me-2"></i>
+            <span style="font-weight:700">{{ c.hostel.name }}</span>
+          </div>
+          <span style="font-size:11px;background:rgba(255,255,255,.2);padding:2px 10px;
+                       border-radius:12px;font-weight:600">
+            {{ c.hostel.get_type_display }}
+          </span>
+        </div>
+        <div class="card-body p-4">
+          {# Occupancy progress bar #}
+          <div style="margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:11px;color:var(--text-3)">Overall Occupancy</span>
+              <span style="font-size:13px;font-weight:800;color:
+                {% if c.pct >= 90 %}#DC2626{% elif c.pct >= 60 %}#D97706{% else %}#059669{% endif %}">
+                {{ c.pct }}%
+              </span>
+            </div>
+            <div style="height:10px;border-radius:5px;background:#F1F5F9;overflow:hidden">
+              <div style="height:100%;border-radius:5px;width:{{ c.pct }}%;
+                          background:{% if c.pct >= 90 %}#DC2626{% elif c.pct >= 60 %}#D97706{% else %}#059669{% endif %};
+                          transition:width .4s"></div>
+            </div>
+          </div>
+
+          {# Room status grid #}
+          <div class="row g-2">
+            <div class="col-4">
+              <div style="padding:10px 8px;border-radius:8px;background:#FEF2F2;
+                          border:1px solid #FCA5A5;text-align:center">
+                <div style="font-size:20px;font-weight:800;color:#DC2626">{{ c.occupied }}</div>
+                <div style="font-size:10px;color:#991B1B;font-weight:600">Fully Occ.</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div style="padding:10px 8px;border-radius:8px;background:#FFFBEB;
+                          border:1px solid #FCD34D;text-align:center">
+                <div style="font-size:20px;font-weight:800;color:#D97706">{{ c.partial }}</div>
+                <div style="font-size:10px;color:#92400E;font-weight:600">Partial</div>
+              </div>
+            </div>
+            <div class="col-4">
+              <div style="padding:10px 8px;border-radius:8px;background:#ECFDF5;
+                          border:1px solid #6EE7B7;text-align:center">
+                <div style="font-size:20px;font-weight:800;color:#059669">{{ c.vacant }}</div>
+                <div style="font-size:10px;color:#065F46;font-weight:600">Vacant</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);
+                      display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:12px;color:var(--text-3)">
+              <i class="bi bi-grid-3x3-gap-fill me-1"></i>{{ c.total }} rooms
+              {% if c.maint %}
+              · <span style="color:#7C3AED">{{ c.maint }} in maintenance</span>
+              {% endif %}
+            </span>
+            <span style="font-size:12px;color:#1565C0;font-weight:600">
+              Details <i class="bi bi-arrow-right ms-1"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+{% if cards %}
+const ctx = document.getElementById('overviewChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: {{ chart_labels|safe }},
+    datasets: [
+      {
+        label: 'Fully Occupied',
+        data: {{ chart_occupied|safe }},
+        backgroundColor: 'rgba(220,38,38,0.80)',
+        borderRadius: 5,
+      },
+      {
+        label: 'Partially Occupied',
+        data: {{ chart_partial|safe }},
+        backgroundColor: 'rgba(217,119,6,0.80)',
+        borderRadius: 5,
+      },
+      {
+        label: 'Vacant',
+        data: {{ chart_vacant|safe }},
+        backgroundColor: 'rgba(5,150,105,0.75)',
+        borderRadius: 5,
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'top' },
+      tooltip: {
+        callbacks: {
+          afterBody: function(items) {
+            const idx  = items[0].dataIndex;
+            const pcts = {{ chart_pct|safe }};
+            return [`Overall occupancy: ${pcts[idx]}%`];
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        stacked: false,
+        grid: { display: false },
+        title: {
+          display: true,
+          text: 'Hostel Name',
+          font: { size: 12, weight: '600' },
+          color: '#64748B',
+          padding: { top: 8 }
+        }
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { stepSize: 1, precision: 0 },
+        title: {
+          display: true,
+          text: 'Number of Rooms',
+          font: { size: 12, weight: '600' },
+          color: '#64748B',
+          padding: { bottom: 8 }
+        }
+      }
+    }
+  }
+});
+{% endif %}
+</script>
+{% endblock %}

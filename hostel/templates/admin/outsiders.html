@@ -1,0 +1,350 @@
+{% extends "base/base.html" %}
+{% block title %}Outsiders — GGI Hostel ERP{% endblock %}
+{% block page_title %}Outsiders{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Students Outside</h4>
+    <p>
+      {% if filter_date %}
+        Students whose exit QR was scanned on {{ filter_date }}
+      {% else %}
+        Live — exit QR scanned by guard, entry QR not yet scanned
+      {% endif %}
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'admin_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Dashboard
+    </a>
+  </div>
+</div>
+
+<!-- Date filter & live toggle -->
+<div class="filter-card mb-4">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label fw-semibold" style="font-size:12px">Filter by Exit Date</label>
+      <input type="date" name="date" value="{{ filter_date|date:'Y-m-d' }}"
+             class="form-control form-control-sm" max="{{ today|date:'Y-m-d' }}">
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-primary btn-sm px-4">Apply</button>
+    </div>
+    <div class="col-auto">
+      <a href="{% url 'outsiders' %}" class="btn btn-sm {% if not filter_date %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        <i class="bi bi-broadcast me-1"></i>Live Now
+      </a>
+    </div>
+    <div class="col-auto">
+      <a href="{% url 'outsiders' %}?date={{ today|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary">
+        Today's Movement
+      </a>
+    </div>
+  </form>
+</div>
+
+<!-- Overall stats -->
+<div class="row g-3 mb-4">
+  <div class="col-auto">
+    <div class="d-flex align-items-center gap-3 px-4 py-3 rounded"
+         style="background:{% if not filter_date %}#F0FDFA{% else %}#EBF3FF{% endif %};
+                border:1px solid {% if not filter_date %}#99F6E4{% else %}#93C5FD{% endif %}">
+      <div style="font-size:36px;font-weight:900;color:{% if not filter_date %}#0D9488{% else %}#1565C0{% endif %};line-height:1">
+        {{ total_outside }}
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-1)">
+          {% if not filter_date %}Currently Outside{% else %}Went Out on {{ filter_date }}{% endif %}
+        </div>
+        <div style="font-size:12px;color:var(--text-3)">across all hostels</div>
+      </div>
+    </div>
+  </div>
+  {% for row in hostel_rows %}
+  {% if row.count > 0 %}
+  <div class="col-auto">
+    <div class="px-3 py-2 rounded" style="background:#F8FAFC;border:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--text-3);font-weight:600;text-transform:uppercase">{{ row.hostel.name }}</div>
+      <div style="font-size:22px;font-weight:800;color:#0891B2;line-height:1.2">{{ row.count }}</div>
+      <div style="font-size:10.5px;color:var(--text-3)">outside</div>
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+
+<!-- Per-hostel cards -->
+{% for row in hostel_rows %}
+<div class="card mb-4" id="hostel-card-{{ forloop.counter }}">
+
+  <!-- Card header -->
+  <div class="card-header" style="background:linear-gradient(135deg,#0F4C81,#1565C0);color:#fff;padding:14px 20px">
+    <div class="d-flex align-items-center gap-3 flex-wrap" style="flex:1">
+      <div>
+        <div style="font-size:16px;font-weight:800">
+          <i class="bi bi-building-fill me-2"></i>{{ row.hostel.name }}
+        </div>
+        <div style="font-size:11.5px;opacity:.75;margin-top:2px">
+          {{ row.hostel.get_type_display }}
+          {% if row.warden %}
+          &nbsp;·&nbsp;
+          <i class="bi bi-person-badge me-1"></i>Warden: <strong>{{ row.warden.name }}</strong>
+          {% if row.warden.phone %} · {{ row.warden.phone }}{% endif %}
+          {% endif %}
+        </div>
+      </div>
+      <span class="badge ms-auto" style="background:rgba(255,255,255,.25);font-size:13px;padding:5px 12px">
+        {{ row.count }} student{{ row.count|pluralize }} outside
+      </span>
+    </div>
+  </div>
+
+  {% if row.gp_list %}
+
+  <!-- Per-card filters (JS-based) -->
+  <div style="padding:12px 16px;background:#F8FAFC;border-bottom:1px solid var(--border-light);
+              display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <div class="input-group input-group-sm" style="max-width:160px">
+      <span class="input-group-text bg-white"><i class="bi bi-search" style="font-size:11px;color:var(--text-3)"></i></span>
+      <input type="text" class="form-control out-filter border-start-0"
+             data-card="{{ forloop.counter }}" data-col="roll"
+             placeholder="Roll No / Name" style="font-size:12px">
+    </div>
+    <div>
+      <select class="form-select form-select-sm out-filter" data-card="{{ forloop.counter }}" data-col="room" style="font-size:12px;min-width:120px">
+        <option value="">All Rooms</option>
+        {% for gp in row.gp_list %}{% if gp.student_room %}
+        <option value="{{ gp.student_room.room_number }}">Room {{ gp.student_room.room_number }}</option>
+        {% endif %}{% endfor %}
+      </select>
+    </div>
+    <div>
+      <select class="form-select form-select-sm out-filter" data-card="{{ forloop.counter }}" data-col="dept" style="font-size:12px;min-width:140px">
+        <option value="">All Departments</option>
+        {% for d in row.depts %}
+        <option value="{{ d }}">{{ d }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-xs btn-outline-secondary" onclick="clearFilters({{ forloop.counter }})">
+      <i class="bi bi-x"></i> Clear
+    </button>
+    <span class="ms-auto" style="font-size:11.5px;color:var(--text-3)" id="count-{{ forloop.counter }}">
+      Showing {{ row.count }} record{{ row.count|pluralize }}
+    </span>
+  </div>
+
+  <!-- Student table -->
+  <div class="table-responsive">
+    <table class="table" style="font-size:13px" id="out-table-{{ forloop.counter }}">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Room / Floor</th>
+          <th>Department</th>
+          <th>Destination &amp; Reason</th>
+          <th>Applied At</th>
+          <th>Approved By</th>
+          <th>Exit Time <small style="font-weight:400">(QR)</small></th>
+          <th>Expected Return</th>
+          <th>Actual Return <small style="font-weight:400">(QR)</small></th>
+          <th>Guardian Phone</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for gp in row.gp_list %}
+        <tr class="out-row"
+            data-card="{{ forloop.parentloop.counter }}"
+            data-roll="{{ gp.student.roll_number|lower }} {{ gp.student.name|lower }}"
+            data-room="{% if gp.student_room %}{{ gp.student_room.room_number }}{% endif %}"
+            data-dept="{{ gp.student.department|lower }}"
+            {% if gp.is_overstayed %}style="background:#FEF2F2"{% endif %}>
+
+          <!-- Student name → links to student detail -->
+          <td>
+            <a href="{% url 'student_detail' gp.student.pk %}"
+               style="text-decoration:none;color:var(--text-1)">
+              <div style="font-weight:700;color:var(--blue)">{{ gp.student.name }}</div>
+            </a>
+            <div class="tbl-sub">{{ gp.student.roll_number }}</div>
+            {% if gp.is_overstayed %}
+            <div style="margin-top:3px">
+              <span style="background:#FEE2E2;color:#B91C1C;font-size:10px;font-weight:700;
+                           padding:2px 6px;border-radius:4px;display:inline-flex;align-items:center;gap:3px">
+                <i class="bi bi-exclamation-triangle-fill"></i> Overstayed — due {{ gp.expected_return_date }}
+              </span>
+            </div>
+            {% endif %}
+          </td>
+
+          <!-- Room / Floor -->
+          <td>
+            {% if gp.student_room %}
+            <span class="badge" style="background:#F0F9FF;color:#0891B2;font-weight:700;font-size:12px">
+              <i class="bi bi-door-open" style="font-size:10px"></i> {{ gp.student_room.room_number }}
+            </span>
+            <div style="margin-top:4px;font-size:11px;color:var(--text-3)">
+              <i class="bi bi-layers" style="font-size:10px"></i> Floor {{ gp.student_room.floor }}
+            </div>
+            {% else %}
+            <span style="color:var(--text-3);font-size:12px">—</span>
+            {% endif %}
+          </td>
+
+          <!-- Department -->
+          <td style="color:var(--text-2)">
+            {{ gp.student.department|default:"—" }}<br>
+            <span class="tbl-sub">Yr {{ gp.student.year }} / Sem {{ gp.student.semester }}</span>
+          </td>
+
+          <!-- Destination & Reason -->
+          <td>
+            <div style="font-weight:600">{{ gp.destination }}</div>
+            <div style="font-size:11.5px;color:var(--text-3);margin-top:2px">{{ gp.reason|truncatechars:50 }}</div>
+          </td>
+
+          <!-- Applied at (gate pass created_at) -->
+          <td>
+            {{ gp.created_at|date:"d M Y" }}<br>
+            <span class="tbl-sub">{{ gp.created_at|time:"h:i A" }}</span>
+          </td>
+
+          <!-- Approved by -->
+          <td>
+            {% if gp.approved_by %}
+            <div style="font-size:12.5px;font-weight:600">{{ gp.approved_by.name }}</div>
+            {% if gp.approved_at %}
+            <div class="tbl-sub">{{ gp.approved_at|date:"d M" }} {{ gp.approved_at|time:"h:i A" }}</div>
+            {% endif %}
+            {% else %}
+            <span style="color:var(--text-3);font-size:12px">—</span>
+            {% endif %}
+          </td>
+
+          <!-- Exact exit time (guard scanned exit QR) -->
+          <td>
+            {% if gp.exit_time %}
+            <span style="color:#0D9488;font-weight:700">{{ gp.exit_time|date:"d M" }}</span><br>
+            <span style="color:#0D9488;font-size:12.5px;font-weight:600">{{ gp.exit_time|time:"h:i A" }}</span>
+            {% if gp.exit_allowed_by %}
+            <div class="tbl-sub">by {{ gp.exit_allowed_by.name }}</div>
+            {% endif %}
+            {% else %}
+            <span style="color:var(--text-3);font-size:12px">—</span>
+            {% endif %}
+          </td>
+
+          <!-- Expected return -->
+          <td>
+            {{ gp.expected_return_date }}<br>
+            <span class="tbl-sub">{{ gp.expected_return_time|time:"h:i A" }}</span>
+          </td>
+
+          <!-- Actual return time (guard scanned entry QR) -->
+          <td>
+            {% if gp.entry_time %}
+            <span style="color:#059669;font-weight:700">{{ gp.entry_time|date:"d M" }}</span><br>
+            <span style="color:#059669;font-size:12.5px;font-weight:600">{{ gp.entry_time|time:"h:i A" }}</span>
+            {% if gp.entry_allowed_by %}
+            <div class="tbl-sub">by {{ gp.entry_allowed_by.name }}</div>
+            {% endif %}
+            {% else %}
+            <span style="background:#FEF3C7;color:#92400E;font-size:11px;font-weight:700;
+                         padding:2px 7px;border-radius:4px;white-space:nowrap">
+              <i class="bi bi-clock me-1"></i>Still Outside
+            </span>
+            {% endif %}
+          </td>
+
+          <!-- Guardian phone -->
+          <td>
+            {% if gp.student.guardian_name %}
+            <div style="font-size:11.5px;font-weight:600;color:#D97706">{{ gp.student.guardian_name }}</div>
+            {% endif %}
+            {% if gp.student.guardian_phone %}
+            <div style="font-weight:700;color:#D97706">
+              <i class="bi bi-person-hearts" style="font-size:11px"></i>
+              {{ gp.student.guardian_phone }}
+            </div>
+            {% else %}
+            <span style="color:#CBD5E1;font-size:11px">No parent no.</span>
+            {% endif %}
+          </td>
+
+          <!-- Status -->
+          <td>
+            {% if gp.is_overstayed %}
+              <span class="badge" style="background:#FEE2E2;color:#DC2626">Overstayed</span>
+            {% elif gp.entry_qr_scanned %}
+              <span class="badge badge-paid">Returned</span>
+            {% else %}
+              <span class="badge" style="background:#F0FDFA;color:#0D9488;font-weight:700">Outside</span>
+            {% endif %}
+          </td>
+
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% else %}
+  <div style="padding:36px;text-align:center;color:var(--text-3)">
+    <i class="bi bi-house-check-fill" style="font-size:28px;color:#059669;opacity:.3;display:block;margin-bottom:8px"></i>
+    <div style="font-size:13px">
+      {% if filter_date %}No exit QR scans recorded for {{ filter_date }}{% else %}All students are inside{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div><!-- end hostel card -->
+{% empty %}
+<div class="card">
+  <div style="padding:48px;text-align:center;color:var(--text-3)">
+    <i class="bi bi-building" style="font-size:36px;opacity:.25;display:block;margin-bottom:10px"></i>
+    No hostels found.
+  </div>
+</div>
+{% endfor %}
+
+<script>
+// Per-hostel client-side filtering
+document.querySelectorAll('.out-filter').forEach(function(el) {
+  el.addEventListener('input', function() { applyFilter(this.dataset.card); });
+  el.addEventListener('change', function() { applyFilter(this.dataset.card); });
+});
+
+function applyFilter(card) {
+  const rollInput = document.querySelector('.out-filter[data-card="'+card+'"][data-col="roll"]');
+  const roomSel   = document.querySelector('.out-filter[data-card="'+card+'"][data-col="room"]');
+  const deptSel   = document.querySelector('.out-filter[data-card="'+card+'"][data-col="dept"]');
+  const rollVal   = rollInput ? rollInput.value.toLowerCase().trim() : '';
+  const roomVal   = roomSel  ? roomSel.value.trim()                  : '';
+  const deptVal   = deptSel  ? deptSel.value.toLowerCase().trim()    : '';
+
+  let visible = 0;
+  document.querySelectorAll('.out-row[data-card="'+card+'"]').forEach(function(row) {
+    const rollMatch = !rollVal || row.dataset.roll.includes(rollVal);
+    const roomMatch = !roomVal || row.dataset.room === roomVal;
+    const deptMatch = !deptVal || row.dataset.dept.includes(deptVal);
+    const show = rollMatch && roomMatch && deptMatch;
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const countEl = document.getElementById('count-'+card);
+  if (countEl) countEl.textContent = 'Showing ' + visible + ' record' + (visible !== 1 ? 's' : '');
+}
+
+function clearFilters(card) {
+  document.querySelectorAll('.out-filter[data-card="'+card+'"]').forEach(function(el) {
+    el.value = '';
+  });
+  applyFilter(card);
+}
+</script>
+{% endblock %}

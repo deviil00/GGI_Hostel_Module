@@ -1,0 +1,226 @@
+{% extends 'base/base.html' %}
+{% block title %}Scan QR Code{% endblock %}
+{% block page_title %}Scan QR Code{% endblock %}
+
+{% block extra_css %}
+<style>
+  #camera-container {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #000;
+    aspect-ratio: 1;
+  }
+  #qr-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  #scan-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .scan-frame {
+    width: 220px;
+    height: 220px;
+    border: 3px solid #fff;
+    border-radius: 14px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,.45);
+    position: relative;
+  }
+  .scan-frame::before, .scan-frame::after,
+  .scan-frame-inner::before, .scan-frame-inner::after {
+    content: '';
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border-color: #1565C0;
+    border-style: solid;
+    border-width: 0;
+  }
+  .scan-frame::before  { top: -3px;  left: -3px;  border-top-width: 4px; border-left-width: 4px;  border-radius: 4px 0 0 0; }
+  .scan-frame::after   { top: -3px;  right: -3px; border-top-width: 4px; border-right-width: 4px; border-radius: 0 4px 0 0; }
+  .scan-frame-inner::before { bottom: -3px; left: -3px;  border-bottom-width: 4px; border-left-width: 4px;  border-radius: 0 0 0 4px; }
+  .scan-frame-inner::after  { bottom: -3px; right: -3px; border-bottom-width: 4px; border-right-width: 4px; border-radius: 0 0 4px 0; }
+  .scan-line {
+    position: absolute;
+    left: 10px; right: 10px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #1565C0, transparent);
+    animation: scan 2s linear infinite;
+  }
+  @keyframes scan { 0% { top: 10px; } 100% { top: calc(100% - 12px); } }
+  #scan-status {
+    text-align: center;
+    margin-top: 12px;
+    font-size: 13.5px;
+    font-weight: 600;
+    min-height: 24px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Scan QR Code</h4>
+    <p>Use camera or paste token manually</p>
+  </div>
+  <a href="{% url 'security_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Dashboard
+  </a>
+</div>
+
+<div class="row g-4">
+  <!-- Camera scan -->
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-camera-fill" style="color:#1565C0"></i></div>
+          Camera Scan
+        </div>
+        <button id="toggleCamera" class="btn btn-sm btn-primary" onclick="startCamera()">
+          <i class="bi bi-camera me-1"></i>Start Camera
+        </button>
+      </div>
+      <div class="card-body p-4">
+        <div id="camera-container" style="display:none">
+          <video id="qr-video" autoplay muted playsinline></video>
+          <div id="scan-overlay">
+            <div class="scan-frame">
+              <div class="scan-frame-inner"></div>
+              <div class="scan-line"></div>
+            </div>
+          </div>
+        </div>
+        <div id="camera-placeholder" class="text-center py-5" style="color:var(--text-3)">
+          <i class="bi bi-camera" style="font-size:48px;opacity:.3"></i>
+          <p class="mt-3" style="font-size:13px">Click "Start Camera" to begin scanning</p>
+        </div>
+        <div id="scan-status" style="color:var(--text-2)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual entry -->
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#F5F3FF"><i class="bi bi-keyboard" style="color:#7C3AED"></i></div>
+          Manual Token Entry
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:20px">
+          If the camera is unavailable, paste or type the QR token string below.
+        </p>
+        <form method="post" action="{% url 'scan_qr' %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-600">QR Token</label>
+            <textarea name="token" class="form-control" rows="4"
+                      placeholder="Paste the token string here..." required
+                      style="font-family:monospace;font-size:11.5px"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-search me-1"></i>Verify Token
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card mt-3" style="border-color:#C4B5FD">
+      <div class="card-body p-3">
+        <div class="fw-700 mb-2" style="font-size:13px;color:#5B21B6">
+          <i class="bi bi-info-circle-fill me-1"></i>How it works
+        </div>
+        <ul style="font-size:12.5px;color:var(--text-2);padding-left:16px;margin:0">
+          <li><strong>Exit QR</strong>: student shows when leaving — one-time use, no expiry.</li>
+          <li><strong>Entry QR</strong>: student shows when returning — one-time use, expires in <strong>5 minutes</strong>.</li>
+          <li>After scanning, you'll see student details and can confirm the action.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden redirect form for camera scan (POST to avoid URL encoding issues) -->
+<form id="cameraVerifyForm" method="post" action="{% url 'scan_qr' %}" style="display:none">
+  {% csrf_token %}
+  <input type="hidden" name="token" id="scannedToken">
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+let stream = null;
+let animFrame = null;
+const video    = document.getElementById('qr-video');
+const status   = document.getElementById('scan-status');
+const camBox   = document.getElementById('camera-container');
+const camPlaceholder = document.getElementById('camera-placeholder');
+const toggleBtn = document.getElementById('toggleCamera');
+
+async function startCamera() {
+  if (stream) {
+    stopCamera();
+    return;
+  }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = stream;
+    camBox.style.display = 'block';
+    camPlaceholder.style.display = 'none';
+    toggleBtn.innerHTML = '<i class="bi bi-camera-video-off me-1"></i>Stop Camera';
+    toggleBtn.classList.replace('btn-primary', 'btn-outline-danger');
+    status.textContent = 'Scanning…';
+    status.style.color = 'var(--text-2)';
+    video.addEventListener('loadedmetadata', tick);
+  } catch(e) {
+    status.textContent = 'Camera access denied or unavailable.';
+    status.style.color = '#DC2626';
+  }
+}
+
+function stopCamera() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+  camBox.style.display = 'none';
+  camPlaceholder.style.display = 'block';
+  toggleBtn.innerHTML = '<i class="bi bi-camera me-1"></i>Start Camera';
+  toggleBtn.classList.replace('btn-outline-danger', 'btn-primary');
+  status.textContent = '';
+}
+
+function tick() {
+  if (!stream) return;
+  const canvas = document.createElement('canvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+  if (code && code.data) {
+    stopCamera();
+    status.textContent = '✓ QR detected — redirecting…';
+    status.style.color = '#059669';
+    document.getElementById('scannedToken').value = code.data;
+    document.getElementById('cameraVerifyForm').submit();
+  } else {
+    animFrame = requestAnimationFrame(tick);
+  }
+}
+</script>
+{% endblock %}

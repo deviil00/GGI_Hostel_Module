@@ -1,0 +1,45 @@
+{% extends "base/base.html" %}
+{% block title %}Raise Complaint{% endblock %}
+{% block page_title %}Raise a Complaint{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        New Complaint
+        <a href="{% url 'student_dashboard' %}" class="btn btn-outline-secondary btn-sm">← Back</a>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Category</label>
+            <select name="category" class="form-select" required>
+              <option value="">Select category…</option>
+              {% for val, label in categories %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Title</label>
+            <input type="text" name="title" class="form-control"
+                   placeholder="Short description of the issue" required maxlength="200">
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Description</label>
+            <textarea name="description" class="form-control" rows="4"
+                      placeholder="Describe the problem in detail…" required></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-dark w-100">Submit Complaint</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

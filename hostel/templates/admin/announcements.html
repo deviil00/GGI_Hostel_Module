@@ -1,0 +1,957 @@
+{% extends "base/base.html" %}
+{% block title %}Announcements — Hostel ERP{% endblock %}
+{% block page_title %}Announcements{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Announcements</h4>
+    <p>
+      {% if is_admin %}Publish and manage announcements for students and staff
+      {% else %}Notices and updates from the hostel administration{% endif %}
+    </p>
+  </div>
+  {% if is_admin %}
+  <div class="d-flex gap-2 flex-wrap">
+    <button class="btn btn-sm btn-outline-secondary" onclick="toggleManager('cat-manager','aud-manager')">
+      <i class="bi bi-tags-fill me-1"></i>Categories
+    </button>
+    <button class="btn btn-sm btn-outline-secondary" onclick="toggleManager('aud-manager','cat-manager')">
+      <i class="bi bi-people-fill me-1"></i>Audience Groups
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+{% if is_admin %}
+{# ══════════════════ ADMIN — CATEGORY MANAGER (collapsible) ══════════════════ #}
+<div id="cat-manager" style="display:none" class="card mb-4">
+  <div class="card-header" style="background:linear-gradient(135deg,#0F4C81,#1565C0);color:#fff;border:none">
+    <div class="card-header-left" style="color:#fff">
+      <i class="bi bi-tags-fill me-2"></i><strong>Announcement Categories</strong>
+    </div>
+    <button type="button" class="btn btn-xs" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)"
+            onclick="toggleManager('cat-manager')">Close</button>
+  </div>
+  <div class="card-body p-4">
+    <div class="row g-4">
+      <div class="col-md-5">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_category">
+          <div class="mb-2">
+            <label class="form-label fw-600" style="font-size:12px">Category Name <span class="text-danger">*</span></label>
+            <input type="text" name="cat_name" class="form-control form-control-sm"
+                   placeholder="e.g. Academics, Gate Pass, Events" required
+                   list="cat-suggestions">
+            <datalist id="cat-suggestions">
+              <option value="Academics"><option value="Gate Pass"><option value="Hostel Rules">
+              <option value="Events"><option value="Mess &amp; Food"><option value="Fees">
+              <option value="Holiday Notice"><option value="Health &amp; Safety">
+              <option value="Maintenance"><option value="General">
+            </datalist>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-7">
+              <label class="form-label fw-600" style="font-size:12px">Icon (Bootstrap Icons)</label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text" id="cat-icon-prev"><i class="bi bi-megaphone"></i></span>
+                <input type="text" name="cat_icon" id="cat-icon-input" class="form-control"
+                       value="bi-megaphone" placeholder="bi-mortarboard"
+                       oninput="document.getElementById('cat-icon-prev').innerHTML='<i class=\'bi \'+this.value+\'\'></i>'">
+              </div>
+            </div>
+            <div class="col-5">
+              <label class="form-label fw-600" style="font-size:12px">Color</label>
+              <input type="color" name="cat_color" class="form-control form-control-sm form-control-color"
+                     value="#1565C0" style="height:34px">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-sm btn-success w-100">
+            <i class="bi bi-plus-circle me-1"></i>Add Category
+          </button>
+        </form>
+      </div>
+      <div class="col-md-7">
+        {% if categories %}
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+          {% for cat in categories %}
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:10px;
+                      background:#F8FAFF;border:1.5px solid {{ cat.color }}20;min-width:140px">
+            <div style="width:30px;height:30px;border-radius:8px;background:{{ cat.color }}20;
+                        display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="bi {{ cat.icon }}" style="color:{{ cat.color }};font-size:14px"></i>
+            </div>
+            <span style="flex:1;font-size:13px;font-weight:600;color:var(--text-1)">{{ cat.name }}</span>
+            <form method="post" style="display:inline"
+                  onsubmit="return confirm('Delete category \'{{ cat.name|escapejs }}\'?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_category">
+              <input type="hidden" name="cat_pk" value="{{ cat.pk }}">
+              <button type="submit" class="btn btn-xs btn-outline-danger" style="padding:2px 6px">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="font-size:13px;color:var(--text-3);padding:20px 0">
+          No categories yet — add your first one using the form.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ══════════════════ ADMIN — AUDIENCE MANAGER (collapsible) ══════════════════ #}
+<div id="aud-manager" style="display:none" class="card mb-4">
+  <div class="card-header" style="background:linear-gradient(135deg,#065F46,#059669);color:#fff;border:none">
+    <div class="card-header-left" style="color:#fff">
+      <i class="bi bi-people-fill me-2"></i><strong>Custom Audience Groups</strong>
+    </div>
+    <button type="button" class="btn btn-xs"
+            style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)"
+            onclick="toggleManager('aud-manager')">Close</button>
+  </div>
+  <div class="card-body p-4">
+    <p style="font-size:12.5px;color:var(--text-2);margin-bottom:16px">
+      Create named groups (e.g. <em>NSS Volunteers, Sports Team, Block A Residents</em>). When selected as audience,
+      you can further filter by year, course, or hostel below. Courses are always pulled live from student profiles —
+      no hardcoding needed.
+    </p>
+    <div class="row g-4">
+      {# ── Add form ── #}
+      <div class="col-md-5">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_audience">
+          <div class="mb-2">
+            <label class="form-label fw-600" style="font-size:12px">Group Name <span class="text-danger">*</span></label>
+            <input type="text" name="aud_name" class="form-control form-control-sm"
+                   placeholder="e.g. NSS Volunteers, Sports Team" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-600" style="font-size:12px">Description</label>
+            <input type="text" name="aud_desc" class="form-control form-control-sm"
+                   placeholder="Who this group covers (optional)">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-7">
+              <label class="form-label fw-600" style="font-size:12px">Icon (Bootstrap Icons)</label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text" id="aud-icon-prev"><i class="bi bi-people-fill"></i></span>
+                <input type="text" name="aud_icon" id="aud-icon-input" class="form-control"
+                       value="bi-people-fill" placeholder="bi-star-fill"
+                       oninput="document.getElementById('aud-icon-prev').innerHTML='<i class=\'bi \'+this.value+\'\'></i>'">
+              </div>
+            </div>
+            <div class="col-5">
+              <label class="form-label fw-600" style="font-size:12px">Color</label>
+              <input type="color" name="aud_color" class="form-control form-control-sm form-control-color"
+                     value="#059669" style="height:34px">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-sm btn-success w-100">
+            <i class="bi bi-plus-circle me-1"></i>Add Group
+          </button>
+        </form>
+      </div>
+
+      {# ── Existing groups ── #}
+      <div class="col-md-7">
+        {% if custom_audiences %}
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+          {% for aud in custom_audiences %}
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;
+                      background:#F8FAFF;border:1.5px solid {{ aud.color }}25;min-width:160px;max-width:240px">
+            <div style="width:32px;height:32px;border-radius:8px;background:{{ aud.color }}20;
+                        display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="bi {{ aud.icon }}" style="color:{{ aud.color }};font-size:15px"></i>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:700;color:var(--text-1)">{{ aud.name }}</div>
+              {% if aud.description %}
+              <div style="font-size:11px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                {{ aud.description }}
+              </div>
+              {% endif %}
+              <div style="font-size:10.5px;color:var(--text-3);margin-top:2px">
+                {{ aud.announcements.count }} announcement{{ aud.announcements.count|pluralize }}
+              </div>
+            </div>
+            <form method="post" style="display:inline;flex-shrink:0"
+                  onsubmit="return confirm('Delete audience group \'{{ aud.name|escapejs }}\'?\nAnnouncements using this group will lose their audience link.')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_audience">
+              <input type="hidden" name="aud_pk" value="{{ aud.pk }}">
+              <button type="submit" class="btn btn-xs btn-outline-danger" style="padding:2px 6px">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="font-size:13px;color:var(--text-3);padding:20px 0">
+          No custom audience groups yet — create your first one.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ══════════════════ ADMIN — CREATE / EDIT FORM ══════════════════ #}
+<div class="card mb-4" id="ann-form-card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#FFFBEB"><i class="bi bi-megaphone-fill" style="color:#D97706"></i></div>
+      <span id="form-card-title">New Announcement</span>
+    </div>
+    <button type="button" class="btn btn-xs btn-outline-secondary" id="cancel-btn"
+            onclick="resetForm()" style="display:none">Cancel / Clear</button>
+  </div>
+  <form method="post" enctype="multipart/form-data" class="card-body p-4" id="ann-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save">
+    <input type="hidden" name="pk" id="edit-pk" value="">
+
+    <div class="row g-3">
+      {# Title #}
+      <div class="col-md-8">
+        <label class="form-label fw-600">Title <span class="text-danger">*</span></label>
+        <input type="text" name="title" id="edit-title" class="form-control"
+               placeholder="e.g. Water Supply Shutdown on 5th June" required>
+      </div>
+      {# Category #}
+      <div class="col-md-4">
+        <label class="form-label fw-600">Category</label>
+        <input type="text" name="category_name" id="edit-category" class="form-control"
+               list="cat-list" placeholder="e.g. Academics, Events…" autocomplete="off">
+        <datalist id="cat-list">
+          {% for cat in categories %}<option value="{{ cat.name }}">{% endfor %}
+          <option value="Academics"><option value="Gate Pass"><option value="Events">
+          <option value="Hostel Rules"><option value="Mess &amp; Food"><option value="General">
+        </datalist>
+      </div>
+      {# Content #}
+      <div class="col-12">
+        <label class="form-label fw-600">Message <span class="text-danger">*</span></label>
+        <textarea name="content" id="edit-content" class="form-control" rows="4"
+                  placeholder="Write the announcement details here…" required></textarea>
+      </div>
+
+      {# Priority | Audience | Expires #}
+      <div class="col-md-4">
+        <label class="form-label fw-600">Priority</label>
+        <div class="d-flex gap-2 flex-wrap" id="priority-pills">
+          {% for val, label in priorities %}
+          <label style="cursor:pointer">
+            <input type="radio" name="priority" value="{{ val }}"
+                   {% if val == 'info' %}checked{% endif %} style="display:none"
+                   onchange="updatePriorityPills()">
+            <span class="pri-pill" data-val="{{ val }}"
+                  style="display:inline-block;padding:5px 14px;border-radius:16px;font-size:12px;
+                         font-weight:600;border:2px solid;cursor:pointer;transition:all .15s;
+                         {% if val == 'info' %}background:#EBF3FF;color:#1565C0;border-color:#1565C0;
+                         {% else %}background:#F8FAFF;color:#64748B;border-color:#E2E8F0;{% endif %}">
+              {{ label }}
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-600">Audience <span class="text-danger">*</span></label>
+        <select name="audience" id="edit-audience" class="form-select"
+                onchange="toggleStudentFilters()">
+          <optgroup label="Built-in">
+            {% for val, label in audiences %}
+            {% if val != 'custom' %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endif %}
+            {% endfor %}
+          </optgroup>
+          {% if custom_audiences %}
+          <optgroup label="── Custom Groups ──">
+            {% for aud in custom_audiences %}
+            <option value="custom_{{ aud.pk }}">{{ aud.name }}</option>
+            {% endfor %}
+          </optgroup>
+          {% endif %}
+        </select>
+        {% if not custom_audiences %}
+        <div class="form-text" style="font-size:11px">
+          <i class="bi bi-info-circle me-1"></i>
+          <a href="javascript:void(0)" onclick="toggleManager('aud-manager','cat-manager')"
+             style="color:var(--blue)">Add custom audience groups</a> for specific teams, clubs, blocks, etc.
+        </div>
+        {% endif %}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-600">Expires On</label>
+        <input type="date" name="expires_at" id="edit-expires" class="form-control">
+        <div class="form-text">Leave blank to never expire</div>
+      </div>
+
+      {# ── Student targeting (shown when audience = students OR all) ── #}
+      <div class="col-12" id="student-filters" style="display:none">
+        <div style="background:#F0F9FF;border:1.5px solid #BAE6FD;border-radius:12px;padding:18px 20px">
+
+          {# Dynamic label based on selected audience #}
+          <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+            <div>
+              <div style="font-size:12.5px;font-weight:700;color:#0891B2" id="sf-headline">
+                <i class="bi bi-person-lines-fill me-1"></i>Student Targeting
+              </div>
+              <div style="font-size:11.5px;color:#64748B;margin-top:2px" id="sf-subline">
+                Leave all blank to include every matching student
+              </div>
+            </div>
+            <button type="button" onclick="clearStudentFilters()"
+                    style="font-size:11px;padding:3px 10px;border-radius:8px;border:1px solid #BAE6FD;
+                           background:#fff;color:#0891B2;cursor:pointer">
+              <i class="bi bi-x-circle me-1"></i>Clear Filters
+            </button>
+          </div>
+
+          <div class="row g-3">
+            {# Year #}
+            <div class="col-md-4">
+              <label class="form-label fw-600" style="font-size:12px">
+                <i class="bi bi-calendar2-week me-1" style="color:#0891B2"></i>Year(s)
+                <span style="font-size:10.5px;color:var(--text-3);font-weight:400">(all = blank)</span>
+              </label>
+              <div class="d-flex flex-wrap gap-2" id="year-checkboxes">
+                {% for val, label in year_choices %}
+                <label class="sf-chip" data-group="year">
+                  <input type="checkbox" name="target_years" value="{{ val }}"
+                         style="display:none" onchange="highlightChip(this)">
+                  <span>{{ label }}</span>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+
+            {# Hostel(s) — dynamic from DB #}
+            <div class="col-md-5">
+              <label class="form-label fw-600" style="font-size:12px">
+                <i class="bi bi-building-fill me-1" style="color:#0891B2"></i>Hostel(s)
+                <span style="font-size:10.5px;color:var(--text-3);font-weight:400">(blank = all)</span>
+              </label>
+
+              {# Hidden fallback for legacy target_gender field #}
+              <input type="hidden" name="target_gender" value="all">
+
+              {% if hostels_by_type %}
+              <div style="border:1px solid #BAE6FD;border-radius:8px;padding:10px 12px;background:#fff">
+
+                {# ── "All Hostels" row — selects every hostel across all types ── #}
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:8px;
+                            border-bottom:1px dashed #BAE6FD">
+                  <span style="font-size:10.5px;font-weight:800;text-transform:uppercase;
+                               color:#0891B2;letter-spacing:.4px">
+                    🏢 All Hostels
+                  </span>
+                  <button type="button" id="btn-all-hostels" onclick="toggleAllHostels()"
+                          style="font-size:10px;padding:1px 10px;border-radius:8px;
+                                 background:#F1F5F9;border:1px solid #E2E8F0;color:#64748B;cursor:pointer;
+                                 font-weight:600">
+                    Select All
+                  </button>
+                </div>
+
+                {# ── One group per hostel type (Boys / Girls / Staff / Other) ── #}
+                {% for htype, hostel_list in hostels_by_type.items %}
+                <div class="hostel-group" style="margin-bottom:{% if not forloop.last %}12px{% else %}0{% endif %}"
+                     data-htype="{{ htype }}">
+
+                  {# Group header: type label + "All [Boys/Girls/...]" button #}
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                    <span style="font-size:11px;font-weight:700;
+                                 color:{% if htype == 'boys' %}#1D4ED8{% elif htype == 'girls' %}#BE185D{% elif htype == 'staff' %}#6B7280{% else %}#374151{% endif %}">
+                      {% if htype == 'boys' %}🔵 Boys
+                      {% elif htype == 'girls' %}🔴 Girls
+                      {% elif htype == 'staff' %}⚪ Staff
+                      {% else %}🏠 {{ htype|title }}
+                      {% endif %}
+                    </span>
+                    {# "All [type]" button — selects all in this group #}
+                    <button type="button" class="hostel-group-all"
+                            data-htype="{{ htype }}"
+                            onclick="toggleHostelGroup('{{ htype }}')"
+                            style="font-size:10px;padding:1px 8px;border-radius:8px;
+                                   background:#F1F5F9;border:1px solid #E2E8F0;
+                                   color:#64748B;cursor:pointer;font-weight:600">
+                      All {% if htype == 'boys' %}Boys{% elif htype == 'girls' %}Girls{% elif htype == 'staff' %}Staff{% else %}{{ htype|title }}{% endif %}
+                    </button>
+                  </div>
+
+                  {# Individual hostel chips #}
+                  <div style="display:flex;flex-wrap:wrap;gap:5px">
+                    {% for h in hostel_list %}
+                    <label class="sf-chip hostel-chip" data-group="hostel"
+                           data-htype="{{ htype }}" data-hid="{{ h.pk }}">
+                      <input type="checkbox" name="target_hostels" value="{{ h.pk }}"
+                             style="display:none" onchange="onHostelChipChange(this)">
+                      <span>{{ h.name }}</span>
+                    </label>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% if not forloop.last %}
+                <hr style="margin:8px 0;border-color:#EFF6FF">
+                {% endif %}
+                {% endfor %}
+
+              </div>
+              {% else %}
+              <div style="font-size:12px;color:var(--text-3);padding:8px">
+                No hostels found. <a href="{% url 'hostel_list' %}">Add a hostel first.</a>
+              </div>
+              {% endif %}
+            </div>
+
+            {# Department / Course #}
+            <div class="col-md-3">
+              <label class="form-label fw-600" style="font-size:12px">
+                <i class="bi bi-mortarboard me-1" style="color:#0891B2"></i>Course / Department(s)
+                <span style="font-size:10.5px;color:var(--text-3);font-weight:400">(blank = all courses)</span>
+              </label>
+              {% if departments %}
+              <div style="display:flex;flex-wrap:wrap;gap:6px;max-height:140px;overflow-y:auto;
+                          border:1px solid #BAE6FD;border-radius:8px;padding:10px;background:#fff">
+                {% for dept in departments %}
+                <label class="sf-chip" data-group="dept">
+                  <input type="checkbox" name="target_depts" value="{{ dept }}"
+                         style="display:none" onchange="highlightChip(this)">
+                  <span>{{ dept }}</span>
+                </label>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div style="font-size:12px;color:var(--text-3);padding:8px">
+                No departments found in student records yet.
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          {# Live preview of who will receive #}
+          <div id="sf-preview" style="margin-top:12px;padding:8px 14px;border-radius:8px;
+                                      background:rgba(8,145,178,.08);font-size:12px;color:#0369A1;display:none">
+            <i class="bi bi-eye me-1"></i><span id="sf-preview-text"></span>
+          </div>
+        </div>
+      </div>
+
+      {# Attachment & Active #}
+      <div class="col-md-6">
+        <label class="form-label fw-600">Attachment <span style="font-size:11px;color:var(--text-3)">(PDF, image, doc)</span></label>
+        <input type="file" name="attachment" id="edit-attachment" class="form-control"
+               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls">
+        <div id="current-attachment" style="display:none;margin-top:6px;font-size:12px">
+          <i class="bi bi-paperclip me-1" style="color:#1565C0"></i>
+          <span id="attachment-name"></span>
+          <label style="cursor:pointer;margin-left:8px;color:#DC2626;font-size:11px">
+            <input type="checkbox" name="clear_attachment" style="display:none">
+            <i class="bi bi-x-circle"></i> Remove
+          </label>
+        </div>
+      </div>
+      <div class="col-md-6 d-flex align-items-end">
+        <div class="form-check mb-1">
+          <input type="checkbox" name="is_active" id="edit-active" class="form-check-input" checked>
+          <label class="form-check-label fw-600" for="edit-active" style="font-size:13px">
+            Active — visible to recipients immediately
+          </label>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <button type="submit" class="btn btn-primary px-5">
+          <i class="bi bi-send me-1"></i><span id="submit-label">Publish Announcement</span>
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endif %}{# end is_admin #}
+
+{# ══════════════════ ANNOUNCEMENT LIST ══════════════════ #}
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#FFFBEB">
+        <i class="bi bi-bell-fill" style="color:#D97706"></i>
+      </div>
+      {% if is_admin %}All Announcements{% else %}Announcements for You{% endif %}
+      <span style="font-size:12px;background:#FFFBEB;color:#D97706;padding:2px 10px;
+                   border-radius:12px;font-weight:700;margin-left:4px">
+        {{ announcements|length }}
+      </span>
+    </div>
+  </div>
+
+  {% if announcements %}
+  <div class="card-body p-0">
+    {% for ann in announcements %}
+    <div style="padding:18px 22px;{% if not forloop.last %}border-bottom:1px solid var(--border-light){% endif %};
+                border-left:4px solid {% if ann.priority == 'urgent' %}#DC2626{% elif ann.priority == 'warning' %}#D97706{% else %}{% if ann.category %}{{ ann.category.color }}{% else %}#1565C0{% endif %}{% endif %}">
+      <div class="d-flex align-items-start justify-content-between gap-3">
+        {# Icon #}
+        <div style="width:42px;height:42px;border-radius:10px;flex-shrink:0;
+                    display:flex;align-items:center;justify-content:center;
+                    background:{% if ann.priority == 'urgent' %}#FEF2F2{% elif ann.priority == 'warning' %}#FFFBEB{% elif ann.category %}{{ ann.category.color }}20{% else %}#EBF3FF{% endif %}">
+          <i class="bi {% if ann.priority == 'urgent' %}bi-exclamation-circle-fill{% elif ann.priority == 'warning' %}bi-exclamation-triangle-fill{% elif ann.category %}{{ ann.category.icon }}{% else %}bi-megaphone-fill{% endif %}"
+             style="font-size:18px;color:{% if ann.priority == 'urgent' %}#DC2626{% elif ann.priority == 'warning' %}#D97706{% elif ann.category %}{{ ann.category.color }}{% else %}#1565C0{% endif %}"></i>
+        </div>
+
+        {# Body #}
+        <div style="flex:1;min-width:0">
+          {# Badges row #}
+          <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+            <span class="badge {% if ann.priority == 'urgent' %}badge-open{% elif ann.priority == 'warning' %}badge-pending{% else %}badge-partial{% endif %}">
+              {{ ann.get_priority_display }}
+            </span>
+            {% if ann.category %}
+            <span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px;
+                         background:{{ ann.category.color }}18;color:{{ ann.category.color }}">
+              <i class="bi {{ ann.category.icon }} me-1"></i>{{ ann.category.name }}
+            </span>
+            {% endif %}
+            {# Audience label badge #}
+            {% if ann.audience == 'custom' and ann.custom_audience %}
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;
+                         padding:2px 10px;border-radius:10px;
+                         background:{{ ann.custom_audience.color }}18;color:{{ ann.custom_audience.color }};
+                         border:1px solid {{ ann.custom_audience.color }}30">
+              <i class="bi {{ ann.custom_audience.icon }}"></i>{{ ann.custom_audience.name }}
+            </span>
+            {% else %}
+            <span style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;
+                         background:#F1F5F9;color:#64748B">
+              <i class="bi bi-people me-1"></i>
+              {% if ann.audience == 'all' %}Everyone
+                {% if ann.target_years or ann.target_depts or ann.target_gender != 'all' %}
+                  <span style="color:#0891B2">+&nbsp;Student&nbsp;Filter</span>
+                {% endif %}
+              {% elif ann.audience == 'students' %}Students Only
+              {% elif ann.audience == 'staff_all' %}All Staff
+              {% else %}{{ ann.get_audience_display }}{% endif %}
+            </span>
+            {% endif %}
+            {# Targeting pills — year / dept / gender (shown for students, all, custom) #}
+            {% if ann.audience == 'students' or ann.audience == 'all' or ann.audience == 'custom' %}
+              {% if ann.target_years %}
+              {% for yr in ann.target_years %}
+              <span style="font-size:10.5px;padding:1px 7px;border-radius:8px;
+                           background:#ECFDF5;color:#065F46;font-weight:600;border:1px solid #A7F3D0">
+                Yr {{ yr }}
+              </span>
+              {% endfor %}
+              {% endif %}
+              {% if ann.target_depts %}
+              {% for dp in ann.target_depts %}
+              <span style="font-size:10.5px;padding:1px 7px;border-radius:8px;
+                           background:#EFF6FF;color:#1D4ED8;font-weight:600;border:1px solid #BFDBFE">
+                {{ dp }}
+              </span>
+              {% endfor %}
+              {% endif %}
+              {% if ann.target_hostels %}
+              {# Resolve hostel names via JS hostel_map (injected below) #}
+              <span class="hostel-badge-container" data-hostels="{{ ann.target_hostels|join:',' }}"
+                    style="display:inline-flex;flex-wrap:wrap;gap:4px"></span>
+              {% elif ann.target_gender and ann.target_gender != 'all' %}
+              <span style="font-size:10.5px;padding:1px 7px;border-radius:8px;
+                           background:#FDF4FF;color:#7E22CE;font-weight:600;border:1px solid #E9D5FF">
+                <i class="bi bi-building me-1"></i>{{ ann.target_gender|capfirst }} Hostels
+              </span>
+              {% endif %}
+            {% endif %}
+            {% if not ann.is_active %}
+            <span class="badge" style="background:#F1F5F9;color:var(--text-3)">Inactive</span>
+            {% endif %}
+            {% if ann.expires_at %}
+            <span style="font-size:11px;color:var(--text-3)">
+              <i class="bi bi-calendar me-1"></i>Expires {{ ann.expires_at|date:"d M Y" }}
+            </span>
+            {% endif %}
+            {% if ann.attachment %}
+            <a href="{{ ann.attachment.url }}" target="_blank"
+               style="font-size:11px;color:#1565C0;font-weight:600;text-decoration:none">
+              <i class="bi bi-paperclip me-1"></i>Attachment
+            </a>
+            {% endif %}
+          </div>
+          <div style="font-size:14px;font-weight:700;color:var(--text-1);margin-bottom:4px">
+            {{ ann.title }}
+          </div>
+          <div style="font-size:13px;color:var(--text-2);line-height:1.6;white-space:pre-line">
+            {{ ann.content|truncatechars:200 }}
+          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:8px">
+            <i class="bi bi-person-fill me-1"></i>{{ ann.created_by.name|default:"Admin" }}
+            &nbsp;·&nbsp;{{ ann.created_at|date:"d M Y, h:i A" }}
+          </div>
+        </div>
+
+        {# Actions (admin only) #}
+        {% if is_admin %}
+        <div class="d-flex flex-column gap-1" style="flex-shrink:0">
+          <button class="btn btn-xs btn-outline-primary"
+                  onclick="editAnn(
+                    '{{ ann.pk }}',
+                    '{{ ann.title|escapejs }}',
+                    '{{ ann.content|escapejs }}',
+                    '{{ ann.priority }}',
+                    '{% if ann.audience == "custom" and ann.custom_audience %}custom_{{ ann.custom_audience_id }}{% else %}{{ ann.audience }}{% endif %}',
+                    '{% if ann.expires_at %}{{ ann.expires_at|date:'Y-m-d' }}{% endif %}',
+                    {{ ann.is_active|lower }},
+                    '{{ ann.category.name|default:''|escapejs }}',
+                    {{ ann.target_years|default:'[]'|safe }},
+                    {{ ann.target_depts|default:'[]'|safe }},
+                    '{{ ann.target_gender|default:'all' }}',
+                    {{ ann.target_hostels|default:'[]'|safe }},
+                    '{% if ann.attachment %}{{ ann.attachment.url|escapejs }}{% endif %}',
+                    '{% if ann.attachment %}{{ ann.attachment.name|escapejs }}{% endif %}'
+                  )"
+                  title="Edit">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <form method="post" action="{% url 'toggle_announcement' ann.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-xs {% if ann.is_active %}btn-outline-warning{% else %}btn-outline-success{% endif %} w-100"
+                    title="{% if ann.is_active %}Deactivate{% else %}Activate{% endif %}">
+              <i class="bi {% if ann.is_active %}bi-eye-slash{% else %}bi-eye{% endif %}"></i>
+            </button>
+          </form>
+          <form method="post" action="{% url 'delete_announcement' ann.pk %}"
+                onsubmit="return confirm('Delete this announcement?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-xs btn-outline-danger w-100" title="Delete">
+              <i class="bi bi-trash"></i>
+            </button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state" style="padding:60px">
+    <i class="bi bi-megaphone" style="font-size:40px;opacity:.3;display:block;margin-bottom:12px;color:var(--text-3)"></i>
+    <p style="font-size:14px;color:var(--text-2)">
+      {% if is_admin %}No announcements yet. Create one using the form above.
+      {% else %}No announcements for you at the moment. Check back later.{% endif %}
+    </p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+label.sf-chip {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 11px;
+  border-radius: 20px;
+  border: 1.5px solid #E2E8F0;
+  background: #fff;
+  color: #64748B;
+  font-weight: 500;
+  user-select: none;
+  transition: background .12s, color .12s, border-color .12s;
+}
+label.sf-chip:hover {
+  border-color: #0891B2;
+  color: #0891B2;
+}
+label.sf-chip.sf-chip-on {
+  background: #0891B2;
+  color: #fff;
+  border-color: #0891B2;
+  font-weight: 700;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ── Priority pills ── */
+const PRI = {
+  info:    {bg:'#EBF3FF', color:'#1565C0', border:'#1565C0'},
+  warning: {bg:'#FFFBEB', color:'#D97706', border:'#FCD34D'},
+  urgent:  {bg:'#FEF2F2', color:'#DC2626', border:'#FCA5A5'},
+};
+const PRI_INACTIVE = {bg:'#F8FAFF', color:'#64748B', border:'#E2E8F0'};
+function updatePriorityPills() {
+  const sel = document.querySelector('input[name="priority"]:checked');
+  document.querySelectorAll('.pri-pill').forEach(p => {
+    const s = (sel && sel.value === p.dataset.val) ? (PRI[p.dataset.val] || PRI_INACTIVE) : PRI_INACTIVE;
+    p.style.background = s.bg; p.style.color = s.color; p.style.borderColor = s.border;
+  });
+}
+updatePriorityPills();
+document.querySelectorAll('input[name="priority"]').forEach(r => r.addEventListener('change', updatePriorityPills));
+document.querySelectorAll('.pri-pill').forEach(p => p.addEventListener('click', function() {
+  this.closest('label').querySelector('input').checked = true; updatePriorityPills();
+}));
+
+/* ── Student filters toggle ── */
+function toggleStudentFilters() {
+  const sel  = document.getElementById('edit-audience');
+  const v    = sel.value;
+  const box  = document.getElementById('student-filters');
+  const isStudents = (v === 'students');
+  const isCustom   = v.startsWith('custom_');
+  const isAll      = (v === 'all');
+  const show = isStudents || isCustom || isAll;
+  box.style.display = show ? '' : 'none';
+  if (show) {
+    let headline, subline;
+    if (isCustom) {
+      const groupName = sel.options[sel.selectedIndex].text;
+      headline = `<i class="bi bi-people-fill me-1"></i>${groupName} — Student Targeting`;
+      subline  = 'Filter by year, course, or hostel within this group. Leave blank to reach all students.';
+    } else if (isStudents) {
+      headline = '<i class="bi bi-person-lines-fill me-1"></i>Student Targeting';
+      subline  = 'Filter by year, course, or hostel — leave blank to target all students';
+    } else {
+      headline = '<i class="bi bi-person-lines-fill me-1"></i>Student Sub-Targeting (Optional)';
+      subline  = 'All staff will see this. Use filters to limit which students also see it.';
+    }
+    document.getElementById('sf-headline').innerHTML   = headline;
+    document.getElementById('sf-subline').textContent  = subline;
+    updateSfPreview();
+  }
+}
+
+/* ── Hostel map (uuid → name) for badge rendering ── */
+const HOSTEL_MAP = {{ hostel_map|safe }};
+
+/* ── Render hostel badge containers in the list ── */
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.hostel-badge-container').forEach(function(el) {
+    const ids = el.dataset.hostels ? el.dataset.hostels.split(',').filter(Boolean) : [];
+    ids.forEach(function(id) {
+      const name = HOSTEL_MAP[id.trim()] || id.trim();
+      const span = document.createElement('span');
+      span.style.cssText = 'font-size:10.5px;padding:1px 7px;border-radius:8px;background:#EFF6FF;color:#1E40AF;font-weight:600;border:1px solid #BFDBFE';
+      span.innerHTML = '<i class="bi bi-building me-1"></i>' + name;
+      el.appendChild(span);
+    });
+  });
+});
+
+/* ── Chip highlight (year / dept) ── */
+function highlightChip(input) {
+  const lbl = input.closest('label');
+  if (input.type === 'radio') {
+    lbl.closest('.d-flex').querySelectorAll('label.sf-chip').forEach(l => l.classList.remove('sf-chip-on'));
+  }
+  lbl.classList.toggle('sf-chip-on', input.type === 'checkbox' ? input.checked : true);
+  updateSfPreview();
+}
+
+/* ── Hostel chip change ── */
+function onHostelChipChange(input) {
+  input.closest('label').classList.toggle('sf-chip-on', input.checked);
+  _syncAllHostelsBtn();
+  updateSfPreview();
+}
+
+/* ── Toggle all hostels in a type group ── */
+function toggleHostelGroup(htype) {
+  const chips = document.querySelectorAll(`.hostel-chip[data-htype="${htype}"] input`);
+  const anyUnchecked = [...chips].some(cb => !cb.checked);
+  chips.forEach(cb => {
+    cb.checked = anyUnchecked;
+    cb.closest('label').classList.toggle('sf-chip-on', anyUnchecked);
+  });
+  const btn = document.querySelector(`.hostel-group-all[data-htype="${htype}"]`);
+  if (btn) {
+    btn.style.background   = anyUnchecked ? '#0891B2' : '#F1F5F9';
+    btn.style.color        = anyUnchecked ? '#fff'    : '#64748B';
+    btn.style.borderColor  = anyUnchecked ? '#0891B2' : '#E2E8F0';
+  }
+  _syncAllHostelsBtn();
+  updateSfPreview();
+}
+
+/* ── Toggle every hostel across all groups ── */
+function toggleAllHostels() {
+  const allChips = document.querySelectorAll('input[name="target_hostels"]');
+  const anyUnchecked = [...allChips].some(cb => !cb.checked);
+  allChips.forEach(cb => {
+    cb.checked = anyUnchecked;
+    cb.closest('label').classList.toggle('sf-chip-on', anyUnchecked);
+  });
+  document.querySelectorAll('.hostel-group-all').forEach(btn => {
+    btn.style.background  = anyUnchecked ? '#0891B2' : '#F1F5F9';
+    btn.style.color       = anyUnchecked ? '#fff'    : '#64748B';
+    btn.style.borderColor = anyUnchecked ? '#0891B2' : '#E2E8F0';
+  });
+  const allBtn = document.getElementById('btn-all-hostels');
+  if (allBtn) {
+    allBtn.style.background  = anyUnchecked ? '#0891B2' : '#F1F5F9';
+    allBtn.style.color       = anyUnchecked ? '#fff'    : '#64748B';
+    allBtn.style.borderColor = anyUnchecked ? '#0891B2' : '#E2E8F0';
+    allBtn.textContent       = anyUnchecked ? 'Deselect All' : 'Select All';
+  }
+  updateSfPreview();
+}
+
+/* ── Sync "All Hostels" button state based on current selection ── */
+function _syncAllHostelsBtn() {
+  const allChips = document.querySelectorAll('input[name="target_hostels"]');
+  const allOn = allChips.length > 0 && [...allChips].every(cb => cb.checked);
+  const allBtn = document.getElementById('btn-all-hostels');
+  if (allBtn) {
+    allBtn.style.background  = allOn ? '#0891B2' : '#F1F5F9';
+    allBtn.style.color       = allOn ? '#fff'    : '#64748B';
+    allBtn.style.borderColor = allOn ? '#0891B2' : '#E2E8F0';
+    allBtn.textContent       = allOn ? 'Deselect All' : 'Select All';
+  }
+}
+
+/* ── Live preview ── */
+function updateSfPreview() {
+  const years   = [...document.querySelectorAll('input[name="target_years"]:checked')].map(i => i.value);
+  const depts   = [...document.querySelectorAll('input[name="target_depts"]:checked')].map(i => i.value);
+  const hostels = [...document.querySelectorAll('input[name="target_hostels"]:checked')]
+                    .map(i => HOSTEL_MAP[i.value] || i.value);
+  const parts = [];
+  if (years.length)   parts.push('Year ' + years.join(', '));
+  if (depts.length)   parts.push(depts.join(', '));
+  if (hostels.length) parts.push(hostels.join(', '));
+  const prev = document.getElementById('sf-preview');
+  if (parts.length) {
+    document.getElementById('sf-preview-text').textContent =
+      'Will reach: ' + parts.join('  ·  ') + ' students';
+    prev.style.display = '';
+  } else {
+    prev.style.display = 'none';
+  }
+}
+
+/* ── Clear student filters ── */
+function clearStudentFilters() {
+  document.querySelectorAll('input[name="target_years"]').forEach(cb => { cb.checked = false; });
+  document.querySelectorAll('input[name="target_depts"]').forEach(cb => { cb.checked = false; });
+  document.querySelectorAll('input[name="target_hostels"]').forEach(cb => { cb.checked = false; });
+  document.querySelectorAll('label.sf-chip').forEach(l => l.classList.remove('sf-chip-on'));
+  document.querySelectorAll('.hostel-group-all').forEach(btn => {
+    btn.style.background = '#F1F5F9'; btn.style.color = '#64748B'; btn.style.borderColor = '#E2E8F0';
+  });
+  const allBtn = document.getElementById('btn-all-hostels');
+  if (allBtn) {
+    allBtn.style.background = '#F1F5F9'; allBtn.style.color = '#64748B';
+    allBtn.style.borderColor = '#E2E8F0'; allBtn.textContent = 'Select All';
+  }
+  document.getElementById('sf-preview').style.display = 'none';
+}
+
+/* ── Panel toggle (show target, hide the other) ── */
+function toggleManager(target, other) {
+  const t = document.getElementById(target);
+  t.style.display = t.style.display === 'none' ? '' : 'none';
+  if (other) {
+    const o = document.getElementById(other);
+    if (o) o.style.display = 'none';
+  }
+  if (t.style.display !== 'none') t.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+/* ── Edit announcement ── */
+function editAnn(pk, title, content, priority, audience, expires, isActive,
+                 category, targetYears, targetDepts, targetGender, targetHostels, attUrl, attName) {
+  document.getElementById('edit-pk').value       = pk;
+  document.getElementById('edit-title').value    = title;
+  document.getElementById('edit-content').value  = content;
+  document.getElementById('edit-category').value = category;
+  document.getElementById('edit-audience').value = audience;
+  document.getElementById('edit-expires').value  = expires;
+  document.getElementById('edit-active').checked = isActive;
+
+  // priority
+  const priRadio = document.querySelector(`input[name="priority"][value="${priority}"]`);
+  if (priRadio) { priRadio.checked = true; updatePriorityPills(); }
+
+  // year checkboxes + chips
+  document.querySelectorAll('input[name="target_years"]').forEach(cb => {
+    cb.checked = Array.isArray(targetYears) && targetYears.includes(cb.value);
+    cb.closest('label').classList.toggle('sf-chip-on', cb.checked);
+  });
+
+  // dept checkboxes + chips
+  document.querySelectorAll('input[name="target_depts"]').forEach(cb => {
+    cb.checked = Array.isArray(targetDepts) && targetDepts.includes(cb.value);
+    cb.closest('label').classList.toggle('sf-chip-on', cb.checked);
+  });
+
+  // hostel checkboxes + chips
+  document.querySelectorAll('input[name="target_hostels"]').forEach(cb => {
+    cb.checked = Array.isArray(targetHostels) && targetHostels.map(String).includes(String(cb.value));
+    cb.closest('label').classList.toggle('sf-chip-on', cb.checked);
+  });
+  // Update "All [type]" group buttons
+  document.querySelectorAll('.hostel-group-all').forEach(function(btn) {
+    const htype = btn.dataset.htype;
+    const chips = document.querySelectorAll(`.hostel-chip[data-htype="${htype}"] input`);
+    const allOn = [...chips].every(cb => cb.checked) && chips.length > 0;
+    btn.style.background  = allOn ? '#0891B2' : '#F1F5F9';
+    btn.style.color       = allOn ? '#fff'    : '#64748B';
+    btn.style.borderColor = allOn ? '#0891B2' : '#E2E8F0';
+  });
+  _syncAllHostelsBtn();
+
+  // attachment
+  const attDiv  = document.getElementById('current-attachment');
+  const attSpan = document.getElementById('attachment-name');
+  if (attUrl) {
+    attDiv.style.display = '';
+    attSpan.innerHTML = `<a href="${attUrl}" target="_blank">${attName.split('/').pop()}</a>`;
+  } else {
+    attDiv.style.display = 'none';
+  }
+
+  toggleStudentFilters();
+  document.getElementById('submit-label').textContent    = 'Update Announcement';
+  document.getElementById('form-card-title').textContent = 'Edit Announcement';
+  document.getElementById('cancel-btn').style.display   = '';
+  document.getElementById('ann-form-card').scrollIntoView({behavior:'smooth'});
+}
+
+/* ── Reset form ── */
+function resetForm() {
+  document.getElementById('ann-form').reset();
+  document.getElementById('edit-pk').value = '';
+  updatePriorityPills();
+  document.querySelectorAll('label.sf-chip').forEach(l => l.classList.remove('sf-chip-on'));
+  document.querySelectorAll('.hostel-group-all').forEach(btn => {
+    btn.style.background = '#F1F5F9'; btn.style.color = '#64748B'; btn.style.borderColor = '#E2E8F0';
+  });
+  const allBtn = document.getElementById('btn-all-hostels');
+  if (allBtn) {
+    allBtn.style.background = '#F1F5F9'; allBtn.style.color = '#64748B';
+    allBtn.style.borderColor = '#E2E8F0'; allBtn.textContent = 'Select All';
+  }
+  document.getElementById('student-filters').style.display = 'none';
+  document.getElementById('sf-preview').style.display      = 'none';
+  document.getElementById('current-attachment').style.display = 'none';
+  document.getElementById('submit-label').textContent    = 'Publish Announcement';
+  document.getElementById('form-card-title').textContent = 'New Announcement';
+  document.getElementById('cancel-btn').style.display   = 'none';
+}
+
+// No gender chip init needed — hostel chips start unchecked (blank = all hostels)
+</script>
+{% endblock %}

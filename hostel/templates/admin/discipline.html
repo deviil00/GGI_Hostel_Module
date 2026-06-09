@@ -1,0 +1,231 @@
+{% extends 'base/base.html' %}
+{% block title %}Discipline & Fines{% endblock %}
+{% block page_title %}Discipline & Fines{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Discipline &amp; Fines</h4>
+    <p>Incident records, warnings, and fine management</p>
+  </div>
+  <div class="d-flex gap-2">
+    {% if user.role == 'super_admin' %}
+    <a href="{% url 'discipline_category_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-tags me-1"></i>Categories
+    </a>
+    {% endif %}
+    <a href="{% url 'discipline_report' %}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-bar-chart-line me-1"></i>Reports
+    </a>
+    <a href="{% url 'discipline_add' %}" class="btn btn-sm btn-danger">
+      <i class="bi bi-plus-lg me-1"></i>Report Incident
+    </a>
+  </div>
+</div>
+
+{# ── Stat cards ──────────────────────────────────────────────────────── #}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-2">
+    <a href="?status=" class="text-decoration-none">
+      <div class="stat-card {% if not status_filter %}active-filter{% endif %}">
+        <div class="stat-value">{{ counts.all }}</div>
+        <div class="stat-label">All Records</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=pending" class="text-decoration-none">
+      <div class="stat-card {% if status_filter == 'pending' %}active-filter{% endif %}" style="border-left:3px solid #D97706">
+        <div class="stat-value" style="color:#D97706">{{ counts.pending }}</div>
+        <div class="stat-label">Pending</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=under_investigation" class="text-decoration-none">
+      <div class="stat-card {% if status_filter == 'under_investigation' %}active-filter{% endif %}" style="border-left:3px solid #1565C0">
+        <div class="stat-value" style="color:#1565C0">{{ counts.under_investigation }}</div>
+        <div class="stat-label">Under Investigation</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=resolved" class="text-decoration-none">
+      <div class="stat-card {% if status_filter == 'resolved' %}active-filter{% endif %}" style="border-left:3px solid #059669">
+        <div class="stat-value" style="color:#059669">{{ counts.resolved }}</div>
+        <div class="stat-label">Resolved</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=closed" class="text-decoration-none">
+      <div class="stat-card {% if status_filter == 'closed' %}active-filter{% endif %}" style="border-left:3px solid #64748B">
+        <div class="stat-value" style="color:#64748B">{{ counts.closed }}</div>
+        <div class="stat-label">Closed</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-2">
+    <div class="stat-card" style="border-left:3px solid #DC2626">
+      <div class="stat-value" style="color:#DC2626">{{ counts.unpaid_fines }}</div>
+      <div class="stat-label">Unpaid Fines</div>
+    </div>
+  </div>
+</div>
+
+{# ── Filter bar ──────────────────────────────────────────────────────── #}
+<div class="filter-card d-flex align-items-center gap-2 flex-wrap mb-3">
+  <form method="get" class="d-flex gap-2 align-items-center flex-wrap w-100">
+    <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+           style="max-width:220px" placeholder="Search student, category…">
+    <select name="hostel" class="form-select form-select-sm" style="max-width:180px">
+      <option value="">All Hostels</option>
+      {% for h in hostels %}
+      <option value="{{ h }}" {% if hostel_filter == h %}selected{% endif %}>{{ h }}</option>
+      {% endfor %}
+    </select>
+    <select name="status" class="form-select form-select-sm" style="max-width:170px">
+      <option value="">All Statuses</option>
+      {% for val, lbl in statuses %}
+      <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ lbl }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-sm btn-dark"><i class="bi bi-search"></i></button>
+    <a href="{% url 'discipline_list' %}" class="btn btn-sm btn-outline-secondary">Clear</a>
+  </form>
+</div>
+
+{# ── Records table ───────────────────────────────────────────────────── #}
+<div class="card">
+  <div class="card-header py-3">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#FEE2E2"><i class="bi bi-exclamation-triangle-fill" style="color:#DC2626"></i></div>
+      Incident Records
+    </div>
+    <span class="text-muted" style="font-size:12px">{{ page.paginator.count }} record{{ page.paginator.count|pluralize }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Hostel / Room</th>
+          <th>Category</th>
+          <th>Incident Date</th>
+          <th>Warning</th>
+          <th>Fine</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rec in page.object_list %}
+        <tr>
+          <td>
+            <div class="tbl-name">{{ rec.student.name }}</div>
+            <div class="tbl-sub">{{ rec.student.roll_number }}</div>
+            {% if rec.student.course %}
+            <div style="font-size:10.5px;color:var(--text-3)">{{ rec.student.course }}{% if rec.student.year_of_study %} · Yr.{{ rec.student.year_of_study }}{% endif %}</div>
+            {% endif %}
+          </td>
+          <td style="font-size:12.5px">
+            {% if rec.hostel_name %}
+            <div>{{ rec.hostel_name }}</div>
+            <div style="color:var(--text-3)">Rm {{ rec.room_number }}{% if rec.floor %} · Fl {{ rec.floor }}{% endif %}</div>
+            {% else %}
+            <span style="color:var(--text-3)">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if rec.category %}
+            <span class="badge" style="background:{{ rec.category.severity_color }}20;color:{{ rec.category.severity_color }};border:1px solid {{ rec.category.severity_color }}40;font-size:11.5px">
+              {{ rec.category.name }}
+            </span>
+            {% else %}
+            <span style="color:var(--text-3);font-size:12px">—</span>
+            {% endif %}
+          </td>
+          <td style="font-size:12.5px">
+            {{ rec.incident_date|date:"d M Y" }}
+            {% if rec.incident_time %}<div style="color:var(--text-3);font-size:11px">{{ rec.incident_time|time:"H:i" }}</div>{% endif %}
+          </td>
+          <td>
+            {% if rec.warning_type == 'none' %}
+            <span style="font-size:11.5px;color:var(--text-3)">None</span>
+            {% elif rec.warning_type == 'verbal' %}
+            <span class="badge" style="background:#FEF3C7;color:#92400E">Verbal</span>
+            {% elif rec.warning_type == 'written' %}
+            <span class="badge" style="background:#FED7AA;color:#9A3412">Written</span>
+            {% elif rec.warning_type == 'final' %}
+            <span class="badge bg-danger">Final</span>
+            {% endif %}
+          </td>
+          <td style="font-size:12.5px">
+            {% if rec.fine_amount > 0 %}
+              {% if rec.fine_paid %}
+              <span class="badge bg-success">₹{{ rec.fine_amount }} Paid</span>
+              {% elif rec.is_fine_overdue %}
+              <span class="badge bg-danger">₹{{ rec.fine_amount }} Overdue</span>
+              {% else %}
+              <span class="badge" style="background:#FEF3C7;color:#92400E">₹{{ rec.fine_amount }} Due</span>
+              {% endif %}
+            {% else %}
+            <span style="color:var(--text-3)">No fine</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge" style="background:{{ rec.status_color }}20;color:{{ rec.status_color }};border:1px solid {{ rec.status_color }}40">
+              {{ rec.get_status_display }}
+            </span>
+          </td>
+          <td>
+            <a href="{% url 'discipline_detail' rec.pk %}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8">
+          <div class="empty-state py-4">
+            <i class="bi bi-shield-check" style="font-size:28px;opacity:.3"></i>
+            <p>No discipline records found.</p>
+          </div>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page.has_other_pages %}
+  <div class="d-flex justify-content-center py-3 border-top">
+    <nav><ul class="pagination mb-0">
+      {% if page.has_previous %}
+      <li class="page-item"><a class="page-link" href="?q={{ q }}&status={{ status_filter }}&hostel={{ hostel_filter }}&page={{ page.previous_page_number }}"><i class="bi bi-chevron-left"></i></a></li>
+      {% endif %}
+      {% for n in page.paginator.page_range %}
+      <li class="page-item {% if n == page.number %}active{% endif %}">
+        <a class="page-link" href="?q={{ q }}&status={{ status_filter }}&hostel={{ hostel_filter }}&page={{ n }}">{{ n }}</a>
+      </li>
+      {% endfor %}
+      {% if page.has_next %}
+      <li class="page-item"><a class="page-link" href="?q={{ q }}&status={{ status_filter }}&hostel={{ hostel_filter }}&page={{ page.next_page_number }}"><i class="bi bi-chevron-right"></i></a></li>
+      {% endif %}
+    </ul></nav>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  transition: box-shadow .15s;
+}
+.stat-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.stat-card.active-filter { box-shadow: 0 0 0 2px var(--primary); }
+.stat-value { font-size: 22px; font-weight: 700; }
+.stat-label { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+</style>
+{% endblock %}
