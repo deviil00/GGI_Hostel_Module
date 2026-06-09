@@ -1,6 +1,3 @@
-[phases.install]
-cmds = ["pip install -r hostel/requirements.txt"]
-
 [phases.build]
 cmds = ["cd hostel && python manage.py collectstatic --no-input"]
 
