@@ -134,11 +134,12 @@
     </div></a>
   </div>
   <div class="col-xl-2 col-md-4 col-6">
-    <a href="{% url 'student_list' %}" style="text-decoration:none">
+    <a href="{% url 'resident_analysis' %}" style="text-decoration:none">
     <div class="stat-card" style="--stat-color:#1565C0">
       <div class="s-top"><div class="s-icon" style="background:#EBF3FF"><i class="bi bi-people-fill" style="color:#1565C0"></i></div></div>
       <div class="s-number">{{ stats.total_students }}</div>
       <div class="s-label">{% if selected_hostel %}Hostel Residents{% else %}Total Residents{% endif %}</div>
+      <div style="font-size:10px;color:var(--blue);margin-top:4px;font-weight:600">View Analysis →</div>
     </div></a>
   </div>
   {% endif %}

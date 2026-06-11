@@ -9298,6 +9298,79 @@ def _pdf_table_style(header_color='#1565C0'):
     ])
 
 
+@login_required
+@superadmin_only
+def resident_analysis(request):
+    from apps.accounts.models import User as _User
+    hostel_pk = request.GET.get('hostel', '')
+    selected  = Hostel.objects.filter(pk=hostel_pk).first() if hostel_pk else None
+
+    # Overall summary
+    all_active = Student.objects.filter(allocations__status='active').distinct()
+    summary = {
+        'total':         all_active.count(),
+        'boys_total':    all_active.filter(gender='male').count(),
+        'boys_incampus': all_active.filter(gender='male', type_of_entry='incampus').count(),
+        'boys_outcampus':all_active.filter(gender='male', type_of_entry='outcampus').count(),
+        'girls_total':   all_active.filter(gender='female').count(),
+        'staff_total':   _User.objects.exclude(role__in=('superadmin','student')).filter(is_active=True).count(),
+        'warden_count':  _User.objects.filter(role='warden', is_active=True).count(),
+    }
+
+    # Hostel-wise breakdown
+    hostel_rows = []
+    for h in Hostel.objects.order_by('name'):
+        qs = Student.objects.filter(allocations__room__hostel=h, allocations__status='active').distinct()
+        boys   = qs.filter(gender='male').count()
+        girls  = qs.filter(gender='female').count()
+        inc    = qs.filter(gender='male', type_of_entry='incampus').count()
+        outc   = qs.filter(gender='male', type_of_entry='outcampus').count()
+        wardens = _User.objects.filter(role='warden', managed_hostels=h, is_active=True).count()
+        hostel_rows.append({
+            'hostel': h, 'total': boys + girls,
+            'boys': boys, 'girls': girls,
+            'boys_incampus': inc, 'boys_outcampus': outc,
+            'wardens': wardens,
+        })
+
+    # Detailed student list for selected hostel
+    hostel_students = None
+    if selected:
+        hostel_students = list(
+            Student.objects.filter(
+                allocations__room__hostel=selected,
+                allocations__status='active'
+            ).distinct().order_by('gender', 'roll_number')
+            .prefetch_related('allocations__room')
+        )
+        # attach room info
+        alloc_map = {
+            a.student_id: a
+            for a in RoomAllocation.objects.filter(
+                student__in=hostel_students, status='active'
+            ).select_related('room')
+        }
+        for s in hostel_students:
+            a = alloc_map.get(s.pk)
+            s.alloc_room = a.room if a else None
+
+        # also attach staff for this hostel
+        selected._wardens = list(_User.objects.filter(role='warden', managed_hostels=selected, is_active=True))
+        selected._staff   = list(_User.objects.filter(
+            role__in=('admin','maintenance','mess','security'),
+            is_active=True
+        ).filter(managed_hostels=selected) | _User.objects.filter(
+            role__in=('admin','maintenance','mess','security'), is_active=True
+        ).filter(mess_hostels=selected))
+
+    return render(request, 'admin/resident_analysis.html', {
+        'summary':         summary,
+        'hostel_rows':     hostel_rows,
+        'selected':        selected,
+        'hostel_students': hostel_students,
+    })
+
+
 @reports_download_access
 def reports_download_center(request):
     hostels = Hostel.objects.all().order_by('name')
