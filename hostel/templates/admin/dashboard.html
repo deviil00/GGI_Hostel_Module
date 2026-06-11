@@ -31,9 +31,9 @@
 }
 .s-number { font-size: 26px; font-weight: 800; line-height: 1; color: var(--text-1); }
 .s-label  { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-3); margin-top: 4px; }
-.s-sub    { font-size: 11px; color: var(--text-2); margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap; }
-.s-pill   { padding: 2px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 700; }
-.s-link   { font-size: 10px; color: var(--stat-color, var(--blue)); font-weight: 700; margin-top: 5px; }
+.s-sub     { font-size: 11px; color: var(--text-2); margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap; }
+.s-pill    { padding: 2px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 700; }
+.sc-link   { font-size: 10px; color: var(--stat-color, var(--blue)); font-weight: 700; margin-top: 5px; }
 
 /* ── Section group labels ─────────────────────────────────────── */
 .dash-group {
@@ -210,7 +210,7 @@
       </div>
       <div class="s-number">{{ stats.total_students }}</div>
       <div class="s-label">Total Residents</div>
-      <div class="s-link">View Analysis →</div>
+      <div class="sc-link">View Analysis →</div>
     </div></a>
   </div>
 
@@ -226,7 +226,7 @@
         <span class="s-pill" style="background:#DCFCE7;color:#166534">IC: {{ stats.boys_incampus }}</span>
         <span class="s-pill" style="background:#FEF3C7;color:#92400E">OC: {{ stats.boys_outcampus }}</span>
       </div>
-      <div class="s-link" style="color:#0891B2">Drill down →</div>
+      <div class="sc-link" style="color:#0891B2">Drill down →</div>
     </div></a>
   </div>
 
@@ -238,7 +238,7 @@
       </div>
       <div class="s-number" style="color:#7C3AED">{{ stats.girls_total }}</div>
       <div class="s-label">Total Girls</div>
-      <div class="s-link" style="color:#7C3AED">Drill down →</div>
+      <div class="sc-link" style="color:#7C3AED">Drill down →</div>
     </div></a>
   </div>
 
@@ -255,7 +255,7 @@
       <div class="s-sub">
         <span class="s-pill" style="background:#FFFBEB;color:#92400E">{{ stats.warden_count }} Warden{{ stats.warden_count|pluralize }}</span>
       </div>
-      <div class="s-link" style="color:#059669">View records →</div>
+      <div class="sc-link" style="color:#059669">View records →</div>
     </div>
   </div>
 
