@@ -163,6 +163,30 @@ class Student(models.Model):
     flag_set_at  = models.DateTimeField(null=True, blank=True)
     # ── profile edit permission ──
     can_edit_profile = models.BooleanField(default=False)
+    # ── location / entry type ──
+    state           = models.CharField(max_length=100, blank=True)
+    country         = models.CharField(max_length=100, blank=True, default='India')
+    type_of_entry   = models.CharField(
+        max_length=10,
+        choices=[('incampus', 'InCampus'), ('outcampus', 'OutCampus')],
+        blank=True
+    )
+    reporting_date  = models.DateField(null=True, blank=True)
+    # ── status / deactivation ──
+    is_active           = models.BooleanField(default=True)
+    inactive_reason     = models.CharField(
+        max_length=20,
+        choices=[('left_hostel', 'Left Hostel'), ('left_college', 'Left College')],
+        blank=True
+    )
+    inactive_remarks    = models.TextField(blank=True)
+    exit_date           = models.DateField(null=True, blank=True)
+    exit_time           = models.TimeField(null=True, blank=True)
+    marked_inactive_by  = models.ForeignKey(
+        'accounts.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='student_deactivations'
+    )
+    marked_inactive_at  = models.DateTimeField(null=True, blank=True)
     created_at     = models.DateTimeField(auto_now_add=True)
     updated_at     = models.DateTimeField(auto_now=True)
 

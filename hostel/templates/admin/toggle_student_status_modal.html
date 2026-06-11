@@ -1,0 +1,65 @@
+{% extends "base/base.html" %}
+{% block title %}Toggle Student Status — {{ student.name }}{% endblock %}
+{% block page_title %}Toggle Student Status{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-header {% if student.is_active %}bg-danger{% else %}bg-success{% endif %} text-white border-0">
+        <div class="card-header-left" style="color:#fff;font-size:13px;font-weight:700">
+          {% if student.is_active %}Mark Student as Inactive{% else %}Re-activate Student{% endif %}
+        </div>
+        <a href="{% url 'student_detail' student.pk %}" class="btn btn-xs" style="background:rgba(255,255,255,.2);color:#fff;border:none">Cancel</a>
+      </div>
+      <form method="post" action="{% url 'toggle_student_status' student.pk %}">
+        {% csrf_token %}
+        <div class="card-body p-4" style="font-size:13px">
+          <div class="mb-3">
+            <strong>{{ student.name }}</strong><br>
+            <span style="font-size:12px;color:var(--text-3)">{{ student.roll_number }} · {{ student.department }}</span>
+          </div>
+          {% if student.is_active %}
+          <div class="mb-3">
+            <label class="form-label fw-600">Reason <span class="text-danger">*</span></label>
+            <select name="inactive_reason" class="form-select" required>
+              <option value="">-- Select reason --</option>
+              <option value="left_hostel">Left Hostel</option>
+              <option value="left_college">Left College</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Remarks</label>
+            <textarea name="inactive_remarks" class="form-control" rows="3" placeholder="Optional remarks"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Exit Date</label>
+            <input type="date" name="exit_date" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Exit Time</label>
+            <input type="time" name="exit_time" class="form-control">
+          </div>
+          {% else %}
+          <div class="alert alert-success" style="font-size:13px">
+            <i class="bi bi-info-circle me-1"></i>
+            This will re-activate the student and clear inactive status.
+          </div>
+          {% if student.inactive_reason %}
+          <div style="font-size:12px;color:var(--text-3)" class="mb-2">
+            Inactive Reason: <strong>{{ student.get_inactive_reason_display }}</strong>
+          </div>
+          {% endif %}
+          {% endif %}
+        </div>
+        <div class="card-footer d-flex gap-2 justify-content-end">
+          <a href="{% url 'student_detail' student.pk %}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+          <button type="submit" class="btn btn-sm {% if student.is_active %}btn-danger{% else %}btn-success{% endif %}">
+            {% if student.is_active %}Mark Inactive{% else %}Re-activate{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

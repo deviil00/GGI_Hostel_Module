@@ -26,6 +26,7 @@ urlpatterns = [
     path('students/<uuid:pk>/',        views.student_detail, name='student_detail'),
     path('students/<uuid:pk>/set-flag/',            views.student_set_flag,              name='student_set_flag'),
     path('students/<uuid:pk>/toggle-edit-perm/',    views.student_toggle_edit_permission, name='student_toggle_edit_permission'),
+    path('students/<uuid:pk>/toggle-status/',       views.toggle_student_status,          name='toggle_student_status'),
     path('students/<uuid:student_pk>/allocate/', views.allocate_room, name='allocate_room'),
 
     # hostels (admin only)

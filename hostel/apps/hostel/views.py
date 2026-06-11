@@ -312,11 +312,14 @@ def student_list(request):
     if warden_hostel:
         qs = qs.filter(allocations__room__hostel=warden_hostel, allocations__status='active').distinct()
 
-    search       = request.GET.get('q', '').strip()
+    search        = request.GET.get('q', '').strip()
     hostel_filter = request.GET.get('hostel', '').strip()
-    dept         = request.GET.get('dept', '')
-    year         = request.GET.get('year', '')
-    status       = request.GET.get('status', '')
+    dept          = request.GET.get('dept', '')
+    year          = request.GET.get('year', '')
+    status        = request.GET.get('status', '')
+    state_filter   = request.GET.get('state', '').strip()
+    country_filter = request.GET.get('country', '').strip()
+    is_active_filter = request.GET.get('is_active', '').strip()
 
     if search:
         qs = qs.filter(
@@ -333,6 +336,10 @@ def student_list(request):
             qs = qs.exclude(allocations__status='active')
         else:
             qs = qs.filter(allocations__room__hostel__pk=hostel_filter, allocations__status='active').distinct()
+    if state_filter:   qs = qs.filter(state__iexact=state_filter)
+    if country_filter: qs = qs.filter(country__iexact=country_filter)
+    if is_active_filter == '1':  qs = qs.filter(is_active=True)
+    if is_active_filter == '0':  qs = qs.filter(is_active=False)
 
     # Master list (from Department model) + any extra from existing student profiles
     master_depts  = list(Department.objects.values_list('name', flat=True))
@@ -365,6 +372,9 @@ def student_list(request):
 
     all_hostels = Hostel.objects.order_by('type', 'name')
 
+    states    = Student.objects.exclude(state='').values_list('state', flat=True).distinct().order_by('state')
+    countries = Student.objects.exclude(country='').exclude(country__isnull=True).values_list('country', flat=True).distinct().order_by('country')
+
     return render(request, 'admin/students.html', {
         'page_students':     all_students,
         'student_count':     len(all_students),
@@ -372,10 +382,15 @@ def student_list(request):
         'departments':       filter_departments,
         'all_departments':   all_departments,
         'dept_objects':      _get_dept_objects_with_counts(),
-        'filters':           {'dept': dept, 'year': year, 'status': status, 'hostel': hostel_filter},
+        'filters':           {
+            'dept': dept, 'year': year, 'status': status, 'hostel': hostel_filter,
+            'state': state_filter, 'country': country_filter, 'is_active': is_active_filter,
+        },
         'warden_hostel':     warden_hostel,
         'is_admin':          is_admin,
         'all_hostels':       all_hostels,
+        'states':            states,
+        'countries':         countries,
     })
 
 
@@ -416,7 +431,7 @@ def _process_student_excel(excel_file, uploaded_by):  # noqa: C901
         header_row_num = 1
         data_start_row = 2
 
-    raw_headers = [ws.cell(row=header_row_num, column=c).value for c in range(1, 20)]
+    raw_headers = [ws.cell(row=header_row_num, column=c).value for c in range(1, 26)]
 
     # Build column-key → 0-based index map from header keywords
     col = {}
@@ -440,7 +455,7 @@ def _process_student_excel(excel_file, uploaded_by):  # noqa: C901
             col['sem'] = i
         elif 'gender' in h:
             col['gender'] = i
-        elif ('phone' in h or 'mobile' in h) and 'guardian' not in h:
+        elif ('phone' in h or 'mobile' in h) and 'guardian' not in h and 'parent' not in h:
             col['phone'] = i
         elif 'dob' in h or 'birth' in h:
             col['dob'] = i
@@ -458,6 +473,16 @@ def _process_student_excel(excel_file, uploaded_by):  # noqa: C901
             col['hostel'] = i
         elif 'room' in h:
             col['room'] = i
+        elif 'reporting' in h and 'date' in h:
+            col['reporting_date'] = i
+        elif 'type' in h and 'entry' in h:
+            col['type_of_entry'] = i
+        elif h == 'state':
+            col['state'] = i
+        elif 'country' in h:
+            col['country'] = i
+        elif 'parent' in h and 'phone' in h:
+            col['parent_phone'] = i
 
     missing = [k for k in ('roll', 'name') if k not in col]
     if missing:
@@ -472,7 +497,7 @@ def _process_student_excel(excel_file, uploaded_by):  # noqa: C901
     ):
         vals = list(row) + [None] * 20
 
-        if not any(v is not None for v in vals[:17]):
+        if not any(v is not None for v in vals[:25]):
             continue  # blank / separator row
 
         def _cell(key):
@@ -524,6 +549,25 @@ def _process_student_excel(excel_file, uploaded_by):  # noqa: C901
 
             email_val = _cell('email')
 
+            # ── Reporting date parsing ──
+            reporting_date_val = None
+            if 'reporting_date' in col and vals[col['reporting_date']]:
+                raw_rd = vals[col['reporting_date']]
+                if isinstance(raw_rd, (_dt.date, _dt.datetime)):
+                    reporting_date_val = raw_rd.date() if isinstance(raw_rd, _dt.datetime) else raw_rd
+                else:
+                    try:
+                        reporting_date_val = _dt.date.fromisoformat(str(raw_rd).strip())
+                    except ValueError:
+                        pass
+
+            type_of_entry_val = _cell('type_of_entry').lower()
+            if type_of_entry_val not in ('incampus', 'outcampus'):
+                type_of_entry_val = ''
+
+            state_val   = _cell('state').strip().title()
+            country_val = _cell('country').strip().title()
+
             student_defaults = {
                 'name':              name,
                 'phone':             _cell('phone'),
@@ -543,6 +587,14 @@ def _process_student_excel(excel_file, uploaded_by):  # noqa: C901
                 student_defaults['gender'] = gender_val
             if dob_val:
                 student_defaults['date_of_birth'] = dob_val
+            if state_val:
+                student_defaults['state'] = state_val
+            if country_val:
+                student_defaults['country'] = country_val
+            if type_of_entry_val:
+                student_defaults['type_of_entry'] = type_of_entry_val
+            if reporting_date_val:
+                student_defaults['reporting_date'] = reporting_date_val
 
             student, was_created = Student.objects.update_or_create(
                 roll_number=roll, defaults=student_defaults,
@@ -660,14 +712,16 @@ def student_import_sample(request):  # noqa: C901
     cc = Alignment(horizontal='center', vertical='center', wrap_text=True)
     lc = Alignment(horizontal='left',   vertical='center', indent=1)
 
-    # A-Q  (17 columns)
+    # A-W  (23 columns)
     # A: Roll No   B: Name    C: Unique ID   D: Email
     # E: Dept      F: Year    G: Semester    H: Gender
     # I: Phone     J: DOB
     # K: Guardian Name  L: Guardian Relation  M: Guardian Phone  N: Guardian Email
     # O: Address   P: Hostel Name   Q: Room No
+    # R: Reporting Date  S: Type of Entry  T: State  U: Country
+    # V: Parent Phone  W: Fee Status
     for i, w in enumerate(
-        [14, 22, 14, 28, 22, 7, 9, 9, 14, 14, 20, 18, 16, 26, 30, 18, 10], 1
+        [14, 22, 14, 28, 22, 7, 9, 9, 14, 14, 20, 18, 16, 26, 30, 18, 10, 14, 14, 14, 14, 14, 14], 1
     ):
         ws.column_dimensions[get_column_letter(i)].width = w
 
@@ -677,7 +731,7 @@ def student_import_sample(request):  # noqa: C901
     tc.font      = Font(bold=True, color='FFFFFF', size=13)
     tc.fill      = hfill('0D47A1')
     tc.alignment = Alignment(horizontal='left', vertical='center')
-    ws.merge_cells('A1:Q1')
+    ws.merge_cells('A1:W1')
     ws.row_dimensions[1].height = 26
 
     # Row 2 — section group labels
@@ -688,6 +742,8 @@ def student_import_sample(request):  # noqa: C901
         (11, 14, 'GUARDIAN INFO',      '6A1B9A'),
         (15, 15, 'ADDRESS',            'BF360C'),
         (16, 17, 'ADMIN ASSIGNED',     '455A64'),
+        (18, 21, 'EXTRA DETAILS',      '00695C'),
+        (22, 23, 'REFERENCE',          '78350F'),
     ]:
         c = ws.cell(row=2, column=sc, value=lbl)
         c.font = Font(bold=True, color='FFFFFF', size=9)
@@ -715,6 +771,12 @@ def student_import_sample(request):  # noqa: C901
         ('Address',                 'BF360C'),
         ('Hostel Name\n(Admin fills)', '455A64'),
         ('Room No.\n(Admin fills)',    '455A64'),
+        ('Reporting Date\n(DD-MM-YYYY)', '00695C'),
+        ('Type of Entry\n(InCampus/OutCampus)', '00695C'),
+        ('State',                   '00695C'),
+        ('Country',                 '00695C'),
+        ('Parent Phone',            '78350F'),
+        ('Fee Status\n(Reference only)', '78350F'),
     ]
     for col_idx, (hdr, clr) in enumerate(hdrs, 1):
         cell = ws.cell(row=3, column=col_idx, value=hdr)
@@ -730,12 +792,14 @@ def student_import_sample(request):  # noqa: C901
          'Computer Science & Engineering', '2', '3', 'Male',
          '9876543210', '15-03-2005',
          'Suresh Sharma', 'Father', '9876543211', 'suresh.sharma@gmail.com',
-         'Village Rampur, Tehsil ABC, District XYZ - 110001', '', ''),
+         'Village Rampur, Tehsil ABC, District XYZ - 110001', '', '',
+         '01-08-2024', 'InCampus', 'Haryana', 'India', '9876543211', 'Paid'),
         ('2024002', 'Priya Singh',    'GGI2024002', 'priya.singh@ggi.edu',
          'Electrical & Electronics Engg.', '2', '3', 'Female',
          '9876543212', '20-07-2005',
          'Rajesh Singh', 'Father', '9876543213', '',
-         '12 MG Road, Near Bus Stand, City - 110002', '', ''),
+         '12 MG Road, Near Bus Stand, City - 110002', '', '',
+         '01-08-2024', 'OutCampus', 'Punjab', 'India', '9876543213', 'Pending'),
     ]
     for r_idx, row_data in enumerate(samples, 4):
         row_fill = hfill('EBF3FF') if r_idx % 2 == 0 else hfill('F8FAFF')
@@ -747,11 +811,11 @@ def student_import_sample(request):  # noqa: C901
         ws.row_dimensions[r_idx].height = 18
 
     # Row 6 — separator
-    for c in range(1, 18):
+    for c in range(1, 24):
         cell = ws.cell(row=6, column=c, value='')
         cell.fill = hfill('F1F5F9'); cell.border = thin
 
-    # Rows 7-15 — notes
+    # Rows 7-17 — notes
     for row_num, text, bold, clr, bg in [
         (7,  'NOTES — Please read before filling:',
               True,  '1565C0', 'EBF3FF'),
@@ -765,11 +829,15 @@ def student_import_sample(request):  # noqa: C901
               False, '374151', 'FFFBEB'),
         (12, '5. If Email is provided, a login account is auto-created with temporary password = Roll Number.',
               False, '374151', 'FFFBEB'),
-        (13, '6. Date of Birth format: DD-MM-YYYY  e.g. 15-03-2005',
+        (13, '6. Date of Birth / Reporting Date format: DD-MM-YYYY  e.g. 15-03-2005',
               False, '374151', 'FFFBEB'),
         (14, '7. Gender: Male / Female / Other  (case-insensitive)',
               False, '374151', 'FFFBEB'),
         (15, '8. Guardian Relation: Father / Mother / Guardian / Relative / Other',
+              False, '374151', 'FFFBEB'),
+        (16, '9. Type of Entry: InCampus / OutCampus (case-insensitive)',
+              False, '374151', 'FFFBEB'),
+        (17, '10. Fee Status column (W) is for reference only — it is NOT imported into the system.',
               False, '374151', 'FFFBEB'),
     ]:
         cell = ws.cell(row=row_num, column=1, value=text)
@@ -777,7 +845,7 @@ def student_import_sample(request):  # noqa: C901
         cell.fill      = hfill(bg)
         cell.alignment = lc
         cell.border    = thin
-        ws.merge_cells(start_row=row_num, start_column=1, end_row=row_num, end_column=17)
+        ws.merge_cells(start_row=row_num, start_column=1, end_row=row_num, end_column=23)
         ws.row_dimensions[row_num].height = 16
 
     ws.freeze_panes = 'A4'
@@ -840,6 +908,18 @@ def student_import_sample(request):  # noqa: C901
          'LEAVE BLANK. Admin/SuperAdmin assigns this after upload. Filling it triggers auto-allocation.'),
         ('Q  Room No.',
          'LEAVE BLANK. Admin/SuperAdmin assigns this after upload. Must be filled together with Hostel Name.'),
+        ('R  Reporting Date',
+         'Date the student reported to hostel. Format: DD-MM-YYYY.'),
+        ('S  Type of Entry',
+         'InCampus (student lives in hostel campus) or OutCampus (student lives outside campus). Case-insensitive.'),
+        ('T  State',
+         "Student's home state. e.g. Haryana, Punjab, Uttar Pradesh."),
+        ('U  Country',
+         "Student's home country. Defaults to India if left blank."),
+        ('V  Parent Phone',
+         'Alternative parent/guardian contact number for reference.'),
+        ('W  Fee Status',
+         'For reference only — NOT imported. Use this column to note fee payment status in your records.'),
     ]
     for i, (col_name, desc) in enumerate(col_info, 3):
         bg = 'EBF3FF' if i % 2 == 0 else 'F8FAFF'
@@ -856,6 +936,58 @@ def student_import_sample(request):  # noqa: C901
     )
     resp['Content-Disposition'] = 'attachment; filename="student_import_sample.xlsx"'
     return resp
+
+
+@superadmin_only
+def toggle_student_status(request, pk):
+    """Superadmin: mark a student active or inactive."""
+    from django.utils import timezone as _tz
+    student = get_object_or_404(Student, pk=pk)
+    if request.method == 'POST':
+        if student.is_active:
+            # Mark inactive
+            reason   = request.POST.get('inactive_reason', '').strip()
+            remarks  = request.POST.get('inactive_remarks', '').strip()
+            exit_date_str = request.POST.get('exit_date', '').strip()
+            exit_time_str = request.POST.get('exit_time', '').strip()
+            import datetime as _dt2
+            student.is_active          = False
+            student.inactive_reason    = reason
+            student.inactive_remarks   = remarks
+            student.marked_inactive_by = request.user
+            student.marked_inactive_at = _tz.now()
+            if exit_date_str:
+                try:
+                    student.exit_date = _dt2.date.fromisoformat(exit_date_str)
+                except ValueError:
+                    pass
+            if exit_time_str:
+                try:
+                    student.exit_time = _dt2.time.fromisoformat(exit_time_str)
+                except ValueError:
+                    pass
+            student.save(update_fields=[
+                'is_active', 'inactive_reason', 'inactive_remarks',
+                'exit_date', 'exit_time', 'marked_inactive_by', 'marked_inactive_at'
+            ])
+            messages.success(request, f'{student.name} marked as Inactive.')
+        else:
+            # Re-activate
+            student.is_active        = True
+            student.inactive_reason  = ''
+            student.inactive_remarks = ''
+            student.exit_date        = None
+            student.exit_time        = None
+            student.save(update_fields=[
+                'is_active', 'inactive_reason', 'inactive_remarks',
+                'exit_date', 'exit_time'
+            ])
+            messages.success(request, f'{student.name} re-activated.')
+        return redirect('student_detail', pk=pk)
+    # GET — render modal form (JSON response for AJAX)
+    return render(request, 'admin/toggle_student_status_modal.html', {
+        'student': student,
+    })
 
 
 @admin_required
@@ -5267,6 +5399,16 @@ def admin_dashboard_v2(request):
     )
     partially_occupied_rooms = _room_alloc_qs.filter(_active__gt=0, _active__lt=F('capacity')).count()
 
+    # Gender-wise counts
+    boys_total    = student_qs.filter(gender='male').count()
+    girls_total   = student_qs.filter(gender='female').count()
+    boys_incampus = student_qs.filter(gender='male', type_of_entry='incampus').count()
+    boys_outcampus = student_qs.filter(gender='male', type_of_entry='outcampus').count()
+    # Staff counts (exclude superadmin and student roles)
+    from apps.accounts.models import User as _User
+    staff_total   = _User.objects.exclude(role__in=('superadmin', 'student')).filter(is_active=True).count()
+    warden_count  = _User.objects.filter(role='warden', is_active=True).count()
+
     stats = {
         'total_hostels':          Hostel.objects.count() if not selected_hostel else 1,
         'total_students':         total_residents,
@@ -5288,7 +5430,21 @@ def admin_dashboard_v2(request):
         'open_maintenance':  maintain_qs.filter(status='open').count(),
         'active_discipline': discipline_qs.filter(status='active').count(),
         'is_warden':         is_warden,
+        'boys_total':        boys_total,
+        'boys_incampus':     boys_incampus,
+        'boys_outcampus':    boys_outcampus,
+        'girls_total':       girls_total,
+        'staff_total':       staff_total,
+        'warden_count':      warden_count,
     }
+
+    # Hostel-wise gender breakdown
+    hostel_wise_data = []
+    for _hw in Hostel.objects.order_by('name'):
+        _boys  = Student.objects.filter(allocations__room__hostel=_hw, allocations__status='active', gender='male').distinct().count()
+        _girls = Student.objects.filter(allocations__room__hostel=_hw, allocations__status='active', gender='female').distinct().count()
+        _total = _boys + _girls
+        hostel_wise_data.append({'hostel': _hw, 'boys': _boys, 'girls': _girls, 'total': _total})
 
     # Hostel occupancy table — admin sees all, warden sees only theirs
     hostels_list = [selected_hostel] if selected_hostel else list(Hostel.objects.all())
@@ -5344,6 +5500,7 @@ def admin_dashboard_v2(request):
         'recent_complaints':  recent_complaints,
         'announcements':      announcements,
         'hostels_data':       hostels_data,
+        'hostel_wise_data':   hostel_wise_data,
         'overstayed':         overstayed,
         'pending_visitors':   pending_visitors,
         'all_hostels':        Hostel.objects.all(),

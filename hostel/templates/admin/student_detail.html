@@ -265,8 +265,143 @@
       {% endif %}
       {% endwith %}
 
+      {# Superadmin: toggle active/inactive #}
+      {% if request.user.role == 'superadmin' %}
+      <hr>
+      <button type="button" class="btn btn-sm w-100"
+              style="font-size:12px;font-weight:700;
+                     background:{% if student.is_active %}#FEF2F2{% else %}#ECFDF5{% endif %};
+                     color:{% if student.is_active %}#DC2626{% else %}#059669{% endif %};border:none"
+              data-bs-toggle="modal" data-bs-target="#toggleStatusDetailModal">
+        <i class="bi bi-{% if student.is_active %}person-x-fill{% else %}person-check-fill{% endif %} me-1"></i>
+        {% if student.is_active %}Mark Inactive{% else %}Re-activate{% endif %}
+      </button>
+
+      {# Toggle modal #}
+      <div class="modal fade" id="toggleStatusDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+          <div class="modal-content">
+            <div class="modal-header {% if student.is_active %}bg-danger{% else %}bg-success{% endif %} text-white border-0" style="padding:12px 16px">
+              <h6 class="modal-title mb-0" style="font-size:13px;font-weight:700">
+                {% if student.is_active %}Mark as Inactive{% else %}Re-activate Student{% endif %}
+              </h6>
+              <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'toggle_student_status' student.pk %}">
+              {% csrf_token %}
+              <div class="modal-body p-3" style="font-size:13px">
+                {% if student.is_active %}
+                <div class="mb-2">
+                  <label class="form-label" style="font-size:12px;font-weight:600">Reason <span class="text-danger">*</span></label>
+                  <select name="inactive_reason" class="form-select form-select-sm" required>
+                    <option value="">-- Select --</option>
+                    <option value="left_hostel">Left Hostel</option>
+                    <option value="left_college">Left College</option>
+                  </select>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label" style="font-size:12px;font-weight:600">Remarks</label>
+                  <textarea name="inactive_remarks" class="form-control form-control-sm" rows="2" placeholder="Optional remarks"></textarea>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label" style="font-size:12px;font-weight:600">Exit Date</label>
+                  <input type="date" name="exit_date" class="form-control form-control-sm">
+                </div>
+                <div class="mb-2">
+                  <label class="form-label" style="font-size:12px;font-weight:600">Exit Time</label>
+                  <input type="time" name="exit_time" class="form-control form-control-sm">
+                </div>
+                {% else %}
+                <p style="color:#059669;font-size:12px">This will re-activate the student and clear the inactive status.</p>
+                {% if student.inactive_reason %}
+                <div style="font-size:11px;color:var(--text-3)">Inactive Reason: <strong>{{ student.get_inactive_reason_display }}</strong></div>
+                {% endif %}
+                {% endif %}
+              </div>
+              <div class="modal-footer p-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-sm {% if student.is_active %}btn-danger{% else %}btn-success{% endif %}">
+                  {% if student.is_active %}Mark Inactive{% else %}Re-activate{% endif %}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
     </div>
   </div>
+
+  {# ── Academics Card ── #}
+  <div class="card mb-3">
+    <div class="card-header">
+      <div class="card-header-left" style="font-size:12.5px;font-weight:700">
+        <div class="ch-icon" style="background:#EBF3FF"><i class="bi bi-mortarboard-fill" style="color:#1565C0"></i></div>
+        Academics
+      </div>
+    </div>
+    <div class="card-body py-2 px-3">
+      <table class="table table-sm mb-0" style="font-size:12.5px">
+        <tr><td style="color:var(--text-3);width:50%">Department / Branch</td>
+            <td style="font-weight:600">{{ student.department|default:"—" }}</td></tr>
+        <tr><td style="color:var(--text-3)">Year</td>
+            <td>{{ student.get_year_display|default:"—" }}</td></tr>
+        <tr><td style="color:var(--text-3)">Semester</td>
+            <td>{{ student.semester }}</td></tr>
+        <tr><td style="color:var(--text-3)">Type of Entry</td>
+            <td>
+              {% if student.type_of_entry == 'incampus' %}
+                <span class="badge" style="background:#DCFCE7;color:#166534">InCampus</span>
+              {% elif student.type_of_entry == 'outcampus' %}
+                <span class="badge" style="background:#FEF3C7;color:#92400E">OutCampus</span>
+              {% else %}
+                <span style="color:var(--text-3)">—</span>
+              {% endif %}
+            </td></tr>
+        {% if student.reporting_date %}
+        <tr><td style="color:var(--text-3)">Reporting Date</td>
+            <td>{{ student.reporting_date|date:"d M Y" }}</td></tr>
+        {% endif %}
+        {% if student.state %}
+        <tr><td style="color:var(--text-3)">State</td>
+            <td>{{ student.state }}</td></tr>
+        {% endif %}
+        {% if student.country %}
+        <tr><td style="color:var(--text-3)">Country</td>
+            <td>{{ student.country }}</td></tr>
+        {% endif %}
+      </table>
+    </div>
+  </div>
+
+  {# ── Inactive Info (if applicable) ── #}
+  {% if not student.is_active %}
+  <div class="card mb-3" style="border:1.5px solid #FCA5A5">
+    <div class="card-header" style="background:#FEF2F2">
+      <div class="card-header-left" style="font-size:12.5px;font-weight:700;color:#DC2626">
+        <div class="ch-icon" style="background:#FEE2E2"><i class="bi bi-person-x-fill" style="color:#DC2626"></i></div>
+        Inactive Student
+      </div>
+    </div>
+    <div class="card-body py-2 px-3" style="font-size:12.5px">
+      {% if student.inactive_reason %}
+      <div><span style="color:var(--text-3)">Reason:</span> <strong>{{ student.get_inactive_reason_display }}</strong></div>
+      {% endif %}
+      {% if student.inactive_remarks %}
+      <div><span style="color:var(--text-3)">Remarks:</span> {{ student.inactive_remarks }}</div>
+      {% endif %}
+      {% if student.exit_date %}
+      <div><span style="color:var(--text-3)">Exit Date:</span> {{ student.exit_date|date:"d M Y" }}{% if student.exit_time %} at {{ student.exit_time|time:"H:i" }}{% endif %}</div>
+      {% endif %}
+      {% if student.marked_inactive_by %}
+      <div><span style="color:var(--text-3)">Marked by:</span> {{ student.marked_inactive_by.name|default:student.marked_inactive_by.email }}
+        {% if student.marked_inactive_at %}· {{ student.marked_inactive_at|date:"d M Y H:i" }}{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 
 </div>{# end left col #}
 
