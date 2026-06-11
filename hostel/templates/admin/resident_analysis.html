@@ -4,45 +4,48 @@
 
 {% block extra_css %}
 <style>
-  .summary-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 20px 22px;
-    box-shadow: var(--shadow-sm);
-    position: relative;
-    overflow: hidden;
+  .summary-pill {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 18px 20px;
+    box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
+    text-decoration: none; color: inherit; display: block;
+    transition: box-shadow .18s, transform .18s;
   }
-  .summary-card::after {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: var(--sc, var(--blue));
+  .summary-pill:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); color: inherit; }
+  .summary-pill::after {
+    content:''; position:absolute; top:0; left:0; right:0; height:3px;
+    background: var(--pill-color, var(--blue));
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
-  .summary-card .sc-icon {
-    width: 44px; height: 44px; border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px; margin-bottom: 12px;
+  .pill-icon { width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:10px; }
+  .pill-number { font-size:28px;font-weight:800;line-height:1; }
+  .pill-label  { font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-top:3px; }
+  .pill-sub    { font-size:11.5px;color:var(--text-2);margin-top:7px; }
+  .hostel-drill-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:13px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+    text-decoration:none; color:inherit; transition: box-shadow .15s, border-color .15s;
   }
-  .summary-card .sc-number { font-size: 32px; font-weight: 800; line-height: 1; color: var(--text-1); }
-  .summary-card .sc-label  { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-3); margin-top: 4px; }
-  .summary-card .sc-sub    { font-size: 11.5px; color: var(--text-2); margin-top: 8px; }
-  .hostel-row {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px 18px;
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    transition: box-shadow .15s, border-color .15s;
-    cursor: pointer; text-decoration: none; color: inherit;
-  }
-  .hostel-row:hover { box-shadow: var(--shadow-md); border-color: #93C5FD; color: inherit; }
-  .hostel-row.active-hostel { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(21,101,192,.12); }
+  .hostel-drill-card:hover  { box-shadow:var(--shadow-md); border-color:#93C5FD; color:inherit; }
+  .hostel-drill-card.active { border-color:var(--blue); box-shadow:0 0 0 3px rgba(21,101,192,.12); }
   .count-pill {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    display:inline-flex;align-items:center;gap:4px;
+    padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;
   }
-  .student-row-detail { font-size: 13px; }
+  .tab-btns { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .tab-btn {
+    padding:7px 18px; border-radius:var(--radius-sm); font-size:13px; font-weight:600;
+    border:1px solid var(--border); background:var(--surface); color:var(--text-2);
+    text-decoration:none; transition:all .15s;
+  }
+  .tab-btn:hover   { background:var(--bg); color:var(--text-1); }
+  .tab-btn.active  { background:var(--blue); color:#fff; border-color:var(--blue); }
+  .tab-btn.girls   { }
+  .tab-btn.girls.active { background:#7C3AED; border-color:#7C3AED; }
+  .section-title {
+    font-size:14px;font-weight:800;color:var(--text-1);margin:0;
+    display:flex;align-items:center;gap:8px;
+  }
 </style>
 {% endblock %}
 
@@ -51,220 +54,224 @@
 <div class="page-header">
   <div class="page-header-left">
     <h4>Resident Analysis</h4>
-    <p>Hostel-wise breakdown of students and staff</p>
+    <p>Detailed hostel-wise breakdown of boys, girls and staff</p>
   </div>
   <a href="{% url 'admin_dashboard' %}" class="btn btn-sm btn-outline-secondary">
-    <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+    <i class="bi bi-arrow-left me-1"></i>Dashboard
   </a>
 </div>
 
-<!-- ── Summary cards ───────────────────────────────────────────────────── -->
+<!-- Summary strip -->
 <div class="row g-3 mb-4">
-
-  <!-- Total Residents -->
-  <div class="col-xl-2 col-md-4 col-6">
-    <div class="summary-card" style="--sc:#1565C0">
-      <div class="sc-icon" style="background:#EBF3FF"><i class="bi bi-people-fill" style="color:#1565C0"></i></div>
-      <div class="sc-number">{{ summary.total }}</div>
-      <div class="sc-label">Total Residents</div>
-    </div>
+  <div class="col-md-2 col-6">
+    <a href="{% url 'resident_analysis' %}" class="summary-pill" style="--pill-color:#1565C0">
+      <div class="pill-icon" style="background:#EBF3FF"><i class="bi bi-people-fill" style="color:#1565C0"></i></div>
+      <div class="pill-number">{{ summary.total }}</div>
+      <div class="pill-label">Total Residents</div>
+    </a>
   </div>
-
-  <!-- Boys -->
-  <div class="col-xl-3 col-md-4 col-6">
-    <div class="summary-card" style="--sc:#0891B2">
-      <div class="sc-icon" style="background:#ECFEFF"><i class="bi bi-gender-male" style="color:#0891B2"></i></div>
-      <div class="sc-number">{{ summary.boys_total }}</div>
-      <div class="sc-label">Total Boys</div>
-      <div class="sc-sub d-flex gap-2 flex-wrap">
-        <span class="count-pill" style="background:#DCFCE7;color:#166534">
-          <i class="bi bi-house-fill" style="font-size:10px"></i> InCampus: {{ summary.boys_incampus }}
-        </span>
-        <span class="count-pill" style="background:#FEF3C7;color:#92400E">
-          <i class="bi bi-house-slash" style="font-size:10px"></i> OutCampus: {{ summary.boys_outcampus }}
-        </span>
+  <div class="col-md-3 col-6">
+    <a href="{% url 'resident_analysis' %}?view=boys" class="summary-pill {% if view_mode == 'boys' %}active{% endif %}" style="--pill-color:#0891B2">
+      <div class="pill-icon" style="background:#ECFEFF"><i class="bi bi-gender-male" style="color:#0891B2"></i></div>
+      <div class="pill-number" style="color:#0891B2">{{ summary.boys_total }}</div>
+      <div class="pill-label">Total Boys</div>
+      <div class="pill-sub d-flex gap-1 flex-wrap">
+        <span class="count-pill" style="background:#DCFCE7;color:#166534">InCampus: {{ summary.boys_incampus }}</span>
+        <span class="count-pill" style="background:#FEF3C7;color:#92400E">OutCampus: {{ summary.boys_outcampus }}</span>
       </div>
-    </div>
+    </a>
   </div>
-
-  <!-- Girls -->
-  <div class="col-xl-2 col-md-4 col-6">
-    <div class="summary-card" style="--sc:#7C3AED">
-      <div class="sc-icon" style="background:#F5F3FF"><i class="bi bi-gender-female" style="color:#7C3AED"></i></div>
-      <div class="sc-number">{{ summary.girls_total }}</div>
-      <div class="sc-label">Total Girls</div>
-    </div>
+  <div class="col-md-2 col-6">
+    <a href="{% url 'resident_analysis' %}?view=girls" class="summary-pill" style="--pill-color:#7C3AED">
+      <div class="pill-icon" style="background:#F5F3FF"><i class="bi bi-gender-female" style="color:#7C3AED"></i></div>
+      <div class="pill-number" style="color:#7C3AED">{{ summary.girls_total }}</div>
+      <div class="pill-label">Total Girls</div>
+    </a>
   </div>
-
-  <!-- Staff -->
-  <div class="col-xl-3 col-md-4 col-6">
-    <div class="summary-card" style="--sc:#059669">
-      <div class="sc-icon" style="background:#ECFDF5"><i class="bi bi-person-badge-fill" style="color:#059669"></i></div>
-      <div class="sc-number">{{ summary.staff_total }}</div>
-      <div class="sc-label">Total Staff</div>
-      <div class="sc-sub">
-        <span class="count-pill" style="background:#FFFBEB;color:#92400E">
-          <i class="bi bi-person-fill-gear" style="font-size:10px"></i> Wardens: {{ summary.warden_count }}
-        </span>
+  <div class="col-md-3 col-6">
+    <a href="{% url 'staff_accounts' %}" class="summary-pill" style="--pill-color:#059669">
+      <div class="pill-icon" style="background:#ECFDF5"><i class="bi bi-person-badge-fill" style="color:#059669"></i></div>
+      <div class="pill-number" style="color:#059669">{{ summary.staff_total }}</div>
+      <div class="pill-label">Total Staff</div>
+      <div class="pill-sub">
+        <span class="count-pill" style="background:#FFFBEB;color:#92400E">Wardens: {{ summary.warden_count }}</span>
       </div>
-    </div>
+    </a>
   </div>
-
 </div>
 
-<!-- ── Hostel-wise breakdown ───────────────────────────────────────────── -->
-<div class="card-header mb-3">
-  <div class="ch-icon" style="background:#EFF6FF;color:#1565C0"><i class="bi bi-building-fill"></i></div>
-  <div class="card-header-left">
-    <strong>Hostel-wise Breakdown</strong>
-    <span style="font-size:12px;color:var(--text-3);margin-left:8px">Click a hostel to see all residents</span>
+<!-- ══════════════════ BOYS VIEW ══════════════════ -->
+{% if view_mode == 'boys' %}
+
+<div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+  <p class="section-title"><i class="bi bi-gender-male" style="color:#0891B2"></i> Boys — Hostel Wise Breakdown</p>
+  {% if selected %}
+  <a href="{% url 'resident_analysis' %}?view=boys" class="btn btn-sm btn-outline-secondary ms-auto">
+    <i class="bi bi-x me-1"></i>Clear Selection
+  </a>
+  {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+  <!-- InCampus section -->
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header" style="background:linear-gradient(135deg,#ECFDF5,#F0FDF4);border-bottom:2px solid #86EFAC">
+        <div class="ch-icon" style="background:#DCFCE7;color:#166534"><i class="bi bi-house-fill"></i></div>
+        <div class="card-header-left">
+          <strong style="color:#166534">InCampus Boys</strong>
+          <span style="font-size:12px;color:#4ADE80;margin-left:8px">{{ boys_incampus_total }} total</span>
+        </div>
+      </div>
+      <div class="card-body p-3">
+        {% for row in boys_incampus_rows %}
+        <a href="{% url 'resident_analysis' %}?view=boys&hostel={{ row.hostel.pk }}&entry=incampus"
+           class="hostel-drill-card mb-2 {% if selected.pk == row.hostel.pk and entry_type == 'incampus' %}active{% endif %}">
+          <div class="d-flex align-items-center gap-2">
+            <div style="width:34px;height:34px;border-radius:9px;background:#DCFCE7;color:#166534;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="bi bi-building"></i>
+            </div>
+            <div>
+              <div style="font-weight:600;font-size:13px">{{ row.hostel.name }}</div>
+              <div style="font-size:11px;color:var(--text-3)">{{ row.hostel.get_type_display }} Hostel</div>
+            </div>
+          </div>
+          <span class="count-pill" style="background:#DCFCE7;color:#166534;font-size:13px">{{ row.count }}</span>
+        </a>
+        {% empty %}
+        <p class="text-muted text-center py-3" style="font-size:13px">No InCampus boys found.</p>
+        {% endfor %}
+      </div>
+    </div>
   </div>
+
+  <!-- OutCampus section -->
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header" style="background:linear-gradient(135deg,#FFFBEB,#FEF9C3);border-bottom:2px solid #FCD34D">
+        <div class="ch-icon" style="background:#FEF3C7;color:#92400E"><i class="bi bi-house-slash"></i></div>
+        <div class="card-header-left">
+          <strong style="color:#92400E">OutCampus Boys</strong>
+          <span style="font-size:12px;color:#D97706;margin-left:8px">{{ boys_outcampus_total }} total</span>
+        </div>
+      </div>
+      <div class="card-body p-3">
+        {% for row in boys_outcampus_rows %}
+        <a href="{% url 'resident_analysis' %}?view=boys&hostel={{ row.hostel.pk }}&entry=outcampus"
+           class="hostel-drill-card mb-2 {% if selected.pk == row.hostel.pk and entry_type == 'outcampus' %}active{% endif %}">
+          <div class="d-flex align-items-center gap-2">
+            <div style="width:34px;height:34px;border-radius:9px;background:#FEF3C7;color:#92400E;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <i class="bi bi-building"></i>
+            </div>
+            <div>
+              <div style="font-weight:600;font-size:13px">{{ row.hostel.name }}</div>
+              <div style="font-size:11px;color:var(--text-3)">{{ row.hostel.get_type_display }} Hostel</div>
+            </div>
+          </div>
+          <span class="count-pill" style="background:#FEF3C7;color:#92400E;font-size:13px">{{ row.count }}</span>
+        </a>
+        {% empty %}
+        <p class="text-muted text-center py-3" style="font-size:13px">No OutCampus boys found.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail table for selected hostel (boys) -->
+{% if selected %}
+  {% if incampus_students is not None %}
+    {% include "admin/_resident_table.html" with students=incampus_students title=selected.name subtitle="InCampus Boys" color="#166534" bg="#DCFCE7" %}
+  {% endif %}
+  {% if outcampus_students is not None %}
+    {% include "admin/_resident_table.html" with students=outcampus_students title=selected.name subtitle="OutCampus Boys" color="#92400E" bg="#FEF3C7" %}
+  {% endif %}
+{% endif %}
+
+
+<!-- ══════════════════ GIRLS VIEW ══════════════════ -->
+{% elif view_mode == 'girls' %}
+
+<div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+  <p class="section-title"><i class="bi bi-gender-female" style="color:#7C3AED"></i> Girls — Hostel Wise Breakdown</p>
+  {% if selected %}
+  <a href="{% url 'resident_analysis' %}?view=girls" class="btn btn-sm btn-outline-secondary ms-auto">
+    <i class="bi bi-x me-1"></i>Clear Selection
+  </a>
+  {% endif %}
+</div>
+
+<div class="row g-2 mb-4">
+  {% for row in girls_rows %}
+  <div class="col-md-6 col-xl-4">
+    <a href="{% url 'resident_analysis' %}?view=girls&hostel={{ row.hostel.pk }}"
+       class="hostel-drill-card {% if selected.pk == row.hostel.pk %}active{% endif %}">
+      <div class="d-flex align-items-center gap-2">
+        <div style="width:38px;height:38px;border-radius:10px;background:#F5F3FF;color:#7C3AED;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">
+          <i class="bi bi-building"></i>
+        </div>
+        <div>
+          <div style="font-weight:600;font-size:13px">{{ row.hostel.name }}</div>
+          <div style="font-size:11px;color:var(--text-3)">{{ row.hostel.get_type_display }} Hostel</div>
+        </div>
+      </div>
+      <span class="count-pill" style="background:#F5F3FF;color:#7C3AED;font-size:14px;font-weight:800">{{ row.count }}</span>
+    </a>
+  </div>
+  {% empty %}
+  <div class="col-12"><p class="text-muted">No girls found in any hostel.</p></div>
+  {% endfor %}
+</div>
+
+{% if selected and girls_students is not None %}
+{% include "admin/_resident_table.html" with students=girls_students title=selected.name subtitle="Girls" color="#7C3AED" bg="#F5F3FF" %}
+{% endif %}
+
+
+<!-- ══════════════════ OVERVIEW ══════════════════ -->
+{% else %}
+
+<div class="d-flex align-items-center gap-2 mb-3">
+  <p class="section-title"><i class="bi bi-building-fill" style="color:#1565C0"></i> All Hostels Overview</p>
+  {% if selected %}
+  <a href="{% url 'resident_analysis' %}" class="btn btn-sm btn-outline-secondary ms-auto">
+    <i class="bi bi-x me-1"></i>Clear
+  </a>
+  {% endif %}
 </div>
 
 <div class="row g-2 mb-4">
   {% for row in hostel_rows %}
   <div class="col-md-6 col-xl-4">
     <a href="{% url 'resident_analysis' %}?hostel={{ row.hostel.pk }}"
-       class="hostel-row {% if selected.pk == row.hostel.pk %}active-hostel{% endif %}">
-      <div class="d-flex align-items-center gap-3">
-        <div style="width:42px;height:42px;border-radius:10px;
+       class="hostel-drill-card {% if selected.pk == row.hostel.pk %}active{% endif %}">
+      <div class="d-flex align-items-center gap-2">
+        <div style="width:40px;height:40px;border-radius:10px;
                     background:{% if row.hostel.type == 'boys' %}#EFF6FF{% elif row.hostel.type == 'girls' %}#F5F3FF{% else %}#ECFDF5{% endif %};
                     color:{% if row.hostel.type == 'boys' %}#1565C0{% elif row.hostel.type == 'girls' %}#7C3AED{% else %}#059669{% endif %};
-                    display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+                    display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">
           <i class="bi bi-building"></i>
         </div>
         <div>
-          <div style="font-weight:700;font-size:13.5px;color:var(--text-1)">{{ row.hostel.name }}</div>
-          <div style="font-size:11.5px;color:var(--text-3)">{{ row.hostel.get_type_display }} Hostel</div>
+          <div style="font-weight:600;font-size:13px">{{ row.hostel.name }}</div>
+          <div style="font-size:11px;color:var(--text-3)">{{ row.hostel.get_type_display }}</div>
         </div>
       </div>
-      <div class="d-flex gap-2 flex-wrap justify-content-end">
-        <span class="count-pill" style="background:#EBF3FF;color:#1565C0">
-          <i class="bi bi-people-fill" style="font-size:10px"></i> {{ row.total }}
-        </span>
-        {% if row.boys > 0 %}
-        <span class="count-pill" style="background:#ECFEFF;color:#0891B2">
-          <i class="bi bi-gender-male" style="font-size:10px"></i> {{ row.boys }}
-        </span>
-        {% endif %}
-        {% if row.girls > 0 %}
-        <span class="count-pill" style="background:#F5F3FF;color:#7C3AED">
-          <i class="bi bi-gender-female" style="font-size:10px"></i> {{ row.girls }}
-        </span>
-        {% endif %}
-        {% if row.wardens > 0 %}
-        <span class="count-pill" style="background:#FFFBEB;color:#92400E">
-          <i class="bi bi-person-fill-gear" style="font-size:10px"></i> {{ row.wardens }} warden{{ row.wardens|pluralize }}
-        </span>
-        {% endif %}
+      <div class="d-flex gap-1 flex-wrap justify-content-end">
+        <span class="count-pill" style="background:#EBF3FF;color:#1565C0">Total: {{ row.total }}</span>
+        {% if row.boys %}<span class="count-pill" style="background:#ECFEFF;color:#0891B2"><i class="bi bi-gender-male" style="font-size:10px"></i> {{ row.boys }}</span>{% endif %}
+        {% if row.girls %}<span class="count-pill" style="background:#F5F3FF;color:#7C3AED"><i class="bi bi-gender-female" style="font-size:10px"></i> {{ row.girls }}</span>{% endif %}
+        {% if row.wardens %}<span class="count-pill" style="background:#FFFBEB;color:#92400E">{{ row.wardens }}W</span>{% endif %}
       </div>
     </a>
   </div>
-  {% empty %}
-  <div class="col-12"><p class="text-muted">No hostels found.</p></div>
   {% endfor %}
 </div>
 
-<!-- ── Detail: students in selected hostel ────────────────────────────── -->
 {% if selected and hostel_students is not None %}
-<div class="card-header mb-3" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg) var(--radius-lg) 0 0">
-  <div class="ch-icon" style="background:#EFF6FF;color:#1565C0"><i class="bi bi-building-fill"></i></div>
-  <div class="card-header-left">
-    <strong>{{ selected.name }}</strong>
-    <span style="font-size:12px;color:var(--text-3);margin-left:8px">{{ hostel_students|length }} resident{{ hostel_students|length|pluralize }}</span>
-  </div>
-  <a href="{% url 'resident_analysis' %}" class="btn btn-sm btn-outline-secondary ms-auto">
-    <i class="bi bi-x me-1"></i>Clear
-  </a>
-</div>
+{% include "admin/_resident_table.html" with students=hostel_students title=selected.name subtitle="All Residents" color="#1565C0" bg="#EBF3FF" %}
+{% endif %}
 
-<!-- Gender sub-summary for this hostel -->
-{% with boys=hostel_students|length girls=0 %}
-<div class="d-flex gap-2 mb-3 flex-wrap">
-  {% regroup hostel_students by gender as gender_groups %}
-  {% for g in gender_groups %}
-  <span class="count-pill" style="background:{% if g.grouper == 'male' %}#ECFEFF{% elif g.grouper == 'female' %}#F5F3FF{% else %}#F1F5F9{% endif %};
-        color:{% if g.grouper == 'male' %}#0891B2{% elif g.grouper == 'female' %}#7C3AED{% else %}#475569{% endif %};font-size:13px;padding:5px 14px">
-    <i class="bi bi-gender-{% if g.grouper == 'male' %}male{% elif g.grouper == 'female' %}female{% else %}ambiguous{% endif %}"></i>
-    {{ g.grouper|title }}: {{ g.list|length }}
-  </span>
-  {% endfor %}
-</div>
-{% endwith %}
-
-<div class="card">
-  <div class="table-responsive">
-  <table class="table" style="margin:0">
-    <thead><tr>
-      <th>#</th>
-      <th>Student</th>
-      <th>Roll No</th>
-      <th>Branch / Year</th>
-      <th>Type of Entry</th>
-      <th>State</th>
-      <th>Room</th>
-      <th>Phone</th>
-      <th>Parent Phone</th>
-      <th>Status</th>
-    </tr></thead>
-    <tbody>
-    {% for s in hostel_students %}
-    <tr>
-      <td style="color:var(--text-3);font-size:12px">{{ forloop.counter }}</td>
-      <td>
-        <div style="font-weight:600;font-size:13px">{{ s.name }}</div>
-        <div style="font-size:11px;color:var(--text-3)">
-          {% if s.gender == 'male' %}<i class="bi bi-gender-male" style="color:#0891B2"></i>{% elif s.gender == 'female' %}<i class="bi bi-gender-female" style="color:#7C3AED"></i>{% endif %}
-          {{ s.get_gender_display|default:"—" }}
-        </div>
-      </td>
-      <td style="font-size:13px;font-weight:600;color:var(--blue)">{{ s.roll_number }}</td>
-      <td>
-        <div style="font-size:13px">{{ s.department }}</div>
-        <div style="font-size:11px;color:var(--text-3)">Year {{ s.year }} / Sem {{ s.semester }}</div>
-      </td>
-      <td>
-        {% if s.type_of_entry == 'incampus' %}
-          <span class="badge" style="background:#DCFCE7;color:#166534">InCampus</span>
-        {% elif s.type_of_entry == 'outcampus' %}
-          <span class="badge" style="background:#FEF3C7;color:#92400E">OutCampus</span>
-        {% else %}
-          <span style="color:var(--text-3)">—</span>
-        {% endif %}
-      </td>
-      <td style="font-size:12px;color:var(--text-2)">{{ s.state|default:"—" }}</td>
-      <td>
-        {% if s.alloc_room %}
-          <span class="badge" style="background:#F0F9FF;color:#0891B2;font-weight:700">
-            <i class="bi bi-door-open" style="font-size:10px"></i> {{ s.alloc_room.room_number }}
-          </span>
-        {% else %}
-          <span style="color:var(--text-3)">—</span>
-        {% endif %}
-      </td>
-      <td style="font-size:12px">{{ s.phone|default:"—" }}</td>
-      <td style="font-size:12px;color:var(--text-2)">
-        {{ s.guardian_phone|default:"—" }}
-        {% if s.guardian_name %}<div style="font-size:10px;color:var(--text-3)">{{ s.guardian_name }}</div>{% endif %}
-      </td>
-      <td>
-        {% if s.is_active %}
-          <span class="badge" style="background:#DCFCE7;color:#166534">Active</span>
-        {% else %}
-          <span class="badge" style="background:#FEE2E2;color:#DC2626">Inactive</span>
-          {% if s.inactive_reason %}
-          <div style="font-size:10px;color:var(--text-3);margin-top:2px">{{ s.get_inactive_reason_display }}</div>
-          {% endif %}
-        {% endif %}
-      </td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="10" class="text-center text-muted py-4">No residents found in this hostel.</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  </div>
-</div>
 {% endif %}
 
 {% endblock %}

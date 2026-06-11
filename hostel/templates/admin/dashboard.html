@@ -210,29 +210,27 @@
 
   {# ── Total Boys card ── #}
   <div class="col-xl-2 col-md-4 col-6">
-    <a href="{% url 'student_list' %}?status=resident" style="text-decoration:none">
+    <a href="{% url 'resident_analysis' %}?view=boys" style="text-decoration:none">
     <div class="stat-card" style="--stat-color:#1565C0">
       <div class="s-top"><div class="s-icon" style="background:#EBF3FF"><i class="bi bi-gender-male" style="color:#1565C0"></i></div></div>
       <div class="s-number" style="color:#1565C0">{{ stats.boys_total }}</div>
       <div class="s-label">Total Boys</div>
       <div class="d-flex gap-1 mt-1 flex-wrap">
-        <span style="font-size:10px;font-weight:700;background:#DCFCE7;color:#166534;padding:1px 6px;border-radius:20px">
-          InCampus: {{ stats.boys_incampus }}
-        </span>
-        <span style="font-size:10px;font-weight:700;background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:20px">
-          OutCampus: {{ stats.boys_outcampus }}
-        </span>
+        <span style="font-size:10px;font-weight:700;background:#DCFCE7;color:#166534;padding:1px 6px;border-radius:20px">InCampus: {{ stats.boys_incampus }}</span>
+        <span style="font-size:10px;font-weight:700;background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:20px">OutCampus: {{ stats.boys_outcampus }}</span>
       </div>
+      <div style="font-size:10px;color:var(--blue);margin-top:4px;font-weight:600">View Details →</div>
     </div></a>
   </div>
 
   {# ── Total Girls card ── #}
   <div class="col-xl-2 col-md-4 col-6">
-    <a href="{% url 'student_list' %}?status=resident" style="text-decoration:none">
+    <a href="{% url 'resident_analysis' %}?view=girls" style="text-decoration:none">
     <div class="stat-card" style="--stat-color:#7C3AED">
       <div class="s-top"><div class="s-icon" style="background:#F5F3FF"><i class="bi bi-gender-female" style="color:#7C3AED"></i></div></div>
       <div class="s-number" style="color:#7C3AED">{{ stats.girls_total }}</div>
       <div class="s-label">Total Girls</div>
+      <div style="font-size:10px;color:#7C3AED;margin-top:4px;font-weight:600">View Details →</div>
     </div></a>
   </div>
 
@@ -244,30 +242,8 @@
       <div class="s-top"><div class="s-icon" style="background:#ECFDF5"><i class="bi bi-person-badge-fill" style="color:#059669"></i></div></div>
       <div class="s-number" style="color:#059669">{{ stats.staff_total }}</div>
       <div class="s-label">Total Staff</div>
-      <div class="mt-1" style="font-size:10.5px;font-weight:700;color:#D97706">
-        Wardens: {{ stats.warden_count }}
-      </div>
+      <div class="mt-1" style="font-size:10.5px;font-weight:700;color:#D97706">Wardens: {{ stats.warden_count }}</div>
     </div></a>
-  </div>
-  {% endif %}
-
-  {# ── Total Residents (with Hostel Wise link) ── #}
-  {% if not is_warden %}
-  <div class="col-xl-2 col-md-4 col-6">
-    <div class="stat-card" style="--stat-color:#0F4C81;cursor:default">
-      <div class="s-top">
-        <div class="s-icon" style="background:#DBEAFE"><i class="bi bi-diagram-3-fill" style="color:#0F4C81"></i></div>
-      </div>
-      <div class="s-number" style="color:#0F4C81">{{ stats.boys_total|add:stats.girls_total }}</div>
-      <div class="s-label">Boys + Girls</div>
-      <div class="mt-1">
-        <button type="button" class="btn btn-xs"
-                style="background:#EBF3FF;color:#1565C0;border:1px solid #BFDBFE;font-size:10px;font-weight:700;padding:2px 8px"
-                data-bs-toggle="modal" data-bs-target="#hostelWiseModal">
-          <i class="bi bi-table me-1"></i>Hostel Wise
-        </button>
-      </div>
-    </div>
   </div>
   {% endif %}
 

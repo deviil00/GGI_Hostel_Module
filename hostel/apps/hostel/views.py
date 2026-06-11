@@ -9302,10 +9302,11 @@ def _pdf_table_style(header_color='#1565C0'):
 @superadmin_only
 def resident_analysis(request):
     from apps.accounts.models import User as _User
+    view_mode = request.GET.get('view', '')   # 'boys' | 'girls' | ''
     hostel_pk = request.GET.get('hostel', '')
+    entry_type = request.GET.get('entry', '') # 'incampus' | 'outcampus' (for boys drill-down)
     selected  = Hostel.objects.filter(pk=hostel_pk).first() if hostel_pk else None
 
-    # Overall summary
     all_active = Student.objects.filter(allocations__status='active').distinct()
     summary = {
         'total':         all_active.count(),
@@ -9317,57 +9318,118 @@ def resident_analysis(request):
         'warden_count':  _User.objects.filter(role='warden', is_active=True).count(),
     }
 
-    # Hostel-wise breakdown
-    hostel_rows = []
-    for h in Hostel.objects.order_by('name'):
-        qs = Student.objects.filter(allocations__room__hostel=h, allocations__status='active').distinct()
-        boys   = qs.filter(gender='male').count()
-        girls  = qs.filter(gender='female').count()
-        inc    = qs.filter(gender='male', type_of_entry='incampus').count()
-        outc   = qs.filter(gender='male', type_of_entry='outcampus').count()
-        wardens = _User.objects.filter(role='warden', managed_hostels=h, is_active=True).count()
-        hostel_rows.append({
-            'hostel': h, 'total': boys + girls,
-            'boys': boys, 'girls': girls,
-            'boys_incampus': inc, 'boys_outcampus': outc,
-            'wardens': wardens,
-        })
-
-    # Detailed student list for selected hostel
-    hostel_students = None
-    if selected:
-        hostel_students = list(
-            Student.objects.filter(
-                allocations__room__hostel=selected,
-                allocations__status='active'
-            ).distinct().order_by('gender', 'roll_number')
-            .prefetch_related('allocations__room')
-        )
-        # attach room info
+    def _attach_rooms(students):
         alloc_map = {
             a.student_id: a
             for a in RoomAllocation.objects.filter(
-                student__in=hostel_students, status='active'
+                student__in=students, status='active'
             ).select_related('room')
         }
-        for s in hostel_students:
-            a = alloc_map.get(s.pk)
-            s.alloc_room = a.room if a else None
+        for s in students:
+            s.alloc_room = alloc_map.get(s.pk, None) and alloc_map[s.pk].room
+        return students
 
-        # also attach staff for this hostel
-        selected._wardens = list(_User.objects.filter(role='warden', managed_hostels=selected, is_active=True))
-        selected._staff   = list(_User.objects.filter(
-            role__in=('admin','maintenance','mess','security'),
-            is_active=True
-        ).filter(managed_hostels=selected) | _User.objects.filter(
-            role__in=('admin','maintenance','mess','security'), is_active=True
-        ).filter(mess_hostels=selected))
+    # ── Boys view ──────────────────────────────────────────────────────────────
+    boys_incampus_rows  = []
+    boys_outcampus_rows = []
+    boys_incampus_total = boys_outcampus_total = 0
+    incampus_students = outcampus_students = None
+
+    if view_mode == 'boys':
+        for h in Hostel.objects.order_by('name'):
+            inc  = Student.objects.filter(allocations__room__hostel=h, allocations__status='active', gender='male', type_of_entry='incampus').distinct().count()
+            outc = Student.objects.filter(allocations__room__hostel=h, allocations__status='active', gender='male', type_of_entry='outcampus').distinct().count()
+            if inc:
+                boys_incampus_rows.append({'hostel': h, 'count': inc})
+                boys_incampus_total += inc
+            if outc:
+                boys_outcampus_rows.append({'hostel': h, 'count': outc})
+                boys_outcampus_total += outc
+
+        if selected and entry_type == 'incampus':
+            incampus_students = list(Student.objects.filter(
+                allocations__room__hostel=selected, allocations__status='active',
+                gender='male', type_of_entry='incampus'
+            ).distinct().order_by('roll_number'))
+            _attach_rooms(incampus_students)
+
+        elif selected and entry_type == 'outcampus':
+            outcampus_students = list(Student.objects.filter(
+                allocations__room__hostel=selected, allocations__status='active',
+                gender='male', type_of_entry='outcampus'
+            ).distinct().order_by('roll_number'))
+            _attach_rooms(outcampus_students)
+
+        elif selected:
+            # no entry filter — show all boys in that hostel
+            incampus_students = list(Student.objects.filter(
+                allocations__room__hostel=selected, allocations__status='active',
+                gender='male', type_of_entry='incampus'
+            ).distinct().order_by('roll_number'))
+            outcampus_students = list(Student.objects.filter(
+                allocations__room__hostel=selected, allocations__status='active',
+                gender='male', type_of_entry='outcampus'
+            ).distinct().order_by('roll_number'))
+            _attach_rooms(incampus_students)
+            _attach_rooms(outcampus_students)
+
+    # ── Girls view ─────────────────────────────────────────────────────────────
+    girls_rows = []
+    girls_students = None
+    if view_mode == 'girls':
+        for h in Hostel.objects.order_by('name'):
+            cnt = Student.objects.filter(
+                allocations__room__hostel=h, allocations__status='active', gender='female'
+            ).distinct().count()
+            girls_rows.append({'hostel': h, 'count': cnt})
+
+        if selected:
+            girls_students = list(Student.objects.filter(
+                allocations__room__hostel=selected, allocations__status='active', gender='female'
+            ).distinct().order_by('roll_number'))
+            _attach_rooms(girls_students)
+
+    # ── General hostel rows (overview page) ────────────────────────────────────
+    hostel_rows = []
+    hostel_students = None
+    if not view_mode:
+        for h in Hostel.objects.order_by('name'):
+            qs = Student.objects.filter(allocations__room__hostel=h, allocations__status='active').distinct()
+            boys   = qs.filter(gender='male').count()
+            girls  = qs.filter(gender='female').count()
+            inc    = qs.filter(gender='male', type_of_entry='incampus').count()
+            outc   = qs.filter(gender='male', type_of_entry='outcampus').count()
+            wardens = _User.objects.filter(role='warden', managed_hostels=h, is_active=True).count()
+            hostel_rows.append({
+                'hostel': h, 'total': boys + girls,
+                'boys': boys, 'girls': girls,
+                'boys_incampus': inc, 'boys_outcampus': outc,
+                'wardens': wardens,
+            })
+        if selected:
+            hostel_students = list(Student.objects.filter(
+                allocations__room__hostel=selected, allocations__status='active'
+            ).distinct().order_by('gender', 'roll_number'))
+            _attach_rooms(hostel_students)
 
     return render(request, 'admin/resident_analysis.html', {
-        'summary':         summary,
-        'hostel_rows':     hostel_rows,
-        'selected':        selected,
-        'hostel_students': hostel_students,
+        'summary':              summary,
+        'view_mode':            view_mode,
+        'selected':             selected,
+        'entry_type':           entry_type,
+        # overview
+        'hostel_rows':          hostel_rows,
+        'hostel_students':      hostel_students,
+        # boys
+        'boys_incampus_rows':   boys_incampus_rows,
+        'boys_outcampus_rows':  boys_outcampus_rows,
+        'boys_incampus_total':  boys_incampus_total,
+        'boys_outcampus_total': boys_outcampus_total,
+        'incampus_students':    incampus_students,
+        'outcampus_students':   outcampus_students,
+        # girls
+        'girls_rows':           girls_rows,
+        'girls_students':       girls_students,
     })
 
 
