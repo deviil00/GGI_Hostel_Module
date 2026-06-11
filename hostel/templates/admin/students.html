@@ -351,9 +351,8 @@
           </div>
         </td>
       </tr>
-      {# Toggle status modals (superadmin only) #}
+      {# Toggle status modal for this student (superadmin only) #}
       {% if request.user.role == 'superadmin' %}
-      {% for student in section.list %}
       <div class="modal fade" id="toggleStatusModal{{ student.pk|slugify }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-sm">
           <div class="modal-content">
@@ -405,7 +404,6 @@
           </div>
         </div>
       </div>
-      {% endfor %}
       {% endif %}
 
       </tbody>
