@@ -202,21 +202,22 @@
 <div class="row g-3 mb-4">
 
   <div class="col-xl-3 col-md-6 col-6">
-    <a href="{% url 'resident_analysis' %}" style="text-decoration:none">
-    <div class="stat-card" style="--stat-color:#0F4C81">
+    <a href="{% url 'resident_analysis' %}" style="text-decoration:none;display:block;height:100%">
+    <div class="stat-card h-100" style="--stat-color:#0F4C81">
       <div class="s-top">
         <div class="s-icon" style="background:#DBEAFE"><i class="bi bi-people-fill" style="color:#0F4C81"></i></div>
         <span style="font-size:10px;background:#EBF3FF;color:#0F4C81;padding:3px 8px;border-radius:20px;font-weight:700">All Hostels</span>
       </div>
       <div class="s-number">{{ stats.total_students }}</div>
       <div class="s-label">Total Residents</div>
+      <div class="s-sub">&nbsp;</div>
       <div class="sc-link">View Analysis →</div>
     </div></a>
   </div>
 
   <div class="col-xl-3 col-md-6 col-6">
-    <a href="{% url 'resident_analysis' %}?view=boys" style="text-decoration:none">
-    <div class="stat-card" style="--stat-color:#0891B2">
+    <a href="{% url 'resident_analysis' %}?view=boys" style="text-decoration:none;display:block;height:100%">
+    <div class="stat-card h-100" style="--stat-color:#0891B2">
       <div class="s-top">
         <div class="s-icon" style="background:#ECFEFF"><i class="bi bi-gender-male" style="color:#0891B2"></i></div>
       </div>
@@ -231,19 +232,20 @@
   </div>
 
   <div class="col-xl-3 col-md-6 col-6">
-    <a href="{% url 'resident_analysis' %}?view=girls" style="text-decoration:none">
-    <div class="stat-card" style="--stat-color:#7C3AED">
+    <a href="{% url 'resident_analysis' %}?view=girls" style="text-decoration:none;display:block;height:100%">
+    <div class="stat-card h-100" style="--stat-color:#7C3AED">
       <div class="s-top">
         <div class="s-icon" style="background:#F5F3FF"><i class="bi bi-gender-female" style="color:#7C3AED"></i></div>
       </div>
       <div class="s-number" style="color:#7C3AED">{{ stats.girls_total }}</div>
       <div class="s-label">Total Girls</div>
+      <div class="s-sub">&nbsp;</div>
       <div class="sc-link" style="color:#7C3AED">Drill down →</div>
     </div></a>
   </div>
 
   <div class="col-xl-3 col-md-6 col-6">
-    <div class="stat-card" style="--stat-color:#059669;cursor:pointer" onclick="openStaffPanel()">
+    <div class="stat-card h-100" style="--stat-color:#059669;cursor:pointer" onclick="openStaffPanel()">
       <div class="s-top">
         <div class="s-icon" style="background:#ECFDF5"><i class="bi bi-person-badge-fill" style="color:#059669"></i></div>
         <span style="font-size:10px;background:#ECFDF5;color:#059669;padding:3px 8px;border-radius:20px;font-weight:700">
