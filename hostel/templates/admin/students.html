@@ -243,7 +243,8 @@
         <th>Branch</th>
         <th>Year / Sem</th>
         <th>Type of Entry</th>
-        <th>State / Country</th>
+        <th>State</th>
+        <th>Country</th>
         <th>Contact</th>
         <th>Room</th>
         <th>Status</th>
@@ -294,14 +295,8 @@
           {% endif %}
         </td>
 
-        <td style="font-size:12px">
-          <div style="color:var(--text-2)">{{ student.state|default:"—" }}</div>
-          {% if student.country %}
-          <div style="color:var(--text-3);font-size:11px;margin-top:2px">
-            <i class="bi bi-globe2" style="font-size:10px"></i> {{ student.country }}
-          </div>
-          {% endif %}
-        </td>
+        <td style="font-size:12px;color:var(--text-2)">{{ student.state|default:"—" }}</td>
+        <td style="font-size:12px;color:var(--text-2)">{{ student.country|default:"—" }}</td>
 
         <td>
           <div style="font-size:13px;color:var(--text-1)">
