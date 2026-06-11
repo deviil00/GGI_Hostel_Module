@@ -4,26 +4,107 @@
 
 {% block extra_css %}
 <style>
-  @media (max-width: 767px) {
-    .stat-card { padding: 14px 14px; }
-    .stat-card .s-number { font-size: 24px; }
-    .stat-card .s-icon { width: 36px; height: 36px; font-size: 15px; }
-    .stat-card .s-label { font-size: 10px; }
-  }
+/* ── Stat cards ───────────────────────────────────────────────── */
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow .18s, transform .18s;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--stat-color, var(--blue));
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.s-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+.s-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.s-number { font-size: 26px; font-weight: 800; line-height: 1; color: var(--text-1); }
+.s-label  { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-3); margin-top: 4px; }
+.s-sub    { font-size: 11px; color: var(--text-2); margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap; }
+.s-pill   { padding: 2px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 700; }
+.s-link   { font-size: 10px; color: var(--stat-color, var(--blue)); font-weight: 700; margin-top: 5px; }
+
+/* ── Section group labels ─────────────────────────────────────── */
+.dash-group {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px; margin-top: 4px;
+}
+.dash-group-label {
+  font-size: 10.5px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .9px; color: var(--text-3); white-space: nowrap;
+}
+.dash-group-line {
+  flex: 1; height: 1px; background: var(--border);
+}
+
+/* ── Attendance strip ─────────────────────────────────────────── */
+.att-strip { display: flex; }
+.att-cell  {
+  flex: 1; text-align: center; padding: 18px 8px;
+  border-right: 1px solid var(--border);
+  transition: background .15s;
+}
+.att-cell:last-child { border-right: none; }
+.att-cell:hover { background: var(--bg); }
+.att-num  { font-size: 26px; font-weight: 800; line-height: 1; }
+.att-lbl  { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--text-3); margin-top: 5px; }
+
+/* ── Staff offcanvas ──────────────────────────────────────────── */
+.staff-person {
+  display: flex; align-items: center; gap: 11px;
+  padding: 10px 16px; border-bottom: 1px solid var(--border-light);
+  transition: background .12s;
+}
+.staff-person:hover { background: var(--bg); }
+.staff-person:last-child { border-bottom: none; }
+.staff-av {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; flex-shrink: 0;
+}
+.staff-name { font-size: 13px; font-weight: 700; color: var(--text-1); }
+.staff-meta { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.role-chip  {
+  display: inline-block; padding: 2px 9px; border-radius: 20px;
+  font-size: 10.5px; font-weight: 700; margin-top: 3px;
+}
+
+/* ── Hostel occupancy ─────────────────────────────────────────── */
+.occ-bar-wrap { flex: 1; height: 5px; background: #E2E8F0; border-radius: 3px; overflow: hidden; min-width: 60px; }
+.occ-bar      { height: 100%; border-radius: 3px; }
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 575px) {
+  .stat-card { padding: 12px 14px; }
+  .s-number  { font-size: 22px; }
+  .s-icon    { width: 32px; height: 32px; font-size: 14px; }
+  .att-num   { font-size: 20px; }
+  .att-cell  { padding: 14px 4px; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- Announcements banner -->
 {% if announcements %}
 <div class="mb-3">
   {% for ann in announcements %}
   <div class="d-flex align-items-start gap-3 p-3 rounded mb-2"
        style="background:{% if ann.priority == 'urgent' %}#FEF2F2{% elif ann.priority == 'warning' %}#FFFBEB{% else %}var(--blue-soft){% endif %};
-              border-left:4px solid {% if ann.priority == 'urgent' %}#DC2626{% elif ann.priority == 'warning' %}#D97706{% else %}var(--blue){% endif %}">
+              border-left: 4px solid {% if ann.priority == 'urgent' %}#DC2626{% elif ann.priority == 'warning' %}#D97706{% else %}var(--blue){% endif %}">
     <i class="bi {% if ann.priority == 'urgent' %}bi-exclamation-circle-fill{% elif ann.priority == 'warning' %}bi-exclamation-triangle-fill{% else %}bi-megaphone-fill{% endif %}"
-       style="font-size:18px;flex-shrink:0;color:{% if ann.priority == 'urgent' %}#DC2626{% elif ann.priority == 'warning' %}#D97706{% else %}var(--blue){% endif %}"></i>
+       style="font-size:17px;flex-shrink:0;color:{% if ann.priority == 'urgent' %}#DC2626{% elif ann.priority == 'warning' %}#D97706{% else %}var(--blue){% endif %}"></i>
     <div style="flex:1">
       <div class="fw-600" style="font-size:13px">{{ ann.title }}</div>
       <div style="font-size:12.5px;color:var(--text-2)">{{ ann.content|truncatechars:120 }}</div>
@@ -34,7 +115,7 @@
 </div>
 {% endif %}
 
-<!-- Welcome -->
+<!-- Page header -->
 <div class="page-header">
   <div class="page-header-left">
     <h4>Good day, {{ request.user.name }} 👋</h4>
@@ -42,8 +123,8 @@
       {% if is_warden %}
         <span class="badge" style="background:#EBF3FF;color:#1565C0;font-size:12px"><i class="bi bi-building me-1"></i>{{ selected_hostel.name }}</span>
       {% elif selected_hostel %}
-        GGI Hostel ERP — <strong>{{ today }}</strong> &nbsp;
-        <span class="badge" style="background:#EBF3FF;color:#1565C0;font-size:12px"><i class="bi bi-building me-1"></i>{{ selected_hostel.name }}</span>
+        GGI Hostel ERP — <strong>{{ today }}</strong>
+        <span class="badge ms-1" style="background:#EBF3FF;color:#1565C0;font-size:12px"><i class="bi bi-building me-1"></i>{{ selected_hostel.name }}</span>
       {% else %}
         GGI Hostel ERP — <strong>{{ today }}</strong>
       {% endif %}
@@ -65,9 +146,7 @@
     {% endif %}
     <a href="{% url 'outsiders' %}" class="btn btn-outline-primary btn-sm">
       <i class="bi bi-box-arrow-up-right me-1"></i>Outsiders
-      {% if stats.students_out > 0 %}
-      <span class="badge" style="background:#0891B2;color:#fff;margin-left:4px">{{ stats.students_out }}</span>
-      {% endif %}
+      {% if stats.students_out > 0 %}<span class="badge ms-1" style="background:#0891B2;color:#fff">{{ stats.students_out }}</span>{% endif %}
     </a>
     <a href="{% url 'mark_attendance' %}?date={{ today|date:'Y-m-d' }}" class="btn btn-primary btn-sm">
       <i class="bi bi-calendar2-check me-1"></i>
@@ -76,225 +155,214 @@
   </div>
 </div>
 
-<!-- ── Alerts row ── -->
-{% if stats.overstayed_passes or stats.pending_visitors or stats.pending_passes %}
-<div class="row g-2 mb-3">
+<!-- Alert chips -->
+{% if stats.overstayed_passes or stats.pending_visitors or stats.pending_passes or stats.pending_apps %}
+<div class="d-flex gap-2 flex-wrap mb-3">
   {% if stats.overstayed_passes %}
-  <div class="col-auto">
-    <a href="{% url 'gate_pass_list' %}?status=approved" class="text-decoration-none">
-      <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background:#FEF2F2;border:1px solid #FCA5A5;font-size:13px">
-        <i class="bi bi-clock-history" style="color:#DC2626"></i>
-        <span style="color:#B91C1C;font-weight:600">{{ stats.overstayed_passes }} Overstayed Gate Pass{{ stats.overstayed_passes|pluralize:"es" }}</span>
-      </div>
-    </a>
-  </div>
+  <a href="{% url 'gate_pass_list' %}?status=approved" class="text-decoration-none">
+    <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background:#FEF2F2;border:1px solid #FCA5A5;font-size:12.5px">
+      <i class="bi bi-clock-history" style="color:#DC2626"></i>
+      <span style="color:#B91C1C;font-weight:600">{{ stats.overstayed_passes }} Overstayed</span>
+    </div>
+  </a>
   {% endif %}
   {% if stats.pending_visitors %}
-  <div class="col-auto">
-    <a href="{% url 'visitor_list' %}?status=pending" class="text-decoration-none">
-      <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background:#FFFBEB;border:1px solid #FCD34D;font-size:13px">
-        <i class="bi bi-person-check" style="color:#D97706"></i>
-        <span style="color:#92400E;font-weight:600">{{ stats.pending_visitors }} Pending Visitor Request{{ stats.pending_visitors|pluralize }}</span>
-      </div>
-    </a>
-  </div>
+  <a href="{% url 'visitor_list' %}?status=pending" class="text-decoration-none">
+    <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background:#FFFBEB;border:1px solid #FCD34D;font-size:12.5px">
+      <i class="bi bi-person-check" style="color:#D97706"></i>
+      <span style="color:#92400E;font-weight:600">{{ stats.pending_visitors }} Pending Visitors</span>
+    </div>
+  </a>
   {% endif %}
   {% if stats.pending_passes %}
-  <div class="col-auto">
-    <a href="{% url 'gate_pass_list' %}?status=pending" class="text-decoration-none">
-      <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background:#EBF3FF;border:1px solid #93C5FD;font-size:13px">
-        <i class="bi bi-pass" style="color:#1565C0"></i>
-        <span style="color:#1E40AF;font-weight:600">{{ stats.pending_passes }} Pending Gate Pass{{ stats.pending_passes|pluralize:"es" }}</span>
-      </div>
-    </a>
-  </div>
+  <a href="{% url 'gate_pass_list' %}?status=pending" class="text-decoration-none">
+    <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background:#EBF3FF;border:1px solid #93C5FD;font-size:12.5px">
+      <i class="bi bi-pass" style="color:#1565C0"></i>
+      <span style="color:#1E40AF;font-weight:600">{{ stats.pending_passes }} Pending Passes</span>
+    </div>
+  </a>
   {% endif %}
   {% if stats.pending_apps %}
-  <div class="col-auto">
-    <a href="{% url 'registration_form_list' %}" class="text-decoration-none">
-      <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background:#F5F3FF;border:1px solid #C4B5FD;font-size:13px">
-        <i class="bi bi-file-earmark-text" style="color:#7C3AED"></i>
-        <span style="color:#5B21B6;font-weight:600">{{ stats.pending_apps }} Pending Application{{ stats.pending_apps|pluralize }}</span>
-      </div>
-    </a>
-  </div>
+  <a href="{% url 'registration_form_list' %}" class="text-decoration-none">
+    <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background:#F5F3FF;border:1px solid #C4B5FD;font-size:12.5px">
+      <i class="bi bi-file-earmark-text" style="color:#7C3AED"></i>
+      <span style="color:#5B21B6;font-weight:600">{{ stats.pending_apps }} Pending Applications</span>
+    </div>
+  </a>
   {% endif %}
 </div>
 {% endif %}
 
-<!-- ── Stat cards row 1 ── -->
-<div class="row g-3 mb-3">
-  {% if not is_warden %}
-  <div class="col-xl-2 col-md-4 col-6">
-    <a href="{% url 'hostel_list' %}" style="text-decoration:none">
+<!-- ══════════ GROUP 1 — RESIDENTS ══════════ -->
+{% if not is_warden %}
+<div class="dash-group">
+  <span class="dash-group-label">Residents</span>
+  <div class="dash-group-line"></div>
+</div>
+<div class="row g-3 mb-4">
+
+  <div class="col-xl-3 col-md-6 col-6">
+    <a href="{% url 'resident_analysis' %}" style="text-decoration:none">
     <div class="stat-card" style="--stat-color:#0F4C81">
-      <div class="s-top"><div class="s-icon" style="background:#DBEAFE"><i class="bi bi-building-fill" style="color:#0F4C81"></i></div></div>
+      <div class="s-top">
+        <div class="s-icon" style="background:#DBEAFE"><i class="bi bi-people-fill" style="color:#0F4C81"></i></div>
+        <span style="font-size:10px;background:#EBF3FF;color:#0F4C81;padding:3px 8px;border-radius:20px;font-weight:700">All Hostels</span>
+      </div>
+      <div class="s-number">{{ stats.total_students }}</div>
+      <div class="s-label">Total Residents</div>
+      <div class="s-link">View Analysis →</div>
+    </div></a>
+  </div>
+
+  <div class="col-xl-3 col-md-6 col-6">
+    <a href="{% url 'resident_analysis' %}?view=boys" style="text-decoration:none">
+    <div class="stat-card" style="--stat-color:#0891B2">
+      <div class="s-top">
+        <div class="s-icon" style="background:#ECFEFF"><i class="bi bi-gender-male" style="color:#0891B2"></i></div>
+      </div>
+      <div class="s-number" style="color:#0891B2">{{ stats.boys_total }}</div>
+      <div class="s-label">Total Boys</div>
+      <div class="s-sub">
+        <span class="s-pill" style="background:#DCFCE7;color:#166534">IC: {{ stats.boys_incampus }}</span>
+        <span class="s-pill" style="background:#FEF3C7;color:#92400E">OC: {{ stats.boys_outcampus }}</span>
+      </div>
+      <div class="s-link" style="color:#0891B2">Drill down →</div>
+    </div></a>
+  </div>
+
+  <div class="col-xl-3 col-md-6 col-6">
+    <a href="{% url 'resident_analysis' %}?view=girls" style="text-decoration:none">
+    <div class="stat-card" style="--stat-color:#7C3AED">
+      <div class="s-top">
+        <div class="s-icon" style="background:#F5F3FF"><i class="bi bi-gender-female" style="color:#7C3AED"></i></div>
+      </div>
+      <div class="s-number" style="color:#7C3AED">{{ stats.girls_total }}</div>
+      <div class="s-label">Total Girls</div>
+      <div class="s-link" style="color:#7C3AED">Drill down →</div>
+    </div></a>
+  </div>
+
+  <div class="col-xl-3 col-md-6 col-6">
+    <div class="stat-card" style="--stat-color:#059669;cursor:pointer" onclick="openStaffPanel()">
+      <div class="s-top">
+        <div class="s-icon" style="background:#ECFDF5"><i class="bi bi-person-badge-fill" style="color:#059669"></i></div>
+        <span style="font-size:10px;background:#ECFDF5;color:#059669;padding:3px 8px;border-radius:20px;font-weight:700">
+          <i class="bi bi-people me-1"></i>Directory
+        </span>
+      </div>
+      <div class="s-number" style="color:#059669">{{ stats.staff_total }}</div>
+      <div class="s-label">Total Staff</div>
+      <div class="s-sub">
+        <span class="s-pill" style="background:#FFFBEB;color:#92400E">{{ stats.warden_count }} Warden{{ stats.warden_count|pluralize }}</span>
+      </div>
+      <div class="s-link" style="color:#059669">View records →</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════ GROUP 2 — ROOMS ══════════ -->
+<div class="dash-group">
+  <span class="dash-group-label">Rooms</span>
+  <div class="dash-group-line"></div>
+</div>
+<div class="row g-3 mb-4">
+
+  <div class="col-xl-3 col-md-6 col-6">
+    <a href="{% url 'hostel_list' %}" style="text-decoration:none">
+    <div class="stat-card" style="--stat-color:#1565C0">
+      <div class="s-top"><div class="s-icon" style="background:#EBF3FF"><i class="bi bi-building-fill" style="color:#1565C0"></i></div></div>
       <div class="s-number">{{ stats.total_hostels }}</div>
       <div class="s-label">Total Hostels</div>
     </div></a>
   </div>
-  <div class="col-xl-2 col-md-4 col-6">
-    <a href="{% url 'resident_analysis' %}" style="text-decoration:none">
-    <div class="stat-card" style="--stat-color:#1565C0">
-      <div class="s-top"><div class="s-icon" style="background:#EBF3FF"><i class="bi bi-people-fill" style="color:#1565C0"></i></div></div>
-      <div class="s-number">{{ stats.total_students }}</div>
-      <div class="s-label">{% if selected_hostel %}Hostel Residents{% else %}Total Residents{% endif %}</div>
-      <div style="font-size:10px;color:var(--blue);margin-top:4px;font-weight:600">View Analysis →</div>
-    </div></a>
-  </div>
-  {% endif %}
-  <div class="col-xl-2 col-md-4 col-6">
+
+  <div class="col-xl-3 col-md-6 col-6">
     <a href="{% url 'room_list' %}?status=vacant" style="text-decoration:none">
     <div class="stat-card" style="--stat-color:#059669">
       <div class="s-top"><div class="s-icon" style="background:#ECFDF5"><i class="bi bi-door-open-fill" style="color:#059669"></i></div></div>
-      <div class="s-number">{{ stats.vacant_rooms }}</div>
+      <div class="s-number" style="color:#059669">{{ stats.vacant_rooms }}</div>
       <div class="s-label">Vacant Rooms</div>
     </div></a>
   </div>
-  <div class="col-xl-2 col-md-4 col-6">
+
+  <div class="col-xl-3 col-md-6 col-6">
     <a href="{% url 'room_list' %}?status=partial" style="text-decoration:none">
     <div class="stat-card" style="--stat-color:#F59E0B">
       <div class="s-top"><div class="s-icon" style="background:#FEF3C7"><i class="bi bi-door-closed" style="color:#F59E0B"></i></div></div>
-      <div class="s-number">{{ stats.partially_occupied_rooms }}</div>
+      <div class="s-number" style="color:#F59E0B">{{ stats.partially_occupied_rooms }}</div>
       <div class="s-label">Partially Occupied</div>
     </div></a>
   </div>
-  <div class="col-xl-2 col-md-4 col-6">
+
+  <div class="col-xl-3 col-md-6 col-6">
     <a href="{% url 'room_list' %}?status=occupied" style="text-decoration:none">
     <div class="stat-card" style="--stat-color:#D97706">
       <div class="s-top"><div class="s-icon" style="background:#FFFBEB"><i class="bi bi-door-closed-fill" style="color:#D97706"></i></div></div>
-      <div class="s-number">{{ stats.occupied_rooms }}</div>
+      <div class="s-number" style="color:#D97706">{{ stats.occupied_rooms }}</div>
       <div class="s-label">Fully Occupied</div>
     </div></a>
   </div>
-  <div class="col-xl-2 col-md-4 col-6">
-    <a href="{% url 'complaint_list' %}?status=open" style="text-decoration:none">
-    <div class="stat-card" style="--stat-color:#7C3AED">
-      <div class="s-top"><div class="s-icon" style="background:#F5F3FF"><i class="bi bi-chat-square-text-fill" style="color:#7C3AED"></i></div></div>
-      <div class="s-number">{{ stats.open_complaints }}</div>
-      <div class="s-label">Open Complaints</div>
-    </div></a>
-  </div>
-  <div class="col-xl-2 col-md-4 col-6">
+
+</div>
+
+<!-- ══════════ GROUP 3 — TODAY'S ACTIVITY ══════════ -->
+<div class="dash-group">
+  <span class="dash-group-label">Today's Activity</span>
+  <div class="dash-group-line"></div>
+</div>
+<div class="row g-3 mb-4">
+
+  <div class="col-xl col-md-4 col-6">
     <a href="{% url 'outsiders' %}" style="text-decoration:none">
     <div class="stat-card" style="--stat-color:#0891B2">
       <div class="s-top"><div class="s-icon" style="background:#F0F9FF"><i class="bi bi-box-arrow-up-right" style="color:#0891B2"></i></div></div>
       <div class="s-number">{{ stats.students_out }}</div>
-      <div class="s-label">Outside Now <span style="font-size:9px;opacity:.7">(QR verified)</span></div>
+      <div class="s-label">Outside Now</div>
+      <div class="s-sub"><span style="font-size:10px;color:var(--text-3)">QR verified</span></div>
     </div></a>
   </div>
-  <div class="col-xl-2 col-md-4 col-6">
+
+  <div class="col-xl col-md-4 col-6">
     <a href="{% url 'gate_pass_report' %}?date={{ today|date:'Y-m-d' }}" style="text-decoration:none">
     <div class="stat-card" style="--stat-color:#0D9488">
       <div class="s-top"><div class="s-icon" style="background:#F0FDFA"><i class="bi bi-pass-fill" style="color:#0D9488"></i></div></div>
       <div class="s-number">{{ stats.today_gate_passes }}</div>
-      <div class="s-label">Today's Gate Passes</div>
+      <div class="s-label">Gate Passes</div>
     </div></a>
   </div>
-  <div class="col-xl-2 col-md-4 col-6">
+
+  <div class="col-xl col-md-4 col-6">
     <a href="{% url 'leave_report' %}?date={{ today|date:'Y-m-d' }}" style="text-decoration:none">
     <div class="stat-card" style="--stat-color:#7C3AED">
       <div class="s-top"><div class="s-icon" style="background:#F5F3FF"><i class="bi bi-calendar2-x-fill" style="color:#7C3AED"></i></div></div>
       <div class="s-number">{{ stats.today_on_leave }}</div>
-      <div class="s-label">On Leave Today</div>
+      <div class="s-label">On Leave</div>
     </div></a>
   </div>
-  <div class="col-xl-2 col-md-4 col-6">
-    <a href="{% url 'maintenance_list' %}?status=open" style="text-decoration:none">
+
+  <div class="col-xl col-md-4 col-6">
+    <a href="{% url 'complaint_list' %}?status=open" style="text-decoration:none">
     <div class="stat-card" style="--stat-color:#DC2626">
-      <div class="s-top"><div class="s-icon" style="background:#FEF2F2"><i class="bi bi-tools" style="color:#DC2626"></i></div></div>
+      <div class="s-top"><div class="s-icon" style="background:#FEF2F2"><i class="bi bi-chat-square-text-fill" style="color:#DC2626"></i></div></div>
+      <div class="s-number">{{ stats.open_complaints }}</div>
+      <div class="s-label">Open Complaints</div>
+    </div></a>
+  </div>
+
+  <div class="col-xl col-md-4 col-6">
+    <a href="{% url 'maintenance_list' %}?status=open" style="text-decoration:none">
+    <div class="stat-card" style="--stat-color:#9333EA">
+      <div class="s-top"><div class="s-icon" style="background:#FAF5FF"><i class="bi bi-tools" style="color:#9333EA"></i></div></div>
       <div class="s-number">{{ stats.open_maintenance }}</div>
       <div class="s-label">Open Maintenance</div>
     </div></a>
   </div>
 
-  {# ── Total Boys card ── #}
-  <div class="col-xl-2 col-md-4 col-6">
-    <a href="{% url 'resident_analysis' %}?view=boys" style="text-decoration:none">
-    <div class="stat-card" style="--stat-color:#1565C0">
-      <div class="s-top"><div class="s-icon" style="background:#EBF3FF"><i class="bi bi-gender-male" style="color:#1565C0"></i></div></div>
-      <div class="s-number" style="color:#1565C0">{{ stats.boys_total }}</div>
-      <div class="s-label">Total Boys</div>
-      <div class="d-flex gap-1 mt-1 flex-wrap">
-        <span style="font-size:10px;font-weight:700;background:#DCFCE7;color:#166534;padding:1px 6px;border-radius:20px">InCampus: {{ stats.boys_incampus }}</span>
-        <span style="font-size:10px;font-weight:700;background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:20px">OutCampus: {{ stats.boys_outcampus }}</span>
-      </div>
-      <div style="font-size:10px;color:var(--blue);margin-top:4px;font-weight:600">View Details →</div>
-    </div></a>
-  </div>
-
-  {# ── Total Girls card ── #}
-  <div class="col-xl-2 col-md-4 col-6">
-    <a href="{% url 'resident_analysis' %}?view=girls" style="text-decoration:none">
-    <div class="stat-card" style="--stat-color:#7C3AED">
-      <div class="s-top"><div class="s-icon" style="background:#F5F3FF"><i class="bi bi-gender-female" style="color:#7C3AED"></i></div></div>
-      <div class="s-number" style="color:#7C3AED">{{ stats.girls_total }}</div>
-      <div class="s-label">Total Girls</div>
-      <div style="font-size:10px;color:#7C3AED;margin-top:4px;font-weight:600">View Details →</div>
-    </div></a>
-  </div>
-
-  {# ── Total Staff card ── #}
-  {% if not is_warden %}
-  <div class="col-xl-2 col-md-4 col-6">
-    <a href="{% url 'staff_accounts' %}" style="text-decoration:none">
-    <div class="stat-card" style="--stat-color:#059669">
-      <div class="s-top"><div class="s-icon" style="background:#ECFDF5"><i class="bi bi-person-badge-fill" style="color:#059669"></i></div></div>
-      <div class="s-number" style="color:#059669">{{ stats.staff_total }}</div>
-      <div class="s-label">Total Staff</div>
-      <div class="mt-1" style="font-size:10.5px;font-weight:700;color:#D97706">Wardens: {{ stats.warden_count }}</div>
-    </div></a>
-  </div>
-  {% endif %}
-
 </div>
+{% endif %}{# end not is_warden for groups #}
 
-{# ── Hostel Wise Modal ── #}
-<div class="modal fade" id="hostelWiseModal" tabindex="-1" aria-labelledby="hostelWiseModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header" style="background:linear-gradient(135deg,#1565C0,#0D47A1);color:#fff;border:none">
-        <h5 class="modal-title" id="hostelWiseModalLabel" style="font-size:15px;font-weight:700">
-          <i class="bi bi-building-fill me-2"></i>Hostel-Wise Student Breakdown
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body p-0">
-        <div class="table-responsive">
-          <table class="table mb-0">
-            <thead>
-              <tr style="background:#F8FAFF">
-                <th>Hostel</th>
-                <th>Type</th>
-                <th style="color:#1565C0">Boys</th>
-                <th style="color:#7C3AED">Girls</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in hostel_wise_data %}
-              <tr>
-                <td style="font-weight:600">{{ row.hostel.name }}</td>
-                <td><span class="badge" style="background:#F1F5F9;color:var(--text-2)">{{ row.hostel.get_type_display }}</span></td>
-                <td style="font-weight:700;color:#1565C0">{{ row.boys }}</td>
-                <td style="font-weight:700;color:#7C3AED">{{ row.girls }}</td>
-                <td style="font-weight:700">{{ row.total }}</td>
-              </tr>
-              {% empty %}
-              <tr><td colspan="5" class="text-center py-3" style="color:var(--text-3)">No hostel data available.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ── Attendance panel ── -->
+<!-- ══════════ ATTENDANCE ══════════ -->
 <div class="card mb-4">
   <div class="card-header">
     <div class="card-header-left">
@@ -311,33 +379,31 @@
       <a href="{% url 'attendance_report' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-bar-chart-line me-1"></i>Report</a>
     </div>
   </div>
-  <div class="card-body py-3 px-4">
-    <div class="row g-0 text-center">
-      <div class="col" style="border-right:1px solid var(--border)">
-        <div style="font-size:28px;font-weight:800;color:#059669;line-height:1">{{ stats.present_today }}</div>
-        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-top:5px">Present</div>
-      </div>
-      <div class="col" style="border-right:1px solid var(--border)">
-        <div style="font-size:28px;font-weight:800;color:#DC2626;line-height:1">{{ stats.absent_today }}</div>
-        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-top:5px">Absent</div>
-      </div>
-      <div class="col" style="border-right:1px solid var(--border)">
-        <div style="font-size:28px;font-weight:800;color:#1565C0;line-height:1">{{ stats.leave_today }}</div>
-        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-top:5px">On Leave</div>
-      </div>
-      <div class="col" style="border-right:1px solid var(--border)">
-        <div style="font-size:28px;font-weight:800;color:var(--text-3);line-height:1">{{ stats.unmarked_today }}</div>
-        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-top:5px">Not Marked</div>
-      </div>
-      <div class="col">
-        <div style="font-size:28px;font-weight:800;color:var(--text-1);line-height:1">{{ stats.total_students }}</div>
-        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-3);margin-top:5px">Total</div>
-      </div>
+  <div class="att-strip">
+    <a href="{% url 'attendance_list' %}?date={{ today|date:'Y-m-d' }}&status=present" class="att-cell text-decoration-none">
+      <div class="att-num" style="color:#059669">{{ stats.present_today }}</div>
+      <div class="att-lbl">Present</div>
+    </a>
+    <a href="{% url 'attendance_list' %}?date={{ today|date:'Y-m-d' }}&status=absent" class="att-cell text-decoration-none">
+      <div class="att-num" style="color:#DC2626">{{ stats.absent_today }}</div>
+      <div class="att-lbl">Absent</div>
+    </a>
+    <a href="{% url 'attendance_list' %}?date={{ today|date:'Y-m-d' }}&status=leave" class="att-cell text-decoration-none">
+      <div class="att-num" style="color:#1565C0">{{ stats.leave_today }}</div>
+      <div class="att-lbl">On Leave</div>
+    </a>
+    <div class="att-cell">
+      <div class="att-num" style="color:var(--text-3)">{{ stats.unmarked_today }}</div>
+      <div class="att-lbl">Not Marked</div>
+    </div>
+    <div class="att-cell" style="border-right:none">
+      <div class="att-num" style="color:var(--text-1)">{{ stats.total_students }}</div>
+      <div class="att-lbl">Total</div>
     </div>
   </div>
 </div>
 
-<!-- ── Hostel-wise occupancy ── -->
+<!-- ══════════ HOSTEL OCCUPANCY ══════════ -->
 {% if hostels_data %}
 <div class="card mb-4">
   <div class="card-header">
@@ -349,29 +415,34 @@
   </div>
   <div class="table-responsive">
     <table class="table">
-      <thead><tr><th>Hostel</th><th>Rooms</th><th>Total Beds</th><th>Occupied</th><th>Vacant</th><th>Occupancy</th>{% if not is_warden %}<th></th>{% endif %}</tr></thead>
+      <thead>
+        <tr>
+          <th>Hostel</th><th>Rooms</th><th>Beds</th>
+          <th>Occupied</th><th>Vacant</th><th>Occupancy</th>
+          {% if not is_warden %}<th></th>{% endif %}
+        </tr>
+      </thead>
       <tbody>
         {% for h in hostels_data %}
         <tr>
-          <td><div class="tbl-name">{{ h.hostel.name }}</div><div class="tbl-sub">{{ h.hostel.get_type_display }}</div></td>
+          <td>
+            <div class="tbl-name">{{ h.hostel.name }}</div>
+            <div class="tbl-sub">{{ h.hostel.get_type_display }}</div>
+          </td>
           <td>{{ h.total_rooms }} <span class="tbl-sub">({{ h.vacant_rooms }} vacant)</span></td>
           <td>{{ h.total_beds }}</td>
           <td class="fw-600" style="color:#059669">{{ h.occupied_beds }}</td>
           <td class="fw-600" style="color:#D97706">{{ h.vacant_beds }}</td>
-          <td>
+          <td style="min-width:100px">
             <div class="d-flex align-items-center gap-2">
-              <div style="flex:1;height:6px;background:#E2E8F0;border-radius:3px;overflow:hidden">
-                <div style="width:{{ h.pct }}%;height:100%;background:{% if h.pct > 80 %}#DC2626{% elif h.pct > 60 %}#D97706{% else %}#059669{% endif %};border-radius:3px"></div>
+              <div class="occ-bar-wrap">
+                <div class="occ-bar" style="width:{{ h.pct }}%;background:{% if h.pct > 80 %}#DC2626{% elif h.pct > 60 %}#D97706{% else %}#059669{% endif %}"></div>
               </div>
-              <span style="font-size:12px;font-weight:600;width:36px">{{ h.pct }}%</span>
+              <span style="font-size:12px;font-weight:700;width:36px">{{ h.pct }}%</span>
             </div>
           </td>
           {% if not is_warden %}
-          <td>
-            <a href="?hostel={{ h.hostel.pk }}" class="btn btn-xs btn-outline-primary">
-              <i class="bi bi-eye"></i> View
-            </a>
-          </td>
+          <td><a href="?hostel={{ h.hostel.pk }}" class="btn btn-xs btn-outline-primary"><i class="bi bi-eye"></i></a></td>
           {% endif %}
         </tr>
         {% empty %}
@@ -383,8 +454,7 @@
 </div>
 {% endif %}
 
-
-<!-- ── Bottom tables ── -->
+<!-- ══════════ BOTTOM TABLES ══════════ -->
 <div class="row g-3">
   <!-- Recent Allocations -->
   <div class="col-xl-5">
@@ -445,7 +515,7 @@
     </div>
   </div>
 
-  <!-- Overstayed + Pending Visitors -->
+  <!-- Alerts: overstayed + pending visitors -->
   <div class="col-xl-3">
     {% if overstayed %}
     <div class="card mb-3">
@@ -493,4 +563,143 @@
     {% endif %}
   </div>
 </div>
+
+
+<!-- ══════════ STAFF OFFCANVAS ══════════ -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="staffPanel" style="width:min(640px,100vw)">
+  <div class="offcanvas-header" style="background:linear-gradient(135deg,#064E3B,#065F46);color:#fff;border:none;padding:20px 22px">
+    <div>
+      <h5 class="mb-0" style="font-size:15px;font-weight:800"><i class="bi bi-person-badge-fill me-2"></i>Staff Directory</h5>
+      <div style="font-size:12px;opacity:.75;margin-top:2px">{{ stats.staff_total }} active staff members</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      <a href="{% url 'staff_accounts' %}" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25);font-size:12px">
+        <i class="bi bi-gear me-1"></i>Manage
+      </a>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+  </div>
+
+  <div class="offcanvas-body p-0" style="overflow-y:auto">
+
+    {% if hod_staff %}
+    <!-- College Faculty / HOD -->
+    <div style="padding:14px 22px 8px;border-bottom:2px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.9px;color:var(--text-3)">
+        <i class="bi bi-mortarboard-fill me-1" style="color:#7C3AED"></i>College Faculty / HOD
+        <span style="background:#F5F3FF;color:#7C3AED;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;margin-left:6px">{{ hod_staff|length }}</span>
+      </div>
+    </div>
+    {% for person in hod_staff %}
+    <div class="staff-person">
+      <div class="staff-av" style="background:#F5F3FF;color:#7C3AED">{{ person.name|first|upper }}</div>
+      <div style="flex:1;min-width:0">
+        <div class="staff-name">{{ person.name }}</div>
+        <div class="staff-meta">
+          {% if person.department %}{{ person.department }} · {% endif %}{{ person.email }}
+        </div>
+        <span class="role-chip" style="background:#F5F3FF;color:#7C3AED">HOD / Faculty</span>
+      </div>
+      {% if person.phone %}
+      <a href="tel:{{ person.phone }}" class="btn btn-xs btn-outline-secondary" style="flex-shrink:0">
+        <i class="bi bi-telephone"></i>
+      </a>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- Hostel Staff -->
+    <div style="padding:14px 22px 8px;border-bottom:2px solid var(--border){% if hod_staff %};margin-top:4px{% endif %}">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.9px;color:var(--text-3)">
+        <i class="bi bi-building-fill me-1" style="color:#059669"></i>Hostel Staff
+        <span style="background:#ECFDF5;color:#059669;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;margin-left:6px">{{ hostel_staff|length }}</span>
+      </div>
+    </div>
+
+    {% regroup hostel_staff by role as staff_by_role %}
+    {% for group in staff_by_role %}
+    <div style="padding:8px 22px 4px;background:var(--bg)">
+      <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--text-3)">
+        {% if group.grouper == 'warden' %}Wardens
+        {% elif group.grouper == 'admin' %}Admin 2
+        {% elif group.grouper == 'security' %}Security Guards
+        {% elif group.grouper == 'maintenance' %}Maintenance
+        {% elif group.grouper == 'mess' %}Mess Incharge
+        {% else %}{{ group.grouper|title }}{% endif %}
+      </span>
+    </div>
+    {% for person in group.list %}
+    <div class="staff-person">
+      <div class="staff-av"
+           style="background:{% if group.grouper == 'warden' %}#ECFDF5{% elif group.grouper == 'admin' %}#EBF3FF{% elif group.grouper == 'security' %}#FEF3C7{% else %}#FAF5FF{% endif %};
+                  color:{% if group.grouper == 'warden' %}#059669{% elif group.grouper == 'admin' %}#1565C0{% elif group.grouper == 'security' %}#92400E{% else %}#7C3AED{% endif %}">
+        {{ person.name|first|upper }}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="staff-name">{{ person.name }}</div>
+        <div class="staff-meta">{{ person.email }}</div>
+        <span class="role-chip"
+              style="background:{% if group.grouper == 'warden' %}#ECFDF5{% elif group.grouper == 'admin' %}#EBF3FF{% elif group.grouper == 'security' %}#FEF3C7{% else %}#FAF5FF{% endif %};
+                     color:{% if group.grouper == 'warden' %}#059669{% elif group.grouper == 'admin' %}#1565C0{% elif group.grouper == 'security' %}#92400E{% else %}#7C3AED{% endif %}">
+          {% if group.grouper == 'warden' %}Warden
+          {% elif group.grouper == 'admin' %}Admin 2
+          {% elif group.grouper == 'security' %}Security Guard
+          {% elif group.grouper == 'maintenance' %}Maintenance
+          {% elif group.grouper == 'mess' %}Mess Incharge
+          {% else %}{{ group.grouper|title }}{% endif %}
+        </span>
+      </div>
+      {% if person.phone %}
+      <a href="tel:{{ person.phone }}" class="btn btn-xs btn-outline-secondary" style="flex-shrink:0">
+        <i class="bi bi-telephone"></i>
+      </a>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% endfor %}
+
+    {% if custom_staff %}
+    <div style="padding:14px 22px 8px;border-top:2px solid var(--border)">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.9px;color:var(--text-3)">
+        <i class="bi bi-person-gear me-1"></i>Other Staff
+      </div>
+    </div>
+    {% for person in custom_staff %}
+    <div class="staff-person">
+      <div class="staff-av" style="background:#F1F5F9;color:#475569">{{ person.name|first|upper }}</div>
+      <div style="flex:1;min-width:0">
+        <div class="staff-name">{{ person.name }}</div>
+        <div class="staff-meta">{{ person.email }}</div>
+        <span class="role-chip" style="background:#F1F5F9;color:#475569">{{ person.role|title }}</span>
+      </div>
+      {% if person.phone %}
+      <a href="tel:{{ person.phone }}" class="btn btn-xs btn-outline-secondary" style="flex-shrink:0">
+        <i class="bi bi-telephone"></i>
+      </a>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if not hod_staff and not hostel_staff and not custom_staff %}
+    <div class="empty-state p-5">
+      <i class="bi bi-people" style="font-size:32px;color:var(--text-3)"></i>
+      <p class="mt-2">No active staff members found.</p>
+      <a href="{% url 'staff_accounts' %}" class="btn btn-sm btn-primary mt-2">Add Staff</a>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openStaffPanel() {
+  var el = document.getElementById('staffPanel');
+  if (el) { new bootstrap.Offcanvas(el).show(); }
+}
+</script>
 {% endblock %}

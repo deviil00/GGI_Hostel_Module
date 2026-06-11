@@ -5494,6 +5494,16 @@ def admin_dashboard_v2(request):
     ).select_related('student')[:5]
     pending_visitors   = visitor_qs.filter(status='pending').select_related('hostel', 'student')[:5]
 
+    # Staff panel data for offcanvas
+    from apps.accounts.models import User as _User2
+    _hod_staff    = list(_User2.objects.filter(role='hod', is_active=True).order_by('name'))
+    _hostel_staff = list(_User2.objects.filter(
+        role__in=['admin', 'warden', 'security', 'maintenance', 'mess'], is_active=True
+    ).order_by('role', 'name'))
+    _custom_staff = list(_User2.objects.exclude(
+        role__in=['superadmin', 'student', 'hod', 'admin', 'warden', 'security', 'maintenance', 'mess']
+    ).filter(is_active=True).order_by('role', 'name'))
+
     response = render(request, 'admin/dashboard.html', {
         'stats': stats, 'today': today,
         'recent_allocations': recent_allocations,
@@ -5506,6 +5516,9 @@ def admin_dashboard_v2(request):
         'all_hostels':        Hostel.objects.all(),
         'selected_hostel':    selected_hostel,
         'is_warden':          is_warden,
+        'hod_staff':          _hod_staff,
+        'hostel_staff':       _hostel_staff,
+        'custom_staff':       _custom_staff,
     })
     response['Cache-Control'] = 'no-store, no-cache, must-revalidate'
     return response
