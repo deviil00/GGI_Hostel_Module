@@ -1166,14 +1166,36 @@ def student_edit_profile(request):
     if not student.can_edit_profile:
         messages.error(request, 'Profile editing is not currently allowed. Contact admin.')
         return redirect('my_profile')
+    # Auto-mark non-resident if no active room allocation
+    has_room = student.allocations.filter(status='active').exists()
+    if not has_room and student.is_resident:
+        student.is_resident = False
+        student.save(update_fields=['is_resident'])
+
     if request.method == 'POST':
-        student.phone             = request.POST.get('phone', '').strip()
-        student.email             = request.POST.get('email', '').strip()
+        phone          = request.POST.get('phone', '').strip()
+        email          = request.POST.get('email', '').strip()
+        guardian_phone = request.POST.get('guardian_phone', '').strip()
+        guardian_email = request.POST.get('guardian_email', '').strip()
+
+        errors = []
+        if phone and guardian_phone and phone == guardian_phone:
+            errors.append('Your phone number and parent/guardian phone number cannot be the same.')
+        if email and guardian_email and email.lower() == guardian_email.lower():
+            errors.append('Your email address and parent/guardian email address cannot be the same.')
+
+        if errors:
+            for err in errors:
+                messages.error(request, err)
+            return render(request, 'student/edit_profile.html', {'student': student})
+
+        student.phone             = phone
+        student.email             = email
         student.address           = request.POST.get('address', '').strip()
         student.guardian_name     = request.POST.get('guardian_name', '').strip()
-        student.guardian_phone    = request.POST.get('guardian_phone', '').strip()
+        student.guardian_phone    = guardian_phone
         student.guardian_relation = request.POST.get('guardian_relation', '').strip()
-        student.guardian_email    = request.POST.get('guardian_email', '').strip()
+        student.guardian_email    = guardian_email
         student.aadhar_number     = request.POST.get('aadhar_number', '').strip()
         student.college_id_number = request.POST.get('college_id_number', '').strip()
         if request.FILES.get('photo'):

@@ -72,6 +72,14 @@
             <td>{% if room %}{{ room.hostel.name }}{% else %}<span style="color:var(--text-3)">Not allotted</span>{% endif %}</td></tr>
         <tr><td class="ps-3" style="color:var(--text-3)">Room No</td>
             <td>{% if room %}<strong>{{ room.room_number }}</strong>{% else %}—{% endif %}</td></tr>
+        <tr><td class="ps-3 pb-2" style="color:var(--text-3)">Residency</td>
+            <td class="pb-2">
+              {% if student.is_resident %}
+              <span style="font-size:11px;font-weight:700;background:#DCFCE7;color:#166534;padding:2px 10px;border-radius:20px">Resident</span>
+              {% else %}
+              <span style="font-size:11px;font-weight:700;background:#FEE2E2;color:#991B1B;padding:2px 10px;border-radius:20px">Non-Resident</span>
+              {% endif %}
+            </td></tr>
         {% endwith %}
         {% if student.address %}<tr><td class="ps-3 pb-2" style="color:var(--text-3)">Address</td><td class="pb-2" style="font-size:12px">{{ student.address }}</td></tr>{% endif %}
       </table>
