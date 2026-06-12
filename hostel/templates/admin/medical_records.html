@@ -1,0 +1,161 @@
+{% extends 'base/base.html' %}
+{% block title %}Medical Records — GGI Hostel ERP{% endblock %}
+{% block page_title %}Medical Records{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Medical Records</h4>
+    <p>{% if warden_hostel %}{{ warden_hostel.name }} — {% endif %}Student health records & ambulance usage</p>
+  </div>
+</div>
+
+{# ── Ambulance stat ── #}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3">
+    <a href="?type=ambulance" class="text-decoration-none">
+      <div class="stat-card text-center {% if type_filter == 'ambulance' %}active{% endif %}" style="--stat-color:#D97706">
+        <div class="s-number">{{ ambulance_total }}</div>
+        <div class="s-label">Ambulance Uses</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+{# ── Filters ── #}
+<div class="filter-card mb-3">
+  <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-2">
+      <select name="type" class="form-select form-select-sm">
+        <option value="">All Types</option>
+        {% for val, label in record_types %}
+        <option value="{{ val }}" {% if type_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% if not warden_hostel %}
+    <div class="col-md-2">
+      <select name="hostel" class="form-select form-select-sm">
+        <option value="">All Hostels</option>
+        {% for h in all_hostels %}
+        <option value="{{ h.pk }}" {% if hostel_filter == h.pk|stringformat:"s" %}selected{% endif %}>{{ h.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-md-2">
+      <select name="verified" class="form-select form-select-sm">
+        <option value="">All</option>
+        <option value="0" {% if verified_filter == '0' %}selected{% endif %}>Unverified</option>
+        <option value="1" {% if verified_filter == '1' %}selected{% endif %}>Verified</option>
+      </select>
+    </div>
+    <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm px-3">Filter</button></div>
+    <div class="col-auto"><a href="{% url 'admin_medical_records' %}" class="btn btn-sm btn-outline-secondary">Clear</a></div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-header-left">
+      <div class="ch-icon" style="background:#FEE2E2"><i class="bi bi-clipboard2-pulse-fill" style="color:#DC2626"></i></div>
+      Medical Records
+    </div>
+    <span style="font-size:12px;color:var(--text-3)">{{ page.paginator.count }} record{{ page.paginator.count|pluralize }}</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead><tr>
+        <th>Student</th>
+        <th>Date</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Hospital</th>
+        <th>Ambulance</th>
+        <th>Status</th>
+        <th></th>
+      </tr></thead>
+      <tbody>
+      {% for rec in page %}
+      <tr>
+        <td>
+          <div class="tbl-name">{{ rec.student.name }}</div>
+          <div class="tbl-sub">{{ rec.student.roll_number }}</div>
+        </td>
+        <td style="font-size:12.5px;white-space:nowrap">{{ rec.date|date:"d M Y" }}</td>
+        <td>
+          <span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:11px">
+            {{ rec.get_record_type_display }}
+          </span>
+        </td>
+        <td style="font-size:12.5px;max-width:220px">{{ rec.description|truncatechars:80 }}</td>
+        <td style="font-size:12px;color:var(--text-2)">{{ rec.hospital|default:"—" }}</td>
+        <td>
+          {% if rec.ambulance_used %}
+          <div>
+            <span class="badge" style="background:#FEF3C7;color:#92400E;font-size:11px">
+              <i class="bi bi-truck me-1"></i>Yes
+            </span>
+            {% if rec.ambulance_reason %}
+            <div style="font-size:11px;color:var(--text-3)">{{ rec.ambulance_reason|truncatechars:30 }}</div>
+            {% endif %}
+          </div>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% if rec.is_verified %}
+          <span style="color:#059669;font-size:12px;font-weight:700">
+            <i class="bi bi-check-circle-fill me-1"></i>Verified
+          </span>
+          {% if rec.verified_by %}<div style="font-size:10.5px;color:var(--text-3)">by {{ rec.verified_by.name|default:rec.verified_by.email }}</div>{% endif %}
+          {% else %}
+          <span style="color:#D97706;font-size:12px">Pending</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if not rec.is_verified %}
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="rec_pk" value="{{ rec.pk }}">
+            <input type="hidden" name="admin_notes" value="">
+            <button class="btn btn-xs btn-outline-success">
+              <i class="bi bi-check-lg me-1"></i>Verify
+            </button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="8">
+          <div class="empty-state"><i class="bi bi-clipboard2-pulse"></i><p>No medical records found.</p></div>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if page.has_other_pages %}
+<nav class="mt-3 d-flex align-items-center justify-content-between">
+  <span style="font-size:12.5px;color:var(--text-3)">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+  <ul class="pagination pagination-sm mb-0">
+    {% if page.has_previous %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page.previous_page_number }}&type={{ type_filter }}&hostel={{ hostel_filter }}&verified={{ verified_filter }}">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    </li>
+    {% endif %}
+    {% if page.has_next %}
+    <li class="page-item">
+      <a class="page-link" href="?page={{ page.next_page_number }}&type={{ type_filter }}&hostel={{ hostel_filter }}&verified={{ verified_filter }}">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

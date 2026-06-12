@@ -60,6 +60,10 @@
           <label class="form-check-label" for="req-warden" style="font-size:13px">Requires Warden Approval</label>
         </div>
         <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" name="req_hod" id="req-hod">
+          <label class="form-check-label" for="req-hod" style="font-size:13px">Requires HOD Approval</label>
+        </div>
+        <div class="form-check mb-2">
           <input class="form-check-input" type="checkbox" name="req_admin" id="req-admin">
           <label class="form-check-label" for="req-admin" style="font-size:13px">Requires Admin Approval</label>
         </div>
@@ -119,7 +123,7 @@
           </div>
           <div class="d-flex gap-1">
             <button class="btn btn-xs btn-outline-secondary"
-                    onclick="editCat('{{ cat.pk }}','{{ cat.name|escapejs }}','{{ cat.description|escapejs }}','{{ cat.start_time|time:"H:i" }}','{{ cat.end_time|time:"H:i" }}',{{ cat.max_hours }},{{ cat.requires_warden_approval|yesno:'true,false' }},{{ cat.requires_admin_approval|yesno:'true,false' }},{{ cat.requires_superadmin_approval|yesno:'true,false' }},{{ cat.is_emergency|yesno:'true,false' }},{{ cat.is_active|yesno:'true,false' }})">
+                    onclick="editCat('{{ cat.pk }}','{{ cat.name|escapejs }}','{{ cat.description|escapejs }}','{{ cat.start_time|time:"H:i" }}','{{ cat.end_time|time:"H:i" }}',{{ cat.max_hours }},{{ cat.requires_warden_approval|yesno:'true,false' }},{{ cat.requires_hod_approval|yesno:'true,false' }},{{ cat.requires_admin_approval|yesno:'true,false' }},{{ cat.requires_superadmin_approval|yesno:'true,false' }},{{ cat.is_emergency|yesno:'true,false' }},{{ cat.is_active|yesno:'true,false' }})">
               Edit
             </button>
             <form method="post" action="{% url 'gp_category_toggle' cat.pk %}">{% csrf_token %}
@@ -146,7 +150,7 @@
 </div>
 
 <script>
-function editCat(pk,name,desc,start,end,days,warden,admin,sa,emerg,active){
+function editCat(pk,name,desc,start,end,days,warden,hod,admin,sa,emerg,active){
   document.getElementById('form-action').value='edit';
   document.getElementById('form-pk').value=pk;
   document.getElementById('form-title').textContent='Edit Category';
@@ -156,6 +160,7 @@ function editCat(pk,name,desc,start,end,days,warden,admin,sa,emerg,active){
   document.getElementById('f-end').value=end;
   document.getElementById('f-days').value=days;
   document.getElementById('req-warden').checked=warden;
+  document.getElementById('req-hod').checked=hod;
   document.getElementById('req-admin').checked=admin;
   document.getElementById('req-superadmin').checked=sa;
   document.getElementById('f-emergency').checked=emerg;

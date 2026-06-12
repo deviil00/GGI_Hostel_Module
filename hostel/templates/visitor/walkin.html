@@ -102,11 +102,27 @@
         <label>Upload ID Photo <span class="required">*</span></label>
         <input type="file" name="id_upload" class="form-control" accept="image/*,.pdf" required>
       </div>
+      <div class="col-md-6">
+        <label>State</label>
+        <input type="text" name="state" class="form-control" placeholder="e.g. Uttar Pradesh">
+      </div>
+      <div class="col-md-6">
+        <label>Country</label>
+        <input type="text" name="country" class="form-control" value="India" placeholder="e.g. India">
+      </div>
     </div>
 
     {# ── SECTION 2: Time ── #}
     <div class="section-header"><i class="bi bi-clock me-2"></i>Visit Timing</div>
     <div class="row g-3 mb-4">
+      <div class="col-md-6">
+        <label>Visit Date <span class="required">*</span></label>
+        <input type="date" name="visit_date_main" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+      </div>
+      <div class="col-md-6">
+        <label>Visit End Date <span style="font-size:11px;color:#64748B">(for multi-day stays)</span></label>
+        <input type="date" name="visit_end_date" class="form-control">
+      </div>
       <div class="col-md-6">
         <label>Time In <span class="required">*</span></label>
         <input type="time" name="time_in" class="form-control" required>
@@ -140,8 +156,8 @@
         <i class="bi bi-info-circle me-2"></i>Admission Visit
       </div>
       <p style="font-size:13px;color:#0F172A;margin:0">
-        Please proceed to the <strong>Admission Office</strong> upon entry.
-        Security will guide you to the right block.
+        Please proceed to <strong>E-Block (Admission Office)</strong> upon entry.
+        Security at the gate will guide you to the E-Block.
       </p>
     </div>
 
@@ -175,9 +191,9 @@
           </select>
         </div>
         <div class="col-md-6">
-          <label>Visit Date</label>
-          <input type="date" name="visit_date_guardian" class="form-control"
-                 value="{{ today|date:'Y-m-d' }}" readonly>
+          <label>Student NPF ID <span style="font-size:11px;color:#64748B">(if known)</span></label>
+          <input type="text" name="student_npf_id" class="form-control"
+                 placeholder="Student's NPF / College ID number">
         </div>
       </div>
     </div>

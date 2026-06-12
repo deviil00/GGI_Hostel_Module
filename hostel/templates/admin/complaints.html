@@ -44,6 +44,10 @@
      class="status-tab {% if cur == 'closed' %}active{% endif %}">
     Closed <span class="tab-count">{{ counts.closed|default:0 }}</span>
   </a>
+  <a href="?status=on_hold&category={{ filters.category }}&priority={{ filters.priority }}&q={{ filters.q }}"
+     class="status-tab {% if cur == 'on_hold' %}active{% endif %}">
+    On Hold <span class="tab-count">{{ counts.on_hold|default:0 }}</span>
+  </a>
   {% endwith %}
 </div>
 

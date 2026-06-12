@@ -280,7 +280,7 @@
   </div>
 
   <div class="col-xl-3 col-md-6 col-6">
-    <a href="{% url 'room_list' %}?status=vacant" style="text-decoration:none">
+    <a href="{% url 'room_occupancy_drill' %}?status=vacant" style="text-decoration:none">
     <div class="stat-card" style="--stat-color:#059669">
       <div class="s-top"><div class="s-icon" style="background:#ECFDF5"><i class="bi bi-door-open-fill" style="color:#059669"></i></div></div>
       <div class="s-number" style="color:#059669">{{ stats.vacant_rooms }}</div>
@@ -289,7 +289,7 @@
   </div>
 
   <div class="col-xl-3 col-md-6 col-6">
-    <a href="{% url 'room_list' %}?status=partial" style="text-decoration:none">
+    <a href="{% url 'room_occupancy_drill' %}?status=partial" style="text-decoration:none">
     <div class="stat-card" style="--stat-color:#F59E0B">
       <div class="s-top"><div class="s-icon" style="background:#FEF3C7"><i class="bi bi-door-closed" style="color:#F59E0B"></i></div></div>
       <div class="s-number" style="color:#F59E0B">{{ stats.partially_occupied_rooms }}</div>
@@ -298,7 +298,7 @@
   </div>
 
   <div class="col-xl-3 col-md-6 col-6">
-    <a href="{% url 'room_list' %}?status=occupied" style="text-decoration:none">
+    <a href="{% url 'room_occupancy_drill' %}?status=occupied" style="text-decoration:none">
     <div class="stat-card" style="--stat-color:#D97706">
       <div class="s-top"><div class="s-icon" style="background:#FFFBEB"><i class="bi bi-door-closed-fill" style="color:#D97706"></i></div></div>
       <div class="s-number" style="color:#D97706">{{ stats.occupied_rooms }}</div>

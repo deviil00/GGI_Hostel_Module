@@ -74,8 +74,24 @@
       </select>
     </div>
     <div class="col-md-2">
-      <input type="date" name="date" class="form-control form-control-sm" value="{{ date_filter }}">
+      <input type="date" name="date" class="form-control form-control-sm" value="{{ date_filter }}" title="Visit Date">
     </div>
+    {% if visitor_states %}
+    <div class="col-md-2">
+      <select name="state" class="form-select form-select-sm">
+        <option value="">All States</option>
+        {% for s in visitor_states %}<option value="{{ s }}" {% if state_filter == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    {% if visitor_countries %}
+    <div class="col-md-2">
+      <select name="country" class="form-select form-select-sm">
+        <option value="">All Countries</option>
+        {% for c in visitor_countries %}<option value="{{ c }}" {% if country_filter == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endif %}
     <input type="hidden" name="purpose" value="{{ purpose_filter }}">
     <div class="col-auto"><button type="submit" class="btn btn-primary btn-sm px-3">Filter</button></div>
     <div class="col-auto">

@@ -1013,6 +1013,10 @@
        class="s-link {% if request.resolver_match.url_name == 'maintenance_list' %}active{% endif %}">
       <i class="bi bi-tools"></i> Maintenance Records
     </a>
+    <a href="{% url 'admin_medical_records' %}"
+       class="s-link {% if request.resolver_match.url_name == 'admin_medical_records' %}active{% endif %}">
+      <i class="bi bi-clipboard2-pulse-fill"></i> Medical Records
+    </a>
     {% endif %}
     {% if 'announcements' in visible_modules %}
     <a href="{% url 'announcement_list' %}"
@@ -1262,6 +1266,10 @@
     <a href="{% url 'my_leaves' %}"
        class="s-link {% if request.resolver_match.url_name == 'my_leaves' %}active{% endif %}">
       <i class="bi bi-clock-history"></i> My Leaves
+    </a>
+    <a href="{% url 'my_medical_records' %}"
+       class="s-link {% if request.resolver_match.url_name == 'my_medical_records' %}active{% endif %}">
+      <i class="bi bi-heart-pulse-fill"></i> Medical Records
     </a>
     {% endif %}
 

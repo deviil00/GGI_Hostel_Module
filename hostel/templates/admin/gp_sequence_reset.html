@@ -1,0 +1,110 @@
+{% extends 'base/base.html' %}
+{% block title %}GP Sequence Reset — GGI Hostel ERP{% endblock %}
+{% block page_title %}Gate Pass Sequence Reset{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Gate Pass Sequence Reset</h4>
+    <p>Reset monthly GP numbering per hostel — old GP records are preserved</p>
+  </div>
+  <a href="{% url 'gp_category_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back
+  </a>
+</div>
+
+{% if messages %}
+{% for msg in messages %}
+<div class="alert alert-{{ msg.tags|default:'info' }} border-0 rounded-3 mb-3">
+  <i class="bi bi-info-circle me-2"></i>{{ msg }}
+</div>
+{% endfor %}
+{% endif %}
+
+<div class="row g-4">
+  {# ── Reset Form ── #}
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEF3C7"><i class="bi bi-arrow-counterclockwise" style="color:#D97706"></i></div>
+          Reset Sequence
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:13px">Select Hostel</label>
+            <select name="hostel_prefix" class="form-select" required
+                    onchange="this.form.querySelector('#preview').textContent = this.value ? 'GP-' + this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').split(' ')[0].slice(0,8) + '-00001' : ''">
+              <option value="">— Choose Hostel —</option>
+              {% for h in all_hostels %}
+              <option value="GP-{{ h.name|upper|slice:':8' }}">{{ h.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3 p-3 rounded-3" style="background:#F0F9FF;border:1px solid #BAE6FD">
+            <div style="font-size:12px;color:#0369A1;font-weight:600">Next GP ID after reset:</div>
+            <div id="preview" style="font-size:18px;font-weight:800;color:#0F172A;margin-top:4px">—</div>
+          </div>
+          <div class="alert alert-warning border-0 rounded-3 mb-3" style="font-size:12.5px">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Existing gate passes are NOT deleted.</strong> Only the counter resets — new GPs will start from 00001 for this hostel.
+          </div>
+          <button type="submit" class="btn btn-warning w-100 fw-600"
+                  onclick="return confirm('Reset GP sequence for this hostel? Existing records are kept.')">
+            <i class="bi bi-arrow-counterclockwise me-2"></i>Reset Sequence
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ── Current Sequences Table ── #}
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#EFF6FF"><i class="bi bi-list-ol" style="color:#1565C0"></i></div>
+          Current Sequences
+        </div>
+        <span style="font-size:12px;color:var(--text-3)">{{ sequences|length }} hostel{{ sequences|length|pluralize }}</span>
+      </div>
+      {% if sequences %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead><tr>
+            <th>Hostel Prefix</th>
+            <th>Next Seq #</th>
+            <th>Last Reset</th>
+            <th>Reset By</th>
+          </tr></thead>
+          <tbody>
+          {% for s in sequences %}
+          <tr>
+            <td><span style="font-family:monospace;font-weight:700;font-size:13px">{{ s.hostel_prefix }}</span></td>
+            <td><span class="badge" style="background:#EFF6FF;color:#1565C0;font-size:12px">{{ s.hostel_prefix }}-{{ s.current_seq|stringformat:"05d" }}</span></td>
+            <td style="font-size:12px;color:var(--text-2)">
+              {% if s.reset_at %}{{ s.reset_at|date:"d M Y H:i" }}{% else %}—{% endif %}
+            </td>
+            <td style="font-size:12px;color:var(--text-2)">
+              {% if s.reset_by %}{{ s.reset_by.name|default:s.reset_by.email }}{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body">
+        <div class="empty-state py-4">
+          <i class="bi bi-list-ol"></i>
+          <p>No gate passes have been issued yet.</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

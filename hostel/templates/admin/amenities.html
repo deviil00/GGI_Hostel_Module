@@ -61,6 +61,13 @@
           </div>
         </div>
 
+        {# Quantity #}
+        <div class="mb-3">
+          <label class="form-label fw-600">Quantity <span class="text-danger">*</span></label>
+          <input type="number" name="quantity" id="edit-quantity" class="form-control"
+                 value="1" min="1" max="99" style="width:100px" required>
+        </div>
+
         {# Hostel filter → Room #}
         {% if not is_warden %}
         <div class="mb-3">
@@ -213,6 +220,7 @@
             <thead>
               <tr>
                 <th class="ps-4">Amenity</th>
+                <th>Qty</th>
                 <th>Hostel</th>
                 <th>Floor</th>
                 <th>Room No.</th>
@@ -238,6 +246,12 @@
                       {% endif %}
                     </div>
                   </div>
+                </td>
+                <td>
+                  <span style="background:#EFF6FF;color:#1565C0;padding:2px 10px;
+                               border-radius:10px;font-size:13px;font-weight:700">
+                    ×{{ rec.quantity }}
+                  </span>
                 </td>
                 <td>
                   <span style="font-weight:600;color:var(--text-1)">{{ rec.room.hostel.name }}</span>
@@ -318,7 +332,8 @@
                               '{{ rec.room.pk }}',
                               '{{ rec.room.hostel.pk }}',
                               '{{ rec.condition }}',
-                              '{{ rec.notes|escapejs }}'
+                              '{{ rec.notes|escapejs }}',
+                              {{ rec.quantity }}
                             )"
                             title="Edit">
                       <i class="bi bi-pencil"></i>
@@ -401,9 +416,10 @@ function filterRooms(hostelPk) {
 }
 
 /* ── Edit record ── */
-function editRecord(recPk, amenName, roomPk, hostelPk, cond, notes) {
+function editRecord(recPk, amenName, roomPk, hostelPk, cond, notes, qty) {
   document.getElementById('edit-rec-pk').value   = recPk;
   document.getElementById('edit-amenity').value  = amenName;
+  document.getElementById('edit-quantity').value = qty || 1;
   const hostelFilter = document.getElementById('hostel-filter');
   if (hostelFilter) { hostelFilter.value = hostelPk; filterRooms(hostelPk); }
   document.getElementById('edit-room').value     = roomPk;

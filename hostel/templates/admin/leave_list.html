@@ -232,6 +232,33 @@
           </select>
         </div>
 
+        <!-- Semester -->
+        <div class="col-4 col-md-1">
+          <select name="semester" class="form-select form-select-sm">
+            <option value="">All Sem</option>
+            {% for i in "12345678" %}<option value="{{ i }}" {% if semester_filter == i %}selected{% endif %}>Sem {{ i }}</option>{% endfor %}
+          </select>
+        </div>
+
+        <!-- Gender -->
+        <div class="col-4 col-md-1">
+          <select name="gender" class="form-select form-select-sm">
+            <option value="">All Gender</option>
+            <option value="male"   {% if gender_filter == "male" %}selected{% endif %}>Male</option>
+            <option value="female" {% if gender_filter == "female" %}selected{% endif %}>Female</option>
+          </select>
+        </div>
+
+        <!-- State -->
+        {% if states %}
+        <div class="col-6 col-md-2">
+          <select name="state" class="form-select form-select-sm">
+            <option value="">All States</option>
+            {% for s in states %}<option value="{{ s }}" {% if state_filter == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
         <!-- Leave Category -->
         <div class="col-8 col-md-2">
           <select name="category" class="form-select form-select-sm">

@@ -112,11 +112,32 @@
     <h4>Room Directory</h4>
     <p>Hostel-wise room occupancy overview</p>
   </div>
-  {% if not warden_hostel %}
-  <a href="{% url 'allocate_room_blank' %}" class="btn btn-primary btn-sm">
-    <i class="bi bi-plus-lg me-1"></i>Allocate Room
+  <div class="d-flex gap-2">
+    <a href="{% url 'room_occupancy_drill' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-grid-3x2-gap me-1"></i>Room Detail View
+    </a>
+    {% if not warden_hostel %}
+    <a href="{% url 'allocate_room_blank' %}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Allocate Room
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Quick-filter tabs ── #}
+<div class="d-flex gap-2 flex-wrap mb-3">
+  <a href="{% url 'room_occupancy_drill' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-grid me-1"></i>All Rooms
   </a>
-  {% endif %}
+  <a href="{% url 'room_occupancy_drill' %}?status=vacant" class="btn btn-sm" style="background:#DCFCE7;color:#166534;border:1px solid #86EFAC">
+    <i class="bi bi-door-open me-1"></i>Vacant
+  </a>
+  <a href="{% url 'room_occupancy_drill' %}?status=partial" class="btn btn-sm" style="background:#FEF3C7;color:#92400E;border:1px solid #FCD34D">
+    <i class="bi bi-door-closed me-1"></i>Partially Filled
+  </a>
+  <a href="{% url 'room_occupancy_drill' %}?status=occupied" class="btn btn-sm" style="background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5">
+    <i class="bi bi-door-closed-fill me-1"></i>Fully Occupied
+  </a>
 </div>
 
 {% if hostels_data %}
@@ -138,21 +159,29 @@
     </div>
 
     <div class="hrc-stats">
-      <div class="hrc-stat">
-        <div class="hrc-stat-num num-total">{{ hd.total }}</div>
-        <div class="hrc-stat-label">Total</div>
+      <div class="hrc-stat" onclick="event.stopPropagation()">
+        <a href="{% url 'room_occupancy_drill' %}?hostel={{ hd.hostel.pk }}" class="text-decoration-none">
+          <div class="hrc-stat-num num-total">{{ hd.total }}</div>
+          <div class="hrc-stat-label">Total</div>
+        </a>
       </div>
-      <div class="hrc-stat">
-        <div class="hrc-stat-num num-occupied">{{ hd.occupied }}</div>
-        <div class="hrc-stat-label">Occupied</div>
+      <div class="hrc-stat" onclick="event.stopPropagation()">
+        <a href="{% url 'room_occupancy_drill' %}?hostel={{ hd.hostel.pk }}&status=occupied" class="text-decoration-none">
+          <div class="hrc-stat-num num-occupied">{{ hd.occupied }}</div>
+          <div class="hrc-stat-label">Occupied</div>
+        </a>
       </div>
-      <div class="hrc-stat">
-        <div class="hrc-stat-num num-vacant">{{ hd.vacant }}</div>
-        <div class="hrc-stat-label">Vacant</div>
+      <div class="hrc-stat" onclick="event.stopPropagation()">
+        <a href="{% url 'room_occupancy_drill' %}?hostel={{ hd.hostel.pk }}&status=vacant" class="text-decoration-none">
+          <div class="hrc-stat-num num-vacant">{{ hd.vacant }}</div>
+          <div class="hrc-stat-label">Vacant</div>
+        </a>
       </div>
-      <div class="hrc-stat">
-        <div class="hrc-stat-num num-partial">{{ hd.partial }}</div>
-        <div class="hrc-stat-label">Partial</div>
+      <div class="hrc-stat" onclick="event.stopPropagation()">
+        <a href="{% url 'room_occupancy_drill' %}?hostel={{ hd.hostel.pk }}&status=partial" class="text-decoration-none">
+          <div class="hrc-stat-num num-partial">{{ hd.partial }}</div>
+          <div class="hrc-stat-label">Partial</div>
+        </a>
       </div>
     </div>
 

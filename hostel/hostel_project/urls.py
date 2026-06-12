@@ -21,11 +21,13 @@ urlpatterns = [
 
     # students
     path('students/',                  views.student_list,   name='student_list'),
+    path('students/add/',              views.add_student,           name='add_student'),
     path('students/import/',           views.import_students,       name='import_students'),
     path('students/import/sample/',    views.student_import_sample, name='student_import_sample'),
     path('students/<uuid:pk>/',        views.student_detail, name='student_detail'),
     path('students/<uuid:pk>/set-flag/',            views.student_set_flag,              name='student_set_flag'),
     path('students/<uuid:pk>/toggle-edit-perm/',    views.student_toggle_edit_permission, name='student_toggle_edit_permission'),
+    path('students/bulk-edit-perm/',                views.student_bulk_edit_permission,   name='student_bulk_edit_permission'),
     path('students/<uuid:pk>/toggle-status/',       views.toggle_student_status,          name='toggle_student_status'),
     path('residents/analysis/',                     views.resident_analysis,              name='resident_analysis'),
     path('students/<uuid:student_pk>/allocate/', views.allocate_room, name='allocate_room'),
@@ -44,6 +46,7 @@ urlpatterns = [
 
     # rooms
     path('rooms/',                            views.room_list,       name='room_list'),
+    path('rooms/occupancy/',                  views.room_occupancy_drill, name='room_occupancy_drill'),
     path('allocate/',                         views.allocate_room,   name='allocate_room_blank'),
     path('checkout/<uuid:allocation_pk>/',    views.checkout_student, name='checkout_student'),
 
@@ -176,6 +179,10 @@ urlpatterns = [
     # maintenance
     path('maintenance/',                            views.maintenance_list,   name='maintenance_list'),
 
+    # medical records
+    path('my/medical/',                            views.my_medical_records,    name='my_medical_records'),
+    path('medical/',                               views.admin_medical_records, name='admin_medical_records'),
+
     # leave applications
     path('my/leave/',                              views.my_leaves,      name='my_leaves'),
     path('my/leave/apply/',                        views.apply_leave,    name='apply_leave'),
@@ -219,6 +226,7 @@ urlpatterns = [
     # ── Gate Pass Categories & Academic Calendar ──────────────────────────────
     path('superadmin/gp-categories/',                  views.gp_category_list,       name='gp_category_list'),
     path('superadmin/gp-categories/<uuid:pk>/toggle/', views.gp_category_toggle,     name='gp_category_toggle'),
+    path('superadmin/gp-sequence-reset/',              views.gp_sequence_reset,      name='gp_sequence_reset'),
     path('superadmin/calendar/',                       views.academic_calendar,      name='academic_calendar'),
 
     # ── Leave Categories & Extension ──────────────────────────────────────────

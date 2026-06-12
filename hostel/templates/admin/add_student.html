@@ -1,0 +1,173 @@
+{% extends "base/base.html" %}
+{% block title %}Add Student{% endblock %}
+{% block page_title %}Add Student{% endblock %}
+
+{% block extra_css %}
+<style>
+  .form-section { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px 24px; margin-bottom:20px; }
+  .form-section-title { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.6px; color:var(--text-3); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+  .form-section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>Add Student</h4>
+    <p>Manually register a new student profile</p>
+  </div>
+  <a href="{% url 'student_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Back to Students
+  </a>
+</div>
+
+<form method="post" autocomplete="off">
+  {% csrf_token %}
+
+  <div class="row g-4">
+    <div class="col-lg-8">
+
+      <!-- Basic Info -->
+      <div class="form-section">
+        <div class="form-section-title"><i class="bi bi-person-fill" style="color:var(--blue)"></i> Basic Information</div>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-600" style="font-size:12px">Roll Number <span class="text-danger">*</span></label>
+            <input type="text" name="roll_number" class="form-control form-control-sm" required placeholder="e.g. 22BCS001">
+          </div>
+          <div class="col-md-8">
+            <label class="form-label fw-600" style="font-size:12px">Full Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control form-control-sm" required placeholder="Student's full name">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-600" style="font-size:12px">Gender</label>
+            <select name="gender" class="form-select form-select-sm">
+              <option value="">-- Select --</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-600" style="font-size:12px">Date of Birth</label>
+            <input type="date" name="date_of_birth" class="form-control form-control-sm">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-600" style="font-size:12px">Phone</label>
+            <input type="text" name="phone" class="form-control form-control-sm" placeholder="10-digit mobile">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-600" style="font-size:12px">Email</label>
+            <input type="email" name="email" class="form-control form-control-sm" placeholder="student@example.com">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-600" style="font-size:12px">College ID Number</label>
+            <input type="text" name="college_id_number" class="form-control form-control-sm" placeholder="College NPF / ID">
+          </div>
+        </div>
+      </div>
+
+      <!-- Academic Info -->
+      <div class="form-section">
+        <div class="form-section-title"><i class="bi bi-mortarboard-fill" style="color:#059669"></i> Academic Details</div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-600" style="font-size:12px">Department / Branch</label>
+            <input type="text" name="department" class="form-control form-control-sm"
+                   list="dept-master-list" placeholder="e.g. CSE, ECE…">
+            <datalist id="dept-master-list">
+              {% for d in all_departments %}<option value="{{ d }}">{% endfor %}
+            </datalist>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-600" style="font-size:12px">Year</label>
+            <select name="year" class="form-select form-select-sm">
+              <option value="">--</option>
+              <option value="1">1st Year</option>
+              <option value="2">2nd Year</option>
+              <option value="3">3rd Year</option>
+              <option value="4">4th Year</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-600" style="font-size:12px">Semester</label>
+            <select name="semester" class="form-select form-select-sm">
+              <option value="">--</option>
+              {% for i in "12345678" %}<option value="{{ i }}">Sem {{ i }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-600" style="font-size:12px">Type of Entry</label>
+            <input type="text" name="type_of_entry" class="form-control form-control-sm"
+                   placeholder="e.g. DRCC, Management, NRI, Sports">
+            <div class="form-text" style="font-size:10.5px">Admission category — not InCampus/OutCampus</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-600" style="font-size:12px">Reporting Date</label>
+            <input type="date" name="reporting_date" class="form-control form-control-sm">
+          </div>
+        </div>
+      </div>
+
+      <!-- Address / Location -->
+      <div class="form-section">
+        <div class="form-section-title"><i class="bi bi-geo-alt-fill" style="color:#7C3AED"></i> Location</div>
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-600" style="font-size:12px">Home Address</label>
+            <textarea name="address" class="form-control form-control-sm" rows="2" placeholder="Full home address"></textarea>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-600" style="font-size:12px">State</label>
+            <input type="text" name="state" class="form-control form-control-sm" placeholder="e.g. Uttar Pradesh">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-600" style="font-size:12px">Country</label>
+            <input type="text" name="country" class="form-control form-control-sm" value="India" placeholder="e.g. India">
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="col-lg-4">
+
+      <!-- Guardian Info -->
+      <div class="form-section">
+        <div class="form-section-title"><i class="bi bi-person-hearts" style="color:#D97706"></i> Guardian / Parent</div>
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-600" style="font-size:12px">Guardian Name</label>
+            <input type="text" name="guardian_name" class="form-control form-control-sm" placeholder="Father / Mother / Guardian">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-600" style="font-size:12px">Relation</label>
+            <input type="text" name="guardian_relation" class="form-control form-control-sm" placeholder="Father / Mother / Uncle…">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-600" style="font-size:12px">Guardian Phone</label>
+            <input type="text" name="guardian_phone" class="form-control form-control-sm" placeholder="10-digit mobile">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-600" style="font-size:12px">Guardian Email</label>
+            <input type="email" name="guardian_email" class="form-control form-control-sm" placeholder="guardian@example.com">
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <div class="form-section" style="background:linear-gradient(135deg,#EBF3FF,#F0F7FF);border-color:#BFDBFE">
+        <p style="font-size:12px;color:var(--text-2);margin-bottom:12px">
+          <i class="bi bi-info-circle me-1" style="color:var(--blue)"></i>
+          If a student with the same Roll Number already exists, their profile will be updated with the new information.
+        </p>
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="bi bi-person-plus-fill me-2"></i>Save Student
+        </button>
+        <a href="{% url 'student_list' %}" class="btn btn-outline-secondary w-100 mt-2">Cancel</a>
+      </div>
+
+    </div>
+  </div>
+</form>
+{% endblock %}

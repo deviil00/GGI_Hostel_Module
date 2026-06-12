@@ -26,6 +26,7 @@ class Complaint(models.Model):
         VERIFIED    = 'verified',    'Verified by Warden'
         FORWARDED   = 'forwarded',   'Forwarded to Maintenance'
         IN_PROGRESS = 'in_progress', 'In Progress'
+        ON_HOLD     = 'on_hold',     'On Hold'
         RESOLVED    = 'resolved',    'Resolved'
         CLOSED      = 'closed',      'Closed'
 

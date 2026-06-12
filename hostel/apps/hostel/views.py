@@ -317,9 +317,11 @@ def student_list(request):
     dept          = request.GET.get('dept', '')
     year          = request.GET.get('year', '')
     status        = request.GET.get('status', '')
-    state_filter   = request.GET.get('state', '').strip()
-    country_filter = request.GET.get('country', '').strip()
-    is_active_filter = request.GET.get('is_active', '').strip()
+    state_filter      = request.GET.get('state', '').strip()
+    country_filter    = request.GET.get('country', '').strip()
+    is_active_filter  = request.GET.get('is_active', '').strip()
+    entry_filter      = request.GET.get('entry_type', '').strip()
+    reporting_filter  = request.GET.get('reporting_date', '').strip()
 
     if search:
         qs = qs.filter(
@@ -336,10 +338,18 @@ def student_list(request):
             qs = qs.exclude(allocations__status='active')
         else:
             qs = qs.filter(allocations__room__hostel__pk=hostel_filter, allocations__status='active').distinct()
-    if state_filter:   qs = qs.filter(state__iexact=state_filter)
-    if country_filter: qs = qs.filter(country__iexact=country_filter)
+    if state_filter:      qs = qs.filter(state__iexact=state_filter)
+    if country_filter:    qs = qs.filter(country__iexact=country_filter)
     if is_active_filter == '1':  qs = qs.filter(is_active=True)
     if is_active_filter == '0':  qs = qs.filter(is_active=False)
+    if entry_filter:      qs = qs.filter(type_of_entry__iexact=entry_filter)
+    if reporting_filter:
+        import datetime as _dt
+        try:
+            _rd = _dt.date.fromisoformat(reporting_filter)
+            qs = qs.filter(reporting_date=_rd)
+        except ValueError:
+            pass
 
     # Master list (from Department model) + any extra from existing student profiles
     master_depts  = list(Department.objects.values_list('name', flat=True))
@@ -372,8 +382,9 @@ def student_list(request):
 
     all_hostels = Hostel.objects.order_by('type', 'name')
 
-    states    = Student.objects.exclude(state='').values_list('state', flat=True).distinct().order_by('state')
-    countries = Student.objects.exclude(country='').exclude(country__isnull=True).values_list('country', flat=True).distinct().order_by('country')
+    states       = Student.objects.exclude(state='').values_list('state', flat=True).distinct().order_by('state')
+    countries    = Student.objects.exclude(country='').exclude(country__isnull=True).values_list('country', flat=True).distinct().order_by('country')
+    entry_types  = Student.objects.exclude(type_of_entry='').exclude(type_of_entry__isnull=True).values_list('type_of_entry', flat=True).distinct().order_by('type_of_entry')
 
     return render(request, 'admin/students.html', {
         'page_students':     all_students,
@@ -385,12 +396,82 @@ def student_list(request):
         'filters':           {
             'dept': dept, 'year': year, 'status': status, 'hostel': hostel_filter,
             'state': state_filter, 'country': country_filter, 'is_active': is_active_filter,
+            'entry_type': entry_filter, 'reporting_date': reporting_filter,
         },
         'warden_hostel':     warden_hostel,
         'is_admin':          is_admin,
         'all_hostels':       all_hostels,
         'states':            states,
         'countries':         countries,
+        'entry_types':       entry_types,
+    })
+
+
+@admin_only
+def add_student(request):
+    """Add a single student manually."""
+    import datetime as _dt
+    if request.method == 'POST':
+        roll   = request.POST.get('roll_number', '').strip()
+        name   = request.POST.get('name', '').strip()
+        if not roll or not name:
+            messages.error(request, 'Roll Number and Name are required.')
+            return redirect('add_student')
+
+        gender_val = request.POST.get('gender', '').strip().lower()
+        year_val   = request.POST.get('year', '').strip()
+        sem_val    = request.POST.get('semester', '').strip()
+
+        dob_val = None
+        raw_dob = request.POST.get('date_of_birth', '').strip()
+        if raw_dob:
+            try: dob_val = _dt.date.fromisoformat(raw_dob)
+            except ValueError: pass
+
+        rep_val = None
+        raw_rep = request.POST.get('reporting_date', '').strip()
+        if raw_rep:
+            try: rep_val = _dt.date.fromisoformat(raw_rep)
+            except ValueError: pass
+
+        defaults = {
+            'name':              name,
+            'phone':             request.POST.get('phone', '').strip(),
+            'email':             request.POST.get('email', '').strip(),
+            'department':        request.POST.get('department', '').strip(),
+            'year':              int(year_val) if year_val.isdigit() else None,
+            'semester':          int(sem_val)  if sem_val.isdigit()  else None,
+            'address':           request.POST.get('address', '').strip(),
+            'state':             request.POST.get('state', '').strip().title(),
+            'country':           request.POST.get('country', '').strip().title(),
+            'type_of_entry':     request.POST.get('type_of_entry', '').strip(),
+            'guardian_name':     request.POST.get('guardian_name', '').strip(),
+            'guardian_phone':    request.POST.get('guardian_phone', '').strip(),
+            'guardian_relation': request.POST.get('guardian_relation', '').strip(),
+            'guardian_email':    request.POST.get('guardian_email', '').strip(),
+            'college_id_number': request.POST.get('college_id_number', '').strip(),
+        }
+        if gender_val in ('male', 'female', 'other'):
+            defaults['gender'] = gender_val
+        if dob_val:
+            defaults['date_of_birth'] = dob_val
+        if rep_val:
+            defaults['reporting_date'] = rep_val
+
+        defaults = {k: v for k, v in defaults.items() if v not in (None, '')}
+
+        student, created = Student.objects.update_or_create(
+            roll_number=roll, defaults=defaults
+        )
+        if created:
+            messages.success(request, f'Student "{name}" ({roll}) added successfully.')
+        else:
+            messages.info(request, f'Student "{name}" ({roll}) already exists — profile updated.')
+        return redirect('student_detail', pk=student.pk)
+
+    all_departments = list(Department.objects.filter(is_active=True).values_list('name', flat=True).order_by('name'))
+    return render(request, 'admin/add_student.html', {
+        'all_departments': all_departments,
     })
 
 
@@ -561,9 +642,7 @@ def _process_student_excel(excel_file, uploaded_by):  # noqa: C901
                     except ValueError:
                         pass
 
-            type_of_entry_val = _cell('type_of_entry').lower()
-            if type_of_entry_val not in ('incampus', 'outcampus'):
-                type_of_entry_val = ''
+            type_of_entry_val = _cell('type_of_entry').strip()
 
             state_val   = _cell('state').strip().title()
             country_val = _cell('country').strip().title()
@@ -1041,6 +1120,25 @@ def student_toggle_edit_permission(request, pk):
 
 
 @login_required
+@require_POST
+def student_bulk_edit_permission(request):
+    """Superadmin: bulk enable/disable profile editing for all (or hostel-scoped) students."""
+    if request.user.role != User.Role.SUPER_ADMIN:
+        messages.error(request, 'Only super admin can do this.')
+        return redirect('student_list')
+    action   = request.POST.get('bulk_action', 'enable')
+    hostel_pk = request.POST.get('hostel', '').strip()
+    qs = Student.objects.all()
+    if hostel_pk:
+        qs = qs.filter(allocations__room__hostel_id=hostel_pk, allocations__status='active').distinct()
+    new_val = (action == 'enable')
+    count   = qs.update(can_edit_profile=new_val)
+    verb    = 'enabled' if new_val else 'disabled'
+    messages.success(request, f'Profile editing {verb} for {count} student(s).')
+    return redirect('student_list')
+
+
+@login_required
 def my_profile(request):
     student, redir = _get_student_or_redirect(request)
     if redir: return redir
@@ -1138,6 +1236,84 @@ def room_list(request):
     return render(request, 'admin/rooms.html', {
         'hostels_data': hostels_data,
         'warden_hostel': warden_hostel,
+    })
+
+
+@admin_only
+def room_occupancy_drill(request):
+    """Drill-down view for dashboard vacant/partial/occupied cards with filters."""
+    warden_hostel  = get_hostel_scope(request.user)
+    status_filter  = request.GET.get('status', '')   # vacant | occupied | partial
+    hostel_filter  = request.GET.get('hostel', '')
+    floor_filter   = request.GET.get('floor', '')
+    type_filter    = request.GET.get('room_type', '').strip()
+    desig_filter   = request.GET.get('designation', '').strip()
+
+    room_qs = Room.objects.select_related('hostel').annotate(
+        active_count=Count('allocations', filter=Q(allocations__status='active'))
+    ).order_by('hostel__name', 'floor', 'room_number')
+
+    if warden_hostel:
+        room_qs = room_qs.filter(hostel=warden_hostel)
+    elif hostel_filter:
+        room_qs = room_qs.filter(hostel_id=hostel_filter)
+
+    if status_filter:
+        room_qs = room_qs.filter(status=status_filter)
+    if floor_filter:
+        room_qs = room_qs.filter(floor=floor_filter)
+    if type_filter:
+        room_qs = room_qs.filter(room_type__icontains=type_filter)
+    if desig_filter:
+        room_qs = room_qs.filter(designation=desig_filter)
+
+    rooms = list(room_qs)
+
+    # Attach active residents to each room
+    from django.db.models import Prefetch as _Prefetch
+    alloc_map = {}
+    for alloc in RoomAllocation.objects.filter(
+        room__in=[r.pk for r in rooms], status='active'
+    ).select_related('student'):
+        alloc_map.setdefault(alloc.room_id, []).append(alloc.student)
+    for room in rooms:
+        room.residents = alloc_map.get(room.pk, [])
+
+    # Build filter option lists
+    all_hostels  = Hostel.objects.order_by('name') if not warden_hostel else []
+    all_floors   = Room.objects.filter(
+        **(({'hostel': warden_hostel} if warden_hostel else {}))
+    ).values_list('floor', flat=True).distinct().order_by('floor')
+    all_types    = Room.objects.values_list('room_type', flat=True).exclude(
+        room_type=''
+    ).distinct().order_by('room_type')
+
+    # Status counts (scoped to hostel if warden)
+    base = Room.objects.all()
+    if warden_hostel:
+        base = base.filter(hostel=warden_hostel)
+    counts = {
+        'all':      base.count(),
+        'vacant':   base.filter(status='vacant').count(),
+        'occupied': base.filter(status='occupied').count(),
+        'partial':  base.filter(status='partial').count(),
+    }
+
+    paginator = Paginator(rooms, 30)
+    page = paginator.get_page(request.GET.get('page'))
+
+    return render(request, 'admin/room_drill.html', {
+        'page':           page,
+        'status_filter':  status_filter,
+        'hostel_filter':  hostel_filter,
+        'floor_filter':   floor_filter,
+        'type_filter':    type_filter,
+        'desig_filter':   desig_filter,
+        'all_hostels':    all_hostels,
+        'all_floors':     all_floors,
+        'all_types':      all_types,
+        'counts':         counts,
+        'warden_hostel':  warden_hostel,
     })
 
 
@@ -1252,6 +1428,7 @@ def complaint_list(request):  # noqa: C901
         'in_progress': scoped_base.filter(status='in_progress').count(),
         'resolved':    scoped_base.filter(status='resolved').count(),
         'closed':      scoped_base.filter(status='closed').count(),
+        'on_hold':     scoped_base.filter(status='on_hold').count(),
     }
 
     maintenance_users = User.objects.filter(role=User.Role.MAINTENANCE, is_active=True)
@@ -2579,17 +2756,18 @@ def amenity_list(request):
                     amenity = RoomAmenity.objects.create(
                         name=amen_name, created_by=request.user
                     )
+                qty = max(1, int(request.POST.get('quantity', 1) or 1))
                 if rec_pk:
                     rec = get_object_or_404(RoomAmenityRecord, pk=rec_pk)
                     rec.room = room; rec.amenity = amenity
-                    rec.condition = cond; rec.notes = notes; rec.save()
+                    rec.quantity = qty; rec.condition = cond; rec.notes = notes; rec.save()
                     messages.success(request, 'Record updated.')
                 else:
                     RoomAmenityRecord.objects.create(
-                        room=room, amenity=amenity, condition=cond,
+                        room=room, amenity=amenity, quantity=qty, condition=cond,
                         notes=notes, added_by=request.user,
                     )
-                    messages.success(request, f'"{amenity.name}" added to {room}.')
+                    messages.success(request, f'"{amenity.name}" (×{qty}) added to {room}.')
         return redirect('amenity_list')
 
     # Scope records to warden's hostel if applicable
@@ -3279,6 +3457,9 @@ def gate_pass_list(request):
     date_from      = g.get('date_from', '').strip()
     date_to        = g.get('date_to', '').strip()
     year_filter    = g.get('year', '')
+    semester_filter = g.get('semester', '')
+    gender_filter   = g.get('gender', '')
+    state_filter    = g.get('state', '').strip()
 
     _alloc_prefetch = Prefetch(
         'student__allocations',
@@ -3326,6 +3507,12 @@ def gate_pass_list(request):
         qs = qs.filter(departure_date__lte=date_to)
     if year_filter:
         qs = qs.filter(student__year=year_filter)
+    if semester_filter:
+        qs = qs.filter(student__semester=semester_filter)
+    if gender_filter:
+        qs = qs.filter(student__gender=gender_filter)
+    if state_filter:
+        qs = qs.filter(student__state__iexact=state_filter)
 
     counts = {
         'all':      base_qs.count(),
@@ -3341,9 +3528,10 @@ def gate_pass_list(request):
     all_hostels    = Hostel.objects.order_by('name') if not warden_hostel else []
     gp_categories  = GatePassCategory.objects.filter(is_active=True).order_by('name')
     departments    = Student.objects.values_list('department', flat=True).distinct().order_by('department')
+    states         = Student.objects.exclude(state='').values_list('state', flat=True).distinct().order_by('state')
     years          = Student.Year.choices
 
-    active_filters = any([search, hostel_id, department, category_id, room_number, date_from, date_to, year_filter])
+    active_filters = any([search, hostel_id, department, category_id, room_number, date_from, date_to, year_filter, semester_filter, gender_filter, state_filter])
 
     return render(request, 'admin/gate_passes.html', {
         'page':           page,
@@ -3360,10 +3548,14 @@ def gate_pass_list(request):
         'date_from':      date_from,
         'date_to':        date_to,
         'year_filter':    year_filter,
+        'semester_filter': semester_filter,
+        'gender_filter':  gender_filter,
+        'state_filter':   state_filter,
         # filter options
         'all_hostels':    all_hostels,
         'gp_categories':  gp_categories,
         'departments':    departments,
+        'states':         states,
         'years':          years,
         'active_filters': active_filters,
     })
@@ -3496,6 +3688,19 @@ def visitor_walkin(request, hostel_pk=None):
         else:
             hostel_obj = None  # Admission / Guest — no specific hostel
 
+        import datetime as _dt2
+        raw_end_date = request.POST.get('visit_end_date', '').strip()
+        visit_end_date = None
+        if raw_end_date:
+            try: visit_end_date = _dt2.date.fromisoformat(raw_end_date)
+            except ValueError: pass
+
+        raw_visit_date = request.POST.get('visit_date_main', '').strip()
+        visit_date_val = today
+        if raw_visit_date:
+            try: visit_date_val = _dt2.date.fromisoformat(raw_visit_date)
+            except ValueError: pass
+
         visitor = Visitor(
             hostel            = hostel_obj,
             visitor_name      = request.POST.get('visitor_name', '').strip(),
@@ -3503,11 +3708,14 @@ def visitor_walkin(request, hostel_pk=None):
             phone             = request.POST.get('phone', '').strip(),
             id_proof_type     = request.POST.get('id_proof_type', 'Aadhar').strip(),
             id_number         = request.POST.get('id_number', '').strip(),
-            visit_date        = today,
+            visit_date        = visit_date_val,
+            visit_end_date    = visit_end_date,
             expected_in_time  = request.POST.get('time_in') or '09:00',
             expected_out_time = request.POST.get('time_out') or '18:00',
             purpose_type      = purpose_type,
             purpose           = request.POST.get('purpose', '').strip(),
+            state             = request.POST.get('state', '').strip().title(),
+            country           = request.POST.get('country', 'India').strip().title(),
             # Guardian fields
             student_name_text = request.POST.get('student_name', '').strip(),
             relation          = request.POST.get('relation', ''),
@@ -3519,11 +3727,16 @@ def visitor_walkin(request, hostel_pk=None):
         if request.FILES.get('college_id_upload'):
             visitor.college_id_upload = request.FILES['college_id_upload']
 
-        # Try to link a resident student by name for guardian visits
-        if purpose_type == 'guardian' and visitor.student_name_text:
-            matched = Student.objects.filter(
-                name__iexact=visitor.student_name_text, is_resident=True
-            ).first()
+        # Try to link a resident student for guardian visits — try NPF ID first, then name
+        if purpose_type == 'guardian':
+            npf_id = request.POST.get('student_npf_id', '').strip()
+            matched = None
+            if npf_id:
+                matched = Student.objects.filter(college_id_number=npf_id).first()
+            if not matched and visitor.student_name_text:
+                matched = Student.objects.filter(
+                    name__iexact=visitor.student_name_text, is_resident=True
+                ).first()
             if matched:
                 visitor.student = matched
 
@@ -3576,7 +3789,7 @@ def visitor_hostel_qr(request, pk):
     hostel = get_object_or_404(Hostel, pk=pk)
     import qrcode, io, base64
     base_url = request.build_absolute_uri(f'/visitor/walk-in/{hostel.pk}/')
-    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=8, border=4)
+    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=12, border=4)
     qr.add_data(base_url)
     qr.make(fit=True)
     img = qr.make_image(fill_color='black', back_color='white')
@@ -3596,7 +3809,7 @@ def visitor_general_qr(request):
     host = request.get_host()  # e.g. 172.16.12.237:8000
     scheme = 'https' if request.is_secure() else 'http'
     base_url = f'{scheme}://{host}/visitor/walk-in/'
-    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=8, border=4)
+    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=12, border=4)
     qr.add_data(base_url)
     qr.make(fit=True)
     img = qr.make_image(fill_color='black', back_color='white')
@@ -3623,11 +3836,13 @@ def visitor_acknowledge(request, pk):
 
 @admin_required
 def visitor_list(request):
-    warden_hostel = get_hostel_scope(request.user)
-    hostel_filter = request.GET.get('hostel', '')
-    status_filter = request.GET.get('status', '')
-    date_filter   = request.GET.get('date', '')
+    warden_hostel  = get_hostel_scope(request.user)
+    hostel_filter  = request.GET.get('hostel', '')
+    status_filter  = request.GET.get('status', '')
+    date_filter    = request.GET.get('date', '')
     purpose_filter = request.GET.get('purpose', '')
+    state_filter   = request.GET.get('state', '').strip()
+    country_filter = request.GET.get('country', '').strip()
 
     base_qs = Visitor.objects.select_related('student', 'hostel', 'approved_by')
     if warden_hostel:
@@ -3642,6 +3857,10 @@ def visitor_list(request):
         qs = qs.filter(visit_date=date_filter)
     if purpose_filter:
         qs = qs.filter(purpose_type=purpose_filter)
+    if state_filter:
+        qs = qs.filter(state__iexact=state_filter)
+    if country_filter:
+        qs = qs.filter(country__iexact=country_filter)
 
     paginator = Paginator(qs, 25)
     page      = paginator.get_page(request.GET.get('page'))
@@ -3655,21 +3874,27 @@ def visitor_list(request):
         (val, label, base_qs.filter(purpose_type=val).count())
         for val, label in Visitor.PurposeType.choices
     ]
+    visitor_states    = Visitor.objects.exclude(state='').values_list('state', flat=True).distinct().order_by('state')
+    visitor_countries = Visitor.objects.exclude(country='').values_list('country', flat=True).distinct().order_by('country')
 
     return render(request, 'admin/visitors.html', {
-        'page':           page,
-        'status_filter':  status_filter,
-        'date_filter':    date_filter,
-        'hostel_filter':  hostel_filter,
-        'purpose_filter': purpose_filter,
-        'statuses':       Visitor.Status.choices,
-        'purposes':       Visitor.PurposeType.choices,
-        'status_counts':  status_counts,
-        'purpose_counts': purpose_counts,
-        'hostels':        hostels,
-        'today':          dt_date.today(),
-        'warden_hostel':  warden_hostel,
-        'is_superadmin':  request.user.role == User.Role.SUPER_ADMIN,
+        'page':            page,
+        'status_filter':   status_filter,
+        'date_filter':     date_filter,
+        'hostel_filter':   hostel_filter,
+        'purpose_filter':  purpose_filter,
+        'state_filter':    state_filter,
+        'country_filter':  country_filter,
+        'statuses':        Visitor.Status.choices,
+        'purposes':        Visitor.PurposeType.choices,
+        'status_counts':   status_counts,
+        'purpose_counts':  purpose_counts,
+        'hostels':         hostels,
+        'today':           dt_date.today(),
+        'warden_hostel':   warden_hostel,
+        'is_superadmin':   request.user.role == User.Role.SUPER_ADMIN,
+        'visitor_states':  visitor_states,
+        'visitor_countries': visitor_countries,
     })
 
 
@@ -5224,7 +5449,9 @@ def maintenance_list(request):
         'all':         MaintenanceLog.objects.count(),
         'open':        MaintenanceLog.objects.filter(status='open').count(),
         'in_progress': MaintenanceLog.objects.filter(status='in_progress').count(),
+        'on_hold':     MaintenanceLog.objects.filter(status='on_hold').count(),
         'resolved':    MaintenanceLog.objects.filter(status='resolved').count(),
+        'closed':      MaintenanceLog.objects.filter(status='closed').count(),
     }
     return render(request, 'admin/maintenance.html', {
         'page': page, 'status_filter': status_filter,
@@ -5402,8 +5629,8 @@ def admin_dashboard_v2(request):
     # Gender-wise counts
     boys_total    = student_qs.filter(gender='male').count()
     girls_total   = student_qs.filter(gender='female').count()
-    boys_incampus = student_qs.filter(gender='male', type_of_entry='incampus').count()
-    boys_outcampus = student_qs.filter(gender='male', type_of_entry='outcampus').count()
+    boys_incampus  = student_qs.filter(gender='male', allocations__room__designation='incampus', allocations__status='active').distinct().count()
+    boys_outcampus = student_qs.filter(gender='male', allocations__room__designation='outcampus', allocations__status='active').distinct().count()
     # Staff counts (exclude superadmin and student roles)
     from apps.accounts.models import User as _User
     staff_total   = _User.objects.exclude(role__in=('superadmin', 'student')).filter(is_active=True).count()
@@ -6331,12 +6558,12 @@ def bulk_upload_sample(request):  # noqa: C901
     cc = Alignment(horizontal='center', vertical='center', wrap_text=True)
     lc = Alignment(horizontal='left',   vertical='center', indent=1)
 
-    # ── Column layout (A–I, 9 cols; Wing removed) ──
+    # ── Column layout (A–H, 8 cols; no start/end numbers) ──
     #  A: Hostel Name   B: Hostel Type   C: No. of Floors
     #  D: Floor         E: Rooms on Floor
     #  F: Room Category  G: Room Count
-    #  H: Room Start No.   I: Room End No.
-    for col_ltr, w in zip('ABCDEFGHI', [18, 13, 12, 7, 14, 18, 9, 15, 15]):
+    #  H: Designation (incampus/outcampus)
+    for col_ltr, w in zip('ABCDEFGH', [18, 13, 12, 7, 14, 18, 9, 18]):
         ws.column_dimensions[col_ltr].width = w
 
     # ── Row 1: title banner ──
@@ -6345,7 +6572,7 @@ def bulk_upload_sample(request):  # noqa: C901
     tc.font      = Font(bold=True, color='FFFFFF', size=13)
     tc.fill      = hfill('0D47A1')
     tc.alignment = Alignment(horizontal='left', vertical='center')
-    ws.merge_cells('A1:I1')
+    ws.merge_cells('A1:H1')
     ws.row_dimensions[1].height = 26
 
     # ── Row 2: section group labels ──
@@ -6353,7 +6580,7 @@ def bulk_upload_sample(request):  # noqa: C901
         (1, 3, 'HOSTEL INFORMATION', '1565C0'),
         (4, 5, 'FLOOR INFO',         '0F4C81'),
         (6, 7, 'ROOM BREAKDOWN',     '1B5E20'),
-        (8, 9, 'ROOM NUMBER RANGE',  '6A1B9A'),
+        (8, 8, 'DESIGNATION',        '6A1B9A'),
     ]:
         c = ws.cell(row=2, column=sc, value=lbl)
         c.font = Font(bold=True, color='FFFFFF', size=9)
@@ -6371,8 +6598,7 @@ def bulk_upload_sample(request):  # noqa: C901
         ('Number of\nRooms on Floor',  '0F4C81'),
         ('Room\nCategory',             '1B5E20'),
         ('Room\nCount',                '1B5E20'),
-        ('Room\nStart No.*',           '6A1B9A'),
-        ('Room\nEnd No.*',             '6A1B9A'),
+        ('Designation\n(incampus/outcampus)', '6A1B9A'),
     ]
     for col, (lbl, clr) in enumerate(hdrs, 1):
         c = ws.cell(row=3, column=col, value=lbl)
@@ -6383,6 +6609,10 @@ def bulk_upload_sample(request):  # noqa: C901
 
     # ── Category colour map ──
     CAT_STYLES = {
+        '6S+CW':           ('E0F7FA', '006064'),
+        '5S+CW':           ('B2EBF2', '00838F'),
+        '5S+WW':           ('E0F2F1', '00695C'),
+        '5S+WW+AC':        ('B2DFDB', '00695C'),
         '4S+CWR':          ('E8F5E9', '1B5E20'),
         '4S+CWR+AC':       ('C8E6C9', '1B5E20'),
         '4S+WR':           ('DCEDC8', '33691E'),
@@ -6406,6 +6636,8 @@ def bulk_upload_sample(request):  # noqa: C901
         'STUDY ROOM':      ('F3E5F5', '6A1B9A'),
         'SITTING ARENA':   ('FFF3E0', 'E65100'),
         'STORE ROOM':      ('ECEFF1', '37474F'),
+        'WARDEN OFFICE':   ('FFF3E0', 'BF360C'),
+        'LAUNDRY ROOM':    ('E8EAF6', '283593'),
     }
 
     # ── Sample data ──
@@ -6413,21 +6645,21 @@ def bulk_upload_sample(request):  # noqa: C901
         {
             'name': 'BH-1', 'type': 'boys', 'floors': 3,
             'floor_data': [
-                {'lbl': 'F1', 'total': 20, 'start': 'BH-101', 'end': 'BH-120',
-                 'rows': [('4S+CWR', 10), ('3S+WR+AC', 5), ('2S+CWR', 5)]},
-                {'lbl': 'F2', 'total': 30, 'start': 'BH-201', 'end': 'BH-230',
-                 'rows': [('4S+WR+AC', 15), ('3S+CWR+AC', 8), ('2S+WR', 7)]},
-                {'lbl': 'F3', 'total': 20, 'start': 'BH-301', 'end': 'BH-320',
-                 'rows': [('4S+CWR+AC', 10), ('3S+WR', 6), ('2S+WR+AC', 4)]},
+                {'lbl': 'F1', 'total': 20, 'desig': 'incampus',
+                 'rows': [('5S+CW', 5), ('4S+CWR', 10), ('3S+WR+AC', 5)]},
+                {'lbl': 'F2', 'total': 20, 'desig': 'incampus',
+                 'rows': [('5S+WW', 8), ('4S+WR+AC', 7), ('3S+CWR+AC', 5)]},
+                {'lbl': 'F3', 'total': 20, 'desig': 'outcampus',
+                 'rows': [('6S+CW', 5), ('4S+CWR+AC', 10), ('2S+WR+AC', 5)]},
             ],
             'common': [
-                ('GYM',           1, 'GYM-GF',  'GYM-GF'),
-                ('SPORTS ROOM',   1, 'SPR-GF',  'SPR-GF'),
-                ('ENTERTAINMENT', 1, 'ENT-GF',  'ENT-GF'),
-                ('MESS',          1, 'MESS-GF', 'MESS-GF'),
-                ('STUDY ROOM',    2, 'STR-1',   'STR-2'),
-                ('SITTING ARENA', 1, 'SIT-GF',  'SIT-GF'),
-                ('STORE ROOM',    1, 'STO-GF',  'STO-GF'),
+                ('GYM',           1),
+                ('SPORTS ROOM',   1),
+                ('ENTERTAINMENT', 1),
+                ('MESS',          1),
+                ('STUDY ROOM',    2),
+                ('WARDEN OFFICE', 1),
+                ('LAUNDRY ROOM',  1),
             ],
         },
     ]
@@ -6478,20 +6710,19 @@ def bulk_upload_sample(request):  # noqa: C901
                 g.font = Font(bold=True, color='111111', size=13)
                 g.fill = hfill(bg_hex); g.alignment = cc; g.border = thin
 
-                # Cols H–I: room number range (value only on first row of floor)
-                for col in range(8, 10):
-                    c = ws.cell(row=r, column=col)
-                    c.fill = hfill('F3E5F5'); c.border = thin; c.alignment = cc
-                    if rt_idx == 0:
-                        c.value = [fd['start'], fd['end']][col - 8]
-                        c.font  = Font(bold=True, color='6A1B9A', size=10)
+                # Col H: Designation (incampus/outcampus) — value only on first row of floor
+                h = ws.cell(row=r, column=8)
+                h.fill = hfill('F3E5F5'); h.border = thin; h.alignment = cc
+                if rt_idx == 0:
+                    h.value = fd.get('desig', '')
+                    h.font  = Font(bold=True, color='6A1B9A', size=10)
 
                 ws.row_dimensions[r].height = 22
                 cur_row += 1
 
-            # Merge floor cols D–E and H–I across all category rows of this floor
+            # Merge floor cols D–E and H across all category rows of this floor
             f_end = cur_row - 1
-            for col in [4, 5, 8, 9]:
+            for col in [4, 5, 8]:
                 ws.merge_cells(start_row=f_start, start_column=col,
                                end_row=f_end,     end_column=col)
                 ws.cell(row=f_start, column=col).alignment = cc
@@ -6502,15 +6733,15 @@ def bulk_upload_sample(request):  # noqa: C901
             sub = ws.cell(row=cur_row, column=1, value='  Common Facilities')
             sub.font = Font(bold=True, italic=True, color='0D47A1', size=10)
             sub.fill = hfill('DBEAFE'); sub.alignment = lc
-            for col in range(1, 10):
+            for col in range(1, 9):
                 ws.cell(row=cur_row, column=col).fill   = hfill('DBEAFE')
                 ws.cell(row=cur_row, column=col).border = thin
             ws.merge_cells(start_row=cur_row, start_column=1,
-                           end_row=cur_row,   end_column=9)
+                           end_row=cur_row,   end_column=8)
             ws.row_dimensions[cur_row].height = 17
             cur_row += 1
 
-            for cat, cnt, start, end in hostel['common']:
+            for cat, cnt in hostel['common']:
                 r = cur_row
                 bg_hex, fc_hex = CAT_STYLES.get(cat, ('F5F5F5', '333333'))
 
@@ -6539,15 +6770,9 @@ def bulk_upload_sample(request):  # noqa: C901
                 g.font = Font(bold=True, color='111111', size=12)
                 g.fill = hfill(bg_hex); g.alignment = cc; g.border = thin
 
-                # Col H: Start No.
-                h = ws.cell(row=r, column=8, value=start)
-                h.font = Font(bold=True, color='6A1B9A', size=10)
+                # Col H: Designation — blank for common rooms
+                h = ws.cell(row=r, column=8, value='')
                 h.fill = hfill('F3E5F5'); h.alignment = cc; h.border = thin
-
-                # Col I: End No.
-                i = ws.cell(row=r, column=9, value=end)
-                i.font = Font(bold=True, color='6A1B9A', size=10)
-                i.fill = hfill('F3E5F5'); i.alignment = cc; i.border = thin
 
                 ws.row_dimensions[r].height = 20
                 cur_row += 1
@@ -6561,7 +6786,7 @@ def bulk_upload_sample(request):  # noqa: C901
 
         # Thin grey separator between hostels
         if h_idx < len(HOSTELS) - 1:
-            for col in range(1, 10):
+            for col in range(1, 9):
                 s = ws.cell(row=cur_row, column=col)
                 s.fill = hfill('B0BEC5'); s.border = thin
             ws.row_dimensions[cur_row].height = 4
@@ -6613,10 +6838,9 @@ def bulk_upload_sample(request):  # noqa: C901
         ('C — Number of Floors', 'Optional', 'Total floors in this hostel — informational only, not enforced by the system.'),
         ('D — Floor',            'Required', 'Floor label: F1, F2 … or GF for Ground Floor. Auto-converts to a floor number.'),
         ('E — Rooms on Floor',   'Optional', 'Total rooms on this floor — informational only.'),
-        ('F — Room Category',    'Required', 'Category code from the full list on this sheet. e.g. 4S+CWR, 3S+WR+AC, GYM, MESS.'),
-        ('G — Room Count',       'Required', 'Number of rooms of this category. All student room counts must sum to End − Start + 1.'),
-        ('H — Room Start No.',   'Required', 'First room number e.g. BH-101. For common rooms use a custom id e.g. GYM-GF.'),
-        ('I — Room End No.',     'Required', 'Last room number e.g. BH-120. For common rooms set same as Start No.'),
+        ('F — Room Category',    'Required', 'Category code from the full list on this sheet. e.g. 5S+CW, 4S+CWR, 3S+WR+AC, GYM, WARDEN OFFICE.'),
+        ('G — Room Count',       'Required', 'Number of rooms of this category to create. Room numbers are auto-generated.'),
+        ('H — Designation',      'Optional', '"incampus" or "outcampus" for the floor. Leave blank for common/staff rooms.'),
     ]):
         irow(r, cn, rq, ds)
         if i % 2 == 0:
@@ -6633,6 +6857,10 @@ def bulk_upload_sample(request):  # noqa: C901
     wi.row_dimensions[r].height = 18; r += 1
 
     for i, (code, cap, desc) in enumerate([
+        ('6S+CW',     6, '6-Seater + Common Washroom'),
+        ('5S+CW',     5, '5-Seater + Common Washroom'),
+        ('5S+WW',     5, '5-Seater + With (Attached) Washroom'),
+        ('5S+WW+AC',  5, '5-Seater + With Washroom + Air Conditioning'),
         ('4S+CWR',    4, '4-Seater + Common Washroom'),
         ('4S+CWR+AC', 4, '4-Seater + Common Washroom + Air Conditioning'),
         ('4S+WR',     4, '4-Seater + Attached Washroom'),
@@ -6667,13 +6895,15 @@ def bulk_upload_sample(request):  # noqa: C901
     wi.row_dimensions[r].height = 18; r += 1
 
     for i, (code, desc) in enumerate([
-        ('GYM',             'Gym / Fitness Room  →  Start = End = GYM-GF'),
-        ('SPORTS ROOM',     'Sports Room  →  Start = End = SPR-GF'),
-        ('ENTERTAINMENT',   'Entertainment / TV Room  →  Start = End = ENT-GF'),
-        ('MESS',            'Mess Hall / Dining  →  Start = End = MESS-GF'),
-        ('STUDY ROOM',      'Study Room  →  multiple OK: Start=STR-1, End=STR-2, Count=2'),
-        ('SITTING ARENA',   'Sitting Area / Lounge  →  Start = End = SIT-GF'),
-        ('STORE ROOM',      'Store Room / Storage  →  Start = End = STO-GF'),
+        ('GYM',             'Gym / Fitness Room  —  room number auto-generated as PREFIX-GYM-GF'),
+        ('SPORTS ROOM',     'Sports Room  —  auto-generated as PREFIX-SPR-GF'),
+        ('ENTERTAINMENT',   'Entertainment / TV Room  —  auto-generated as PREFIX-ENT-GF'),
+        ('MESS',            'Mess Hall / Dining  —  auto-generated as PREFIX-MESS-GF'),
+        ('STUDY ROOM',      'Study Room  —  multiple rooms auto-numbered: PREFIX-STR-GF, PREFIX-STR-GF-2 …'),
+        ('SITTING ARENA',   'Sitting Area / Lounge  —  auto-generated as PREFIX-SIT-GF'),
+        ('STORE ROOM',      'Store Room / Storage  —  auto-generated as PREFIX-STO-GF'),
+        ('WARDEN OFFICE',   'Warden\'s Office  —  auto-generated as PREFIX-WO-GF'),
+        ('LAUNDRY ROOM',    'Laundry Room  —  auto-generated as PREFIX-LDY-GF'),
     ]):
         wi.cell(row=r, column=2, value=code).font = Font(bold=True, size=10)
         wi.cell(row=r, column=3, value='0').font = Font(bold=True, size=10, color='6A1B9A')
@@ -6685,14 +6915,13 @@ def bulk_upload_sample(request):  # noqa: C901
     r += 1
     isec(r, '  KEY RULES'); r += 1
     for clr, rule in [
-        ('B71C1C', 'STUDENT ROOMS: sum of all student-room counts on a floor MUST equal (Room End No. − Room Start No. + 1).'),
-        ('B71C1C', 'Example: 4S+CWR=10, 3S+WR+AC=5, 2S+CWR=5  →  sum=20.  Start=BH-101, End=BH-120  →  range=20.  ✔'),
-        ('B71C1C', 'If the sum does not match, the ENTIRE floor is skipped and listed under "Rows Skipped".'),
-        ('1B5E20', 'COMMON ROOMS: each gets its own floor row.  Set Floor=GF, Category=GYM, Count=1, Start=End=GYM-GF.'),
-        ('1B5E20', 'Multiple common rooms of same type: Start=STR-1, End=STR-2, Count=2 — range validation still applies.'),
-        ('1565C0', 'Zero counts are valid for any student category — e.g. 4S+WR=20, 2S+CWR=0 is fine as long as sum matches.'),
-        ('1565C0', 'Room numbers are assigned in order (row by row): first all 4S+CWR rooms, then 3S+WR+AC, then 2S+CWR, etc.'),
-        ('1565C0', 'Beds are auto-created for student rooms (a 4S+CWR+AC room gets beds 1 2 3 4). No beds for common rooms.'),
+        ('B71C1C', 'ROOM NUMBERS ARE AUTO-GENERATED: no start/end columns needed. Rooms are numbered as PREFIX-F1-001, PREFIX-F1-002 …'),
+        ('B71C1C', 'Floor numbering: GF = 001–099, F1 = 101–199, F2 = 201–299, etc. Numbers continue sequentially across categories.'),
+        ('1B5E20', 'COMMON ROOMS (GYM, MESS, WARDEN OFFICE, LAUNDRY ROOM…): each row gets Floor=GF and a Count. Room names are auto-generated.'),
+        ('1B5E20', 'Multiple common rooms of the same type on the same floor are auto-suffixed: PREFIX-STR-GF, PREFIX-STR-GF-2, etc.'),
+        ('1565C0', 'DESIGNATION (col H): enter "incampus" or "outcampus" once per floor row. Leave blank for common/staff rooms.'),
+        ('1565C0', 'Zero counts are valid — a category row with Count=0 is simply skipped.'),
+        ('1565C0', 'Beds are auto-created for student rooms (e.g. 4S+CWR → 4 beds). No beds created for capacity-0 common rooms.'),
     ]:
         wi.cell(row=r, column=2, value='▶').font = Font(bold=True, size=11, color=clr)
         wi.cell(row=r, column=4, value=rule).font = Font(size=10)
@@ -6703,9 +6932,9 @@ def bulk_upload_sample(request):  # noqa: C901
     for step, desc in [
         ('Step 1', 'Fill Hostel Name (A) and Hostel Type (B) once — they are merged across all rows of that hostel.'),
         ('Step 2', 'For each student-room floor, add one row per category. Enter Floor (D) only in the first row (merged).'),
-        ('Step 3', 'Enter Room Start No. (H) and End No. (I) once per floor in the first category row (merged across rows).'),
-        ('Step 4', 'Fill Category (F) and Count (G) for each row. Verify all counts sum to End − Start + 1 for that floor.'),
-        ('Step 5', 'For common rooms (Gym, Mess…): add one row each with Floor=GF, Category code, Count, Start=End=identifier.'),
+        ('Step 3', 'Enter Designation (H) once per floor — "incampus" or "outcampus". Leave blank for common or staff rooms.'),
+        ('Step 4', 'Fill Category (F) and Count (G) for each row. Room numbers are auto-generated — no start/end needed.'),
+        ('Step 5', 'For common rooms (Gym, Mess, Warden Office, Laundry…): add one row each with Floor=GF, Category, Count.'),
         ('Step 6', 'To add another hostel: leave a blank separator row, then start the next hostel block below it.'),
         ('Step 7', 'Delete sample data, fill in your own data, save as .xlsx. Upload via Hostels → Bulk Upload.'),
         ('Step 8', 'Review the result — created hostels, rooms, beds, and any skipped rows are shown after upload.'),
@@ -6742,8 +6971,14 @@ def bulk_upload_rooms(request):  # noqa: C901
         # A=0 Hostel Name, B=1 Hostel Type, C=2 No. of Floors,
         # D=3 Floor, E=4 Rooms on Floor,
         # F=5 Room Category, G=6 Room Count,
-        # H=7 Room Start No., I=8 Room End No.
+        # H=7 Designation (incampus/outcampus — optional)
         RT_MAP = {
+            # 6-Seater
+            '6S+CW':              ('6-Seater (Common WR)',        6),
+            # 5-Seater variants
+            '5S+CW':              ('5-Seater (Common WR)',        5),
+            '5S+WW':              ('5-Seater (With WR)',          5),
+            '5S+WW+AC':           ('5-Seater (With WR, AC)',      5),
             # 4-Seater variants
             '4S+CWR':             ('4-Seater (Common WR)',        4),
             '4S+CWR+AC':          ('4-Seater (Common WR, AC)',    4),
@@ -6780,24 +7015,18 @@ def bulk_upload_rooms(request):  # noqa: C901
             'STORE ROOM':         ('Store Room',         0),
             'STORE':              ('Store Room',         0),
             'STOREROOM':          ('Store Room',         0),
+            'WARDEN OFFICE':      ('Warden Office',      0),
+            'WARDEN':             ('Warden Office',      0),
+            'LAUNDRY ROOM':       ('Laundry Room',       0),
+            'LAUNDRY':            ('Laundry Room',       0),
         }
 
-        def expand_room_range(start, end):
-            start, end = str(start).strip(), str(end).strip()
-            if start == end:
-                return [start]
-            ms = _re.fullmatch(r'([A-Za-z0-9\-]*)(\d+)', start)
-            me = _re.fullmatch(r'([A-Za-z0-9\-]*)(\d+)', end)
-            if not ms or not me:
-                raise ValueError(f'Bad room numbers: "{start}", "{end}"')
-            ps, ns = ms.group(1), int(ms.group(2))
-            pe, ne = me.group(1), int(me.group(2))
-            if ps != pe:
-                raise ValueError(f'Prefix mismatch: "{ps}" vs "{pe}"')
-            if ne < ns:
-                raise ValueError(f'End ({ne}) must be ≥ Start ({ns})')
-            w = len(ms.group(2))
-            return [f'{ps}{str(n).zfill(w)}' for n in range(ns, ne + 1)]
+        # Short codes for common rooms used in auto-generated room numbers
+        COMMON_SHORT = {
+            'Gym': 'GYM', 'Sports Room': 'SPR', 'Entertainment Room': 'ENT',
+            'Mess Hall': 'MESS', 'Study Room': 'STR', 'Sitting Arena': 'SIT',
+            'Store Room': 'STO', 'Warden Office': 'WO', 'Laundry Room': 'LDY',
+        }
 
         def floor_label_to_int(label):
             lbl = str(label).strip().upper()
@@ -6806,13 +7035,16 @@ def bulk_upload_rooms(request):  # noqa: C901
             nums = _re.sub(r'[^0-9]', '', lbl)
             return int(nums) if nums else 1
 
+        def hostel_prefix(name):
+            """Derive a short prefix from the hostel name for room numbering."""
+            return _re.sub(r'\s+', '', str(name).upper())
+
         # Rows 1–3 are title / group-headers / column-headers; data starts at row 4.
-        cur_hostel_name = None
-        cur_hostel_type = 'boys'
-        cur_floor_lbl   = None
-        cur_start       = None
-        cur_end         = None
-        cur_floor_row   = None
+        cur_hostel_name  = None
+        cur_hostel_type  = 'boys'
+        cur_floor_lbl    = None
+        cur_designation  = ''
+        cur_floor_row    = None
 
         floor_counts = []   # list of (rt_label, count) — flexible number of rows per floor
         pending      = []
@@ -6824,7 +7056,7 @@ def bulk_upload_rooms(request):  # noqa: C901
                 pending.append({
                     'hostel': cur_hostel_name, 'type': cur_hostel_type,
                     'floor': cur_floor_lbl,
-                    'start': cur_start, 'end': cur_end,
+                    'designation': cur_designation,
                     'counts': floor_counts[:], 'row': cur_floor_row,
                 })
             floor_counts = []
@@ -6832,7 +7064,7 @@ def bulk_upload_rooms(request):  # noqa: C901
         for row_num, row in enumerate(ws.iter_rows(min_row=4, values_only=True), start=4):
             vals = list(row) + [None] * 10
 
-            if not any(v is not None for v in vals[:9]):
+            if not any(v is not None for v in vals[:8]):
                 continue
 
             # Hostel context — col A (0)
@@ -6848,11 +7080,12 @@ def bulk_upload_rooms(request):  # noqa: C901
             # Floor context — col D (3)
             if vals[3] is not None:
                 flush_floor()
-                cur_floor_lbl = str(vals[3]).strip()
-                cur_start     = str(vals[7]).strip() if vals[7] else None
-                cur_end       = str(vals[8]).strip() if vals[8] else None
-                cur_floor_row = row_num
-                floor_counts  = []
+                cur_floor_lbl   = str(vals[3]).strip()
+                cur_designation = str(vals[7]).strip().lower() if vals[7] else ''
+                if cur_designation not in ('incampus', 'outcampus'):
+                    cur_designation = ''
+                cur_floor_row  = row_num
+                floor_counts   = []
 
             # Room category + count — col F (5) and col G (6)
             if vals[5] is not None and vals[6] is not None and cur_floor_lbl:
@@ -6866,10 +7099,12 @@ def bulk_upload_rooms(request):  # noqa: C901
         flush_floor()  # flush the last floor
 
         # ── Create rooms from pending floor entries ──
-        created_hostels = 0
-        created_rooms   = 0
-        created_beds    = 0
-        hostel_cache    = {}
+        created_hostels  = 0
+        created_rooms    = 0
+        created_beds     = 0
+        hostel_cache     = {}
+        # Track per-hostel per-floor room sequence for auto-numbering
+        floor_seq_cache  = {}   # (hostel_name, floor_int) → next_seq
 
         for entry in pending:
             row_num = entry['row']
@@ -6878,32 +7113,11 @@ def bulk_upload_rooms(request):  # noqa: C901
                 skipped_rows.append({'row': row_num, 'reason': 'Hostel Name missing',
                                      'data': str(entry.get('floor', ''))})
                 continue
-            if not entry['start'] or not entry['end']:
-                skipped_rows.append({'row': row_num, 'reason': 'Room Start/End No. missing',
-                                     'data': f"{entry['hostel']} / {entry['floor']}"})
-                continue
-
-            try:
-                room_numbers = expand_room_range(entry['start'], entry['end'])
-            except ValueError as e:
-                skipped_rows.append({'row': row_num, 'reason': str(e),
-                                     'data': f"{entry['start']}–{entry['end']}"})
-                continue
-
-            total_range  = len(room_numbers)
-            total_counts = sum(cnt for _, cnt in entry['counts'])
-            if total_counts != total_range:
-                skipped_rows.append({
-                    'row': row_num,
-                    'reason': (f"Counts sum to {total_counts} but "
-                               f"{entry['start']}–{entry['end']} has {total_range} rooms"),
-                    'data': f"{entry['hostel']} / {entry['floor']}",
-                })
-                continue
 
             floor_num = floor_label_to_int(entry['floor'])
-
             hn = entry['hostel']
+            prefix = hostel_prefix(hn)
+
             if hn not in hostel_cache:
                 hostel, h_created = Hostel.objects.get_or_create(
                     name=hn, defaults={'type': entry['type']}
@@ -6913,12 +7127,32 @@ def bulk_upload_rooms(request):  # noqa: C901
                 hostel_cache[hn] = hostel
             hostel = hostel_cache[hn]
 
-            room_idx = 0
+            # Determine starting sequence for this floor
+            seq_key = (hn, floor_num)
+            if seq_key not in floor_seq_cache:
+                # Start from floor * 100 + 1 (GF = 001, F1 = 101, F2 = 201, …)
+                floor_seq_cache[seq_key] = floor_num * 100 + 1
+
+            common_type_seq = {}  # track count per common-room type for unique naming
+
             for rt_lbl, count in entry['counts']:
                 if count == 0:
                     continue
                 type_name, capacity = RT_MAP.get(rt_lbl, ('Unknown', 2))
-                for room_number in room_numbers[room_idx: room_idx + count]:
+
+                for _ in range(count):
+                    if capacity == 0:
+                        # Common room: use category-based name
+                        short = COMMON_SHORT.get(type_name, rt_lbl[:3])
+                        common_type_seq[short] = common_type_seq.get(short, 0) + 1
+                        suffix = '' if common_type_seq[short] == 1 else f'-{common_type_seq[short]}'
+                        floor_pfx = 'GF' if floor_num == 0 else f'F{floor_num}'
+                        room_number = f'{prefix}-{short}-{floor_pfx}{suffix}'
+                    else:
+                        seq = floor_seq_cache[seq_key]
+                        room_number = f'{prefix}-{seq:03d}'
+                        floor_seq_cache[seq_key] += 1
+
                     if Room.objects.filter(hostel=hostel, room_number=room_number).exists():
                         skipped_rows.append({'row': row_num, 'reason': 'Room already exists',
                                              'data': f'{hn} / {room_number}'})
@@ -6927,14 +7161,14 @@ def bulk_upload_rooms(request):  # noqa: C901
                             hostel=hostel, room_number=room_number,
                             floor=floor_num, room_type=type_name,
                             capacity=capacity, status='vacant',
+                            designation=entry.get('designation', ''),
                         )
-                        # Auto-create beds for student rooms only (common rooms have capacity=0)
+                        # Auto-create beds for student rooms only
                         for bed_n in range(1, capacity + 1):
                             Bed.objects.create(room=room, bed_number=str(bed_n),
                                                status='available')
                             created_beds += 1
                         created_rooms += 1
-                room_idx += count
 
         if created_rooms or created_hostels:
             msg = f'Upload complete: {created_rooms} room(s) and {created_beds} bed(s) created'
@@ -6975,8 +7209,8 @@ def _generate_qr_image(token):
     import qrcode as _qrcode
     qr = _qrcode.QRCode(
         version=None,
-        error_correction=_qrcode.constants.ERROR_CORRECT_M,
-        box_size=10,
+        error_correction=_qrcode.constants.ERROR_CORRECT_H,
+        box_size=12,
         border=4,
     )
     qr.add_data(token)
@@ -7628,18 +7862,110 @@ def my_leaves(request):
     return render(request, 'student/my_leaves.html', {'leaves': leaves})
 
 
+# ─── Medical Records ─────────────────────────────────────────────────────────
+
+@login_required
+def my_medical_records(request):
+    """Student: view & submit their own medical records."""
+    student, redir = _get_student_or_redirect(request)
+    if redir:
+        return redir
+
+    if request.method == 'POST':
+        from .models import MedicalRecord
+        date_val = request.POST.get('date', '').strip()
+        desc     = request.POST.get('description', '').strip()
+        if date_val and desc:
+            MedicalRecord.objects.create(
+                student     = student,
+                record_type = request.POST.get('record_type', 'illness'),
+                date        = date_val,
+                description = desc,
+                hospital    = request.POST.get('hospital', '').strip(),
+                doctor      = request.POST.get('doctor', '').strip(),
+                medicines   = request.POST.get('medicines', '').strip(),
+                ambulance_used   = 'ambulance_used' in request.POST,
+                ambulance_reason = request.POST.get('ambulance_reason', '').strip(),
+                pickup_location  = request.POST.get('pickup_location', '').strip(),
+                drop_location    = request.POST.get('drop_location', '').strip(),
+            )
+            messages.success(request, 'Medical record submitted.')
+        return redirect('my_medical_records')
+
+    from .models import MedicalRecord
+    records = MedicalRecord.objects.filter(student=student).order_by('-date')
+    return render(request, 'student/my_medical_records.html', {
+        'records':      records,
+        'record_types': MedicalRecord.RecordType.choices,
+    })
+
+
+@admin_only
+def admin_medical_records(request):
+    """Admin: view all medical records with ambulance usage stats."""
+    from .models import MedicalRecord
+    warden_hostel = get_hostel_scope(request.user)
+    qs = MedicalRecord.objects.select_related('student', 'student__allocations__room__hostel', 'verified_by').order_by('-date')
+    if warden_hostel:
+        qs = qs.filter(student__allocations__room__hostel=warden_hostel, student__allocations__status='active').distinct()
+
+    type_filter    = request.GET.get('type', '')
+    hostel_filter  = request.GET.get('hostel', '')
+    verified_filter= request.GET.get('verified', '')
+    if type_filter:
+        qs = qs.filter(record_type=type_filter)
+    if hostel_filter:
+        qs = qs.filter(student__allocations__room__hostel_id=hostel_filter, student__allocations__status='active').distinct()
+    if verified_filter == '1':
+        qs = qs.filter(is_verified=True)
+    elif verified_filter == '0':
+        qs = qs.filter(is_verified=False)
+
+    if request.method == 'POST':
+        rec_pk = request.POST.get('rec_pk', '').strip()
+        if rec_pk:
+            rec = get_object_or_404(MedicalRecord, pk=rec_pk)
+            rec.is_verified = True
+            rec.verified_by = request.user
+            rec.admin_notes = request.POST.get('admin_notes', '').strip()
+            rec.save(update_fields=['is_verified', 'verified_by', 'admin_notes'])
+            messages.success(request, 'Record verified.')
+        return redirect(request.get_full_path())
+
+    ambulance_count = MedicalRecord.objects.filter(ambulance_used=True)
+    if warden_hostel:
+        ambulance_count = ambulance_count.filter(
+            student__allocations__room__hostel=warden_hostel, student__allocations__status='active'
+        ).distinct()
+
+    paginator = Paginator(qs, 25)
+    page      = paginator.get_page(request.GET.get('page'))
+    all_hostels = Hostel.objects.filter(is_active=True).order_by('name')
+    return render(request, 'admin/medical_records.html', {
+        'page': page, 'type_filter': type_filter,
+        'hostel_filter': hostel_filter, 'verified_filter': verified_filter,
+        'record_types': MedicalRecord.RecordType.choices,
+        'all_hostels': all_hostels,
+        'ambulance_total': ambulance_count.count(),
+        'warden_hostel': warden_hostel,
+    })
+
+
 @admin_required
 def leave_list(request):
     g = request.GET
-    status_filter = g.get('status', '')
-    search        = g.get('q', '').strip()
-    hostel_id     = g.get('hostel', '')
-    department    = g.get('department', '').strip()
-    category_id   = g.get('category', '')
-    room_number   = g.get('room', '').strip()
-    date_from     = g.get('date_from', '').strip()
-    date_to       = g.get('date_to', '').strip()
-    year_filter   = g.get('year', '')
+    status_filter   = g.get('status', '')
+    search          = g.get('q', '').strip()
+    hostel_id       = g.get('hostel', '')
+    department      = g.get('department', '').strip()
+    category_id     = g.get('category', '')
+    room_number     = g.get('room', '').strip()
+    date_from       = g.get('date_from', '').strip()
+    date_to         = g.get('date_to', '').strip()
+    year_filter     = g.get('year', '')
+    semester_filter = g.get('semester', '')
+    gender_filter   = g.get('gender', '')
+    state_filter    = g.get('state', '').strip()
 
     warden_hostel = get_hostel_scope(request.user)
 
@@ -7688,6 +8014,12 @@ def leave_list(request):
         qs = qs.filter(from_date__lte=date_to)
     if year_filter:
         qs = qs.filter(student__year=year_filter)
+    if semester_filter:
+        qs = qs.filter(student__semester=semester_filter)
+    if gender_filter:
+        qs = qs.filter(student__gender=gender_filter)
+    if state_filter:
+        qs = qs.filter(student__state__iexact=state_filter)
 
     counts = {
         'all':      base_qs.count(),
@@ -7709,9 +8041,10 @@ def leave_list(request):
     all_hostels      = Hostel.objects.order_by('name') if not warden_hostel else []
     leave_categories = LeaveCategory.objects.filter(is_active=True).order_by('name')
     departments      = Student.objects.values_list('department', flat=True).distinct().order_by('department')
+    states           = Student.objects.exclude(state='').values_list('state', flat=True).distinct().order_by('state')
     years            = Student.Year.choices
 
-    active_filters = any([search, hostel_id, department, category_id, room_number, date_from, date_to, year_filter])
+    active_filters = any([search, hostel_id, department, category_id, room_number, date_from, date_to, year_filter, semester_filter, gender_filter, state_filter])
 
     return render(request, 'admin/leave_list.html', {
         'page':              page,
@@ -7730,10 +8063,14 @@ def leave_list(request):
         'date_from':         date_from,
         'date_to':           date_to,
         'year_filter':       year_filter,
+        'semester_filter':   semester_filter,
+        'gender_filter':     gender_filter,
+        'state_filter':      state_filter,
         # filter options
         'all_hostels':       all_hostels,
         'leave_categories':  leave_categories,
         'departments':       departments,
+        'states':            states,
         'years':             years,
         'active_filters':    active_filters,
     })
@@ -8612,6 +8949,7 @@ def gp_category_list(request):
         cat.end_time    = request.POST.get('end_time') or None
         cat.max_hours   = int(request.POST.get('max_hours', 12) or 12)
         cat.requires_warden_approval     = 'req_warden' in request.POST
+        cat.requires_hod_approval        = 'req_hod' in request.POST
         cat.requires_admin_approval      = 'req_admin' in request.POST
         cat.requires_superadmin_approval = 'req_superadmin' in request.POST
         cat.is_emergency = 'is_emergency' in request.POST
@@ -8632,6 +8970,38 @@ def gp_category_toggle(request, pk):
     cat.is_active = not cat.is_active
     cat.save()
     return redirect('gp_category_list')
+
+
+# ─── Gate Pass Sequence Reset (superadmin) ───────────────────────────────────
+
+@login_required
+def gp_sequence_reset(request):
+    """Superadmin can reset the GP sequence counter for a hostel prefix."""
+    if request.user.role != User.Role.SUPER_ADMIN:
+        messages.error(request, 'Access denied.')
+        return redirect('dashboard')
+
+    from .models import GatePassSequence
+    sequences = GatePassSequence.objects.all().order_by('hostel_prefix')
+
+    if request.method == 'POST':
+        prefix = request.POST.get('hostel_prefix', '').strip()
+        if prefix:
+            seq_obj, _ = GatePassSequence.objects.get_or_create(
+                hostel_prefix=prefix, defaults={'current_seq': 1}
+            )
+            seq_obj.current_seq = 1
+            seq_obj.reset_at = timezone.now()
+            seq_obj.reset_by = request.user
+            seq_obj.save()
+            messages.success(request, f'Gate pass sequence reset for {prefix}. Next GP will be {prefix}-00001.')
+        return redirect('gp_sequence_reset')
+
+    all_hostels = Hostel.objects.filter(is_active=True).order_by('name')
+    return render(request, 'admin/gp_sequence_reset.html', {
+        'sequences': sequences,
+        'all_hostels': all_hostels,
+    })
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -9008,6 +9378,7 @@ def leave_category_list(request):
         cat.start_time  = request.POST.get('start_time') or None
         cat.end_time    = request.POST.get('end_time') or None
         cat.requires_warden_approval     = 'req_warden' in request.POST
+        cat.requires_hod_approval        = 'req_hod' in request.POST
         cat.requires_admin_approval      = 'req_admin' in request.POST
         cat.requires_superadmin_approval = 'req_superadmin' in request.POST
         cat.is_active = 'is_active' in request.POST
@@ -9324,8 +9695,8 @@ def resident_analysis(request):
     summary = {
         'total':         all_active.count(),
         'boys_total':    all_active.filter(gender='male').count(),
-        'boys_incampus': all_active.filter(gender='male', type_of_entry='incampus').count(),
-        'boys_outcampus':all_active.filter(gender='male', type_of_entry='outcampus').count(),
+        'boys_incampus': all_active.filter(gender='male', allocations__room__designation='incampus', allocations__status='active').distinct().count(),
+        'boys_outcampus':all_active.filter(gender='male', allocations__room__designation='outcampus', allocations__status='active').distinct().count(),
         'girls_total':   all_active.filter(gender='female').count(),
         'staff_total':   _User.objects.exclude(role__in=('superadmin','student')).filter(is_active=True).count(),
         'warden_count':  _User.objects.filter(role='warden', is_active=True).count(),
@@ -9350,8 +9721,8 @@ def resident_analysis(request):
 
     if view_mode == 'boys':
         for h in Hostel.objects.order_by('name'):
-            inc  = Student.objects.filter(allocations__room__hostel=h, allocations__status='active', gender='male', type_of_entry='incampus').distinct().count()
-            outc = Student.objects.filter(allocations__room__hostel=h, allocations__status='active', gender='male', type_of_entry='outcampus').distinct().count()
+            inc  = Student.objects.filter(allocations__room__hostel=h, allocations__status='active', allocations__room__designation='incampus', gender='male').distinct().count()
+            outc = Student.objects.filter(allocations__room__hostel=h, allocations__status='active', allocations__room__designation='outcampus', gender='male').distinct().count()
             if inc:
                 boys_incampus_rows.append({'hostel': h, 'count': inc})
                 boys_incampus_total += inc
@@ -9362,14 +9733,14 @@ def resident_analysis(request):
         if selected and entry_type == 'incampus':
             incampus_students = list(Student.objects.filter(
                 allocations__room__hostel=selected, allocations__status='active',
-                gender='male', type_of_entry='incampus'
+                allocations__room__designation='incampus', gender='male'
             ).distinct().order_by('roll_number'))
             _attach_rooms(incampus_students)
 
         elif selected and entry_type == 'outcampus':
             outcampus_students = list(Student.objects.filter(
                 allocations__room__hostel=selected, allocations__status='active',
-                gender='male', type_of_entry='outcampus'
+                allocations__room__designation='outcampus', gender='male'
             ).distinct().order_by('roll_number'))
             _attach_rooms(outcampus_students)
 
@@ -9377,11 +9748,11 @@ def resident_analysis(request):
             # no entry filter — show all boys in that hostel
             incampus_students = list(Student.objects.filter(
                 allocations__room__hostel=selected, allocations__status='active',
-                gender='male', type_of_entry='incampus'
+                allocations__room__designation='incampus', gender='male'
             ).distinct().order_by('roll_number'))
             outcampus_students = list(Student.objects.filter(
                 allocations__room__hostel=selected, allocations__status='active',
-                gender='male', type_of_entry='outcampus'
+                allocations__room__designation='outcampus', gender='male'
             ).distinct().order_by('roll_number'))
             _attach_rooms(incampus_students)
             _attach_rooms(outcampus_students)

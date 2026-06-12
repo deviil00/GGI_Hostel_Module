@@ -1,0 +1,164 @@
+{% extends 'base/base.html' %}
+{% block title %}My Medical Records{% endblock %}
+{% block page_title %}My Medical Records{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h4>My Medical Records</h4>
+    <p>Log your illnesses, treatments, and ambulance usage</p>
+  </div>
+</div>
+
+{% if messages %}
+{% for msg in messages %}
+<div class="alert alert-success border-0 rounded-3 mb-3"><i class="bi bi-check-circle me-2"></i>{{ msg }}</div>
+{% endfor %}
+{% endif %}
+
+<div class="row g-4">
+  {# ── Add Record Form ── #}
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEE2E2"><i class="bi bi-heart-pulse-fill" style="color:#DC2626"></i></div>
+          Add Medical Record
+        </div>
+      </div>
+      <div class="card-body p-4">
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:13px">Type</label>
+            <select name="record_type" class="form-select form-select-sm" onchange="toggleAmbulanceFields(this.value)">
+              {% for val, label in record_types %}
+              <option value="{{ val }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:13px">Date <span class="text-danger">*</span></label>
+            <input type="date" name="date" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:13px">Description <span class="text-danger">*</span></label>
+            <textarea name="description" class="form-control form-control-sm" rows="3"
+                      placeholder="Describe the condition or visit…" required></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:13px">Hospital / Clinic</label>
+            <input type="text" name="hospital" class="form-control form-control-sm" placeholder="Name of hospital (if visited)">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-600" style="font-size:13px">Doctor</label>
+              <input type="text" name="doctor" class="form-control form-control-sm" placeholder="Doctor name">
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-600" style="font-size:13px">Medicines</label>
+              <input type="text" name="medicines" class="form-control form-control-sm" placeholder="Prescription">
+            </div>
+          </div>
+
+          {# Ambulance fields #}
+          <div id="ambulance-section" style="display:none">
+            <div style="background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:10px;padding:14px;margin-bottom:12px">
+              <div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:10px">
+                <i class="bi bi-truck me-1"></i>Ambulance Details
+              </div>
+              <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input" name="ambulance_used" id="amb-used">
+                <label class="form-check-label" for="amb-used" style="font-size:13px">Ambulance was used</label>
+              </div>
+              <div class="mb-2">
+                <input type="text" name="ambulance_reason" class="form-control form-control-sm"
+                       placeholder="Reason for ambulance">
+              </div>
+              <div class="row g-2">
+                <div class="col-6">
+                  <input type="text" name="pickup_location" class="form-control form-control-sm"
+                         placeholder="Pickup location">
+                </div>
+                <div class="col-6">
+                  <input type="text" name="drop_location" class="form-control form-control-sm"
+                         placeholder="Drop location">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-plus-circle me-1"></i>Submit Record
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ── Records List ── #}
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="ch-icon" style="background:#FEE2E2"><i class="bi bi-clipboard2-pulse" style="color:#DC2626"></i></div>
+          My Records
+        </div>
+        <span style="font-size:12px;color:var(--text-3)">{{ records|length }} record{{ records|length|pluralize }}</span>
+      </div>
+      {% if records %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead><tr>
+            <th>Date</th><th>Type</th><th>Description</th><th>Hospital</th><th>Ambulance</th><th>Verified</th>
+          </tr></thead>
+          <tbody>
+          {% for rec in records %}
+          <tr>
+            <td style="font-size:12.5px;white-space:nowrap">{{ rec.date|date:"d M Y" }}</td>
+            <td>
+              <span class="badge" style="background:#FEE2E2;color:#991B1B;font-size:11px">
+                {{ rec.get_record_type_display }}
+              </span>
+            </td>
+            <td style="font-size:12.5px;max-width:200px">{{ rec.description|truncatechars:60 }}</td>
+            <td style="font-size:12px;color:var(--text-2)">{{ rec.hospital|default:"—" }}</td>
+            <td>
+              {% if rec.ambulance_used %}
+              <span class="badge" style="background:#FEF3C7;color:#92400E;font-size:11px">
+                <i class="bi bi-truck me-1"></i>Yes
+              </span>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if rec.is_verified %}
+              <span style="color:#059669;font-size:12px;font-weight:700">
+                <i class="bi bi-check-circle-fill me-1"></i>Verified
+              </span>
+              {% else %}
+              <span style="color:#D97706;font-size:12px">Pending</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body">
+        <div class="empty-state py-4">
+          <i class="bi bi-clipboard2-pulse"></i>
+          <p>No medical records yet.</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleAmbulanceFields(val) {
+  document.getElementById('ambulance-section').style.display = (val === 'ambulance') ? '' : 'none';
+}
+</script>
+{% endblock %}

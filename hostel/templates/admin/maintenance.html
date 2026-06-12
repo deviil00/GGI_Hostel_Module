@@ -14,40 +14,49 @@
 </div>
 
 <!-- Stats -->
-<div class="row g-3 mb-4">
-  <div class="col-md-3">
-    <div class="stat-card" style="--stat-color:#1565C0">
-      <div class="s-top"><div class="s-icon" style="background:#EBF3FF"><i class="bi bi-tools" style="color:#1565C0"></i></div></div>
-      <div class="s-number">{{ counts.all }}</div><div class="s-label">Total</div>
-    </div>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-2">
+    <a href="?status=" class="text-decoration-none">
+      <div class="stat-card text-center {% if not status_filter %}active{% endif %}" style="--stat-color:#1565C0">
+        <div class="s-number">{{ counts.all }}</div><div class="s-label">All</div>
+      </div>
+    </a>
   </div>
-  <div class="col-md-3">
-    <div class="stat-card" style="--stat-color:#DC2626">
-      <div class="s-top"><div class="s-icon" style="background:#FEF2F2"><i class="bi bi-exclamation-circle" style="color:#DC2626"></i></div></div>
-      <div class="s-number">{{ counts.open }}</div><div class="s-label">Open</div>
-    </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=open" class="text-decoration-none">
+      <div class="stat-card text-center {% if status_filter == 'open' %}active{% endif %}" style="--stat-color:#DC2626">
+        <div class="s-number">{{ counts.open }}</div><div class="s-label">Unresolved</div>
+      </div>
+    </a>
   </div>
-  <div class="col-md-3">
-    <div class="stat-card" style="--stat-color:#D97706">
-      <div class="s-top"><div class="s-icon" style="background:#FFFBEB"><i class="bi bi-gear-fill" style="color:#D97706"></i></div></div>
-      <div class="s-number">{{ counts.in_progress }}</div><div class="s-label">In Progress</div>
-    </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=in_progress" class="text-decoration-none">
+      <div class="stat-card text-center {% if status_filter == 'in_progress' %}active{% endif %}" style="--stat-color:#D97706">
+        <div class="s-number">{{ counts.in_progress }}</div><div class="s-label">Under Process</div>
+      </div>
+    </a>
   </div>
-  <div class="col-md-3">
-    <div class="stat-card" style="--stat-color:#059669">
-      <div class="s-top"><div class="s-icon" style="background:#ECFDF5"><i class="bi bi-check-circle-fill" style="color:#059669"></i></div></div>
-      <div class="s-number">{{ counts.resolved }}</div><div class="s-label">Resolved</div>
-    </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=on_hold" class="text-decoration-none">
+      <div class="stat-card text-center {% if status_filter == 'on_hold' %}active{% endif %}" style="--stat-color:#6366F1">
+        <div class="s-number">{{ counts.on_hold }}</div><div class="s-label">On Hold</div>
+      </div>
+    </a>
   </div>
-</div>
-
-<!-- Filter -->
-<div class="filter-card d-flex align-items-center gap-3">
-  <i class="bi bi-funnel text-muted"></i>
-  <a href="?status=" class="badge {% if not status_filter %}badge-resident{% else %}bg-light text-dark border{% endif %} text-decoration-none">All</a>
-  {% for val, label in statuses %}
-  <a href="?status={{ val }}" class="badge {% if status_filter == val %}badge-resident{% else %}bg-light text-dark border{% endif %} text-decoration-none">{{ label }}</a>
-  {% endfor %}
+  <div class="col-6 col-md-2">
+    <a href="?status=resolved" class="text-decoration-none">
+      <div class="stat-card text-center {% if status_filter == 'resolved' %}active{% endif %}" style="--stat-color:#059669">
+        <div class="s-number">{{ counts.resolved }}</div><div class="s-label">Resolved</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-2">
+    <a href="?status=closed" class="text-decoration-none">
+      <div class="stat-card text-center {% if status_filter == 'closed' %}active{% endif %}" style="--stat-color:#64748B">
+        <div class="s-number">{{ counts.closed }}</div><div class="s-label">Closed</div>
+      </div>
+    </a>
+  </div>
 </div>
 
 <div class="card">
@@ -76,24 +85,41 @@
           <td>{{ log.assigned_to|default:"—" }}</td>
           <td>{{ log.scheduled_date|default:"—" }}</td>
           <td>
-            {% if log.status == 'open' %}<span class="badge badge-open">Open</span>
-            {% elif log.status == 'in_progress' %}<span class="badge badge-pending">In Progress</span>
-            {% elif log.status == 'resolved' %}<span class="badge badge-paid">Resolved</span>
+            {% if log.status == 'open' %}<span class="badge" style="background:#FEE2E2;color:#991B1B">Unresolved</span>
+            {% elif log.status == 'in_progress' %}<span class="badge" style="background:#FEF3C7;color:#92400E">Under Process</span>
+            {% elif log.status == 'on_hold' %}<span class="badge" style="background:#EDE9FE;color:#6D28D9">On Hold</span>
+            {% elif log.status == 'resolved' %}<span class="badge" style="background:#DCFCE7;color:#166534">Resolved</span>
+            {% elif log.status == 'closed' %}<span class="badge" style="background:#F1F5F9;color:#64748B">Closed</span>
             {% endif %}
           </td>
           <td>
-            {% if log.status != 'resolved' %}
-            <form method="post" class="d-flex gap-1">
+            {% if log.status not in 'resolved,closed' %}
+            <form method="post" class="d-flex gap-1 flex-wrap">
               {% csrf_token %}
               <input type="hidden" name="action" value="update_status">
               <input type="hidden" name="log_id" value="{{ log.pk }}">
               {% if log.status == 'open' %}
-              <button name="new_status" value="in_progress" class="btn btn-xs btn-outline-primary">In Progress</button>
+              <button name="new_status" value="in_progress" class="btn btn-xs btn-outline-primary">Under Process</button>
+              <button name="new_status" value="on_hold" class="btn btn-xs btn-outline-secondary">On Hold</button>
+              {% elif log.status == 'in_progress' %}
+              <button name="new_status" value="on_hold" class="btn btn-xs btn-outline-secondary">On Hold</button>
+              {% elif log.status == 'on_hold' %}
+              <button name="new_status" value="in_progress" class="btn btn-xs btn-outline-primary">Resume</button>
               {% endif %}
               <button name="new_status" value="resolved" class="btn btn-xs btn-outline-success">Resolve</button>
             </form>
+            {% elif log.status == 'resolved' %}
+            <div class="d-flex gap-1 flex-wrap">
+              <span class="text-muted" style="font-size:11px">{{ log.resolved_at|date:"d M Y" }}</span>
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_status">
+                <input type="hidden" name="log_id" value="{{ log.pk }}">
+                <button name="new_status" value="closed" class="btn btn-xs btn-outline-secondary">Close</button>
+              </form>
+            </div>
             {% else %}
-            <span class="text-muted" style="font-size:11px">{{ log.resolved_at|date:"d M Y" }}</span>
+            <span class="text-muted" style="font-size:11px">Closed</span>
             {% endif %}
           </td>
         </tr>

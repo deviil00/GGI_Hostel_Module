@@ -22,6 +22,12 @@ ROOM_CATEGORIES = [
     ('1S+CWR+AC',  'Single + Common Washroom + AC',      1),
     ('1S+WR',      'Single + Attached Washroom',         1),
     ('1S+WR+AC',   'Single + Attached Washroom + AC',    1),
+    # 5-Seater variants
+    ('5S+CW',          '5-Seater + Common Washroom',         5),
+    ('5S+WW',          '5-Seater + With Washroom',           5),
+    ('5S+WW+AC',       '5-Seater + With Washroom + AC',      5),
+    # 6-Seater variants
+    ('6S+CW',          '6-Seater + Common Washroom',         6),
     # Common / amenity rooms — no beds (capacity 0)
     ('GYM',            'Gym',                0),
     ('SPORTS ROOM',    'Sports Room',         0),
@@ -30,6 +36,8 @@ ROOM_CATEGORIES = [
     ('STUDY ROOM',     'Study Room',          0),
     ('SITTING ARENA',  'Sitting Arena',       0),
     ('STORE ROOM',     'Store Room',          0),
+    ('WARDEN OFFICE',  'Warden Office',       0),
+    ('LAUNDRY ROOM',   'Laundry Room',        0),
 ]
 
 # Code → default capacity lookup
@@ -82,6 +90,10 @@ class Room(models.Model):
         RESERVED    = 'reserved',    'Reserved'
         MAINTENANCE = 'maintenance', 'Under Maintenance'
 
+    DESIGNATION_INCAMPUS  = 'incampus'
+    DESIGNATION_OUTCAMPUS = 'outcampus'
+    DESIGNATION_CHOICES   = [('incampus', 'InCampus'), ('outcampus', 'OutCampus')]
+
     id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     hostel      = models.ForeignKey(Hostel, on_delete=models.CASCADE, related_name='rooms')
     room_number = models.CharField(max_length=20)
@@ -91,6 +103,10 @@ class Room(models.Model):
                                    help_text="Admin-defined type e.g. AC Double, Non-AC Triple, VIP")
     capacity    = models.PositiveSmallIntegerField(default=2)
     status      = models.CharField(max_length=15, choices=Status.choices, default=Status.VACANT)
+    designation = models.CharField(
+        max_length=10, choices=DESIGNATION_CHOICES, blank=True, default='',
+        help_text="InCampus or OutCampus — set during bulk upload"
+    )
     amenities   = models.ManyToManyField('RoomAmenity', blank=True, related_name='rooms')
 
     class Meta:
@@ -167,9 +183,8 @@ class Student(models.Model):
     state           = models.CharField(max_length=100, blank=True)
     country         = models.CharField(max_length=100, blank=True, default='India')
     type_of_entry   = models.CharField(
-        max_length=10,
-        choices=[('incampus', 'InCampus'), ('outcampus', 'OutCampus')],
-        blank=True
+        max_length=50, blank=True,
+        help_text="Admission category e.g. DRCC, Management, NRI, Sports"
     )
     reporting_date  = models.DateField(null=True, blank=True)
     # ── status / deactivation ──
@@ -328,6 +343,7 @@ class RoomAmenityRecord(models.Model):
     id        = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     room      = models.ForeignKey(Room,        on_delete=models.CASCADE, related_name='amenity_records')
     amenity   = models.ForeignKey(RoomAmenity, on_delete=models.CASCADE, related_name='records')
+    quantity  = models.PositiveSmallIntegerField(default=1)
     condition = models.CharField(max_length=10, choices=Condition.choices, default=Condition.GOOD)
     notes     = models.TextField(blank=True)
     added_by  = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
@@ -669,8 +685,8 @@ class GatePass(models.Model):
         related_name='entry_allowed_passes'
     )
 
-    # Human-readable reference ID: GP-YYYY-NNNNN
-    gp_id                = models.CharField(max_length=20, unique=True, blank=True, db_index=True)
+    # Human-readable reference ID: GP-HOSTELNAME-NNNNN (sequential per hostel)
+    gp_id                = models.CharField(max_length=40, unique=True, blank=True, db_index=True)
 
     created_at           = models.DateTimeField(auto_now_add=True)
     updated_at           = models.DateTimeField(auto_now=True)
@@ -681,16 +697,27 @@ class GatePass(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.gp_id:
-            from django.utils import timezone as _tz
-            year = _tz.now().year
-            last = GatePass.objects.filter(gp_id__startswith=f'GP-{year}-').order_by('-gp_id').first()
-            seq = 1
-            if last and last.gp_id:
-                try:
-                    seq = int(last.gp_id.split('-')[-1]) + 1
-                except (ValueError, IndexError):
-                    pass
-            self.gp_id = f'GP-{year}-{seq:05d}'
+            import re as _re
+            from django.db import transaction as _tx
+            # Derive hostel prefix from student's active allocation
+            hostel_slug = 'GEN'
+            try:
+                alloc = self.student.allocations.filter(status='active').select_related('room__hostel').first()
+                if alloc and alloc.room and alloc.room.hostel:
+                    raw = alloc.room.hostel.name.upper()
+                    hostel_slug = _re.sub(r'[^A-Z0-9]', '', raw.split()[0])[:8] or 'GEN'
+            except Exception:
+                pass
+            prefix = f'GP-{hostel_slug}'
+            # Use GatePassSequence for atomic increment (supports monthly reset)
+            with _tx.atomic():
+                seq_obj, _ = GatePassSequence.objects.select_for_update().get_or_create(
+                    hostel_prefix=prefix, defaults={'current_seq': 1}
+                )
+                seq = seq_obj.current_seq
+                seq_obj.current_seq = seq + 1
+                seq_obj.save(update_fields=['current_seq'])
+            self.gp_id = f'{prefix}-{seq:05d}'
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -707,6 +734,22 @@ class GatePass(models.Model):
                 self.is_overstayed = True
                 self.save(update_fields=['is_overstayed'])
         return self.is_overstayed
+
+
+class GatePassSequence(models.Model):
+    """Tracks the current GP sequence number per hostel prefix for monthly reset support."""
+    hostel_prefix  = models.CharField(max_length=20, unique=True)  # e.g. 'GP-BLOCK1'
+    current_seq    = models.PositiveIntegerField(default=1)
+    reset_at       = models.DateTimeField(null=True, blank=True)
+    reset_by       = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name='gp_resets'
+    )
+
+    class Meta:
+        db_table = 'gate_pass_sequences'
+
+    def __str__(self):
+        return f'{self.hostel_prefix} → {self.current_seq}'
 
 
 class RoomPreference(models.Model):
@@ -834,6 +877,12 @@ class Visitor(models.Model):
     # Guest-specific
     is_college_student    = models.BooleanField(default=False)
     college_id_upload     = models.FileField(upload_to='college_ids/', null=True, blank=True)
+    # Visitor location
+    state          = models.CharField(max_length=100, blank=True)
+    country        = models.CharField(max_length=100, blank=True, default='India')
+    # Visit duration
+    visit_end_date = models.DateField(null=True, blank=True,
+                                      help_text='End date for multi-day visits')
     # Status & approval
     status         = models.CharField(max_length=15, choices=Status.choices, default=Status.PENDING)
     approved_by    = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
@@ -1187,16 +1236,24 @@ class DisciplineAction(models.Model):
 
 class MaintenanceLog(models.Model):
     class Status(models.TextChoices):
-        OPEN        = 'open',        'Open'
-        IN_PROGRESS = 'in_progress', 'In Progress'
+        OPEN        = 'open',        'Open / Unresolved'
+        IN_PROGRESS = 'in_progress', 'Under Process'
+        ON_HOLD     = 'on_hold',     'On Hold'
         RESOLVED    = 'resolved',    'Resolved'
+        CLOSED      = 'closed',      'Closed'
 
     class Category(models.TextChoices):
         ELECTRICAL = 'electrical', 'Electrical'
         PLUMBING   = 'plumbing',   'Plumbing'
+        PLUMBER    = 'plumber',    'Plumber'
         FURNITURE  = 'furniture',  'Furniture'
         CLEANING   = 'cleaning',   'Cleaning'
         NETWORK    = 'network',    'Network/Internet'
+        PAINTER    = 'painter',    'Painter'
+        CARPENTRY  = 'carpentry',  'Carpentry'
+        MASON      = 'mason',      'Mason'
+        GARDENER   = 'gardener',   'Gardener'
+        TERMITE    = 'termite',    'Termite Control'
         OTHER      = 'other',      'Other'
 
     id             = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -1313,6 +1370,47 @@ class RoleModulePermission(models.Model):
         if perm:
             return set(perm.allowed_modules)
         return set(DEFAULT_ROLE_MODULES.get(role, []))
+
+
+class MedicalRecord(models.Model):
+    """Student-submitted medical records — illness, treatment, hospital visits."""
+
+    class RecordType(models.TextChoices):
+        ILLNESS    = 'illness',    'Illness / Fever'
+        INJURY     = 'injury',     'Injury'
+        HOSPITAL   = 'hospital',   'Hospital Visit'
+        MEDICINE   = 'medicine',   'Medicine Prescribed'
+        AMBULANCE  = 'ambulance',  'Ambulance Used'
+        OTHER      = 'other',      'Other'
+
+    id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student     = models.ForeignKey('Student', on_delete=models.CASCADE, related_name='medical_records')
+    record_type = models.CharField(max_length=20, choices=RecordType.choices, default=RecordType.ILLNESS)
+    date        = models.DateField()
+    description = models.TextField()
+    hospital    = models.CharField(max_length=200, blank=True)
+    doctor      = models.CharField(max_length=100, blank=True)
+    medicines   = models.TextField(blank=True)
+    # Ambulance specific
+    ambulance_used      = models.BooleanField(default=False)
+    ambulance_reason    = models.TextField(blank=True)
+    pickup_location     = models.CharField(max_length=200, blank=True)
+    drop_location       = models.CharField(max_length=200, blank=True)
+    # Admin tracking
+    verified_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name='verified_medical_records'
+    )
+    is_verified  = models.BooleanField(default=False)
+    admin_notes  = models.TextField(blank=True)
+    created_at   = models.DateTimeField(auto_now_add=True)
+    updated_at   = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'medical_records'
+        ordering = ['-date', '-created_at']
+
+    def __str__(self):
+        return f'{self.student.name} — {self.get_record_type_display()} on {self.date}'
 
 
 class StaffProfile(models.Model):
@@ -1516,6 +1614,7 @@ class GatePassCategory(models.Model):
     max_hours   = models.PositiveSmallIntegerField(default=12, help_text='Maximum allowed duration in hours')
 
     requires_warden_approval     = models.BooleanField(default=True)
+    requires_hod_approval        = models.BooleanField(default=False)
     requires_admin_approval      = models.BooleanField(default=False)
     requires_superadmin_approval = models.BooleanField(default=False)
     is_emergency                 = models.BooleanField(default=False, help_text='Emergency pass — warden can approve directly')
@@ -1537,6 +1636,8 @@ class GatePassCategory(models.Model):
         chain = []
         if self.requires_warden_approval:
             chain.append('Warden')
+        if self.requires_hod_approval:
+            chain.append('HOD')
         if self.requires_admin_approval:
             chain.append('Admin 2')
         if self.requires_superadmin_approval:
@@ -1602,6 +1703,7 @@ class LeaveCategory(models.Model):
     end_time    = models.TimeField(null=True, blank=True)
 
     requires_warden_approval     = models.BooleanField(default=True)
+    requires_hod_approval        = models.BooleanField(default=False)
     requires_admin_approval      = models.BooleanField(default=False)
     requires_superadmin_approval = models.BooleanField(default=False)
     is_active                    = models.BooleanField(default=True)
@@ -1622,6 +1724,8 @@ class LeaveCategory(models.Model):
         chain = []
         if self.requires_warden_approval:
             chain.append('Warden')
+        if self.requires_hod_approval:
+            chain.append('HOD')
         if self.requires_admin_approval:
             chain.append('Admin 2')
         if self.requires_superadmin_approval:
