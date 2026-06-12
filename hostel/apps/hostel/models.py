@@ -714,9 +714,10 @@ class GatePass(models.Model):
                 seq_obj, _ = GatePassSequence.objects.select_for_update().get_or_create(
                     hostel_prefix=prefix, defaults={'current_seq': 1}
                 )
+                seq_obj.check_auto_reset()
                 seq = seq_obj.current_seq
                 seq_obj.current_seq = seq + 1
-                seq_obj.save(update_fields=['current_seq'])
+                seq_obj.save(update_fields=['current_seq', 'last_period_key', 'reset_at', 'reset_by'])
             self.gp_id = f'{prefix}-{seq:05d}'
         super().save(*args, **kwargs)
 
@@ -737,9 +738,19 @@ class GatePass(models.Model):
 
 
 class GatePassSequence(models.Model):
-    """Tracks the current GP sequence number per hostel prefix for monthly reset support."""
-    hostel_prefix  = models.CharField(max_length=20, unique=True)  # e.g. 'GP-BLOCK1'
+    """Tracks the current GP sequence number per hostel prefix with auto-reset period support."""
+
+    class ResetPeriod(models.TextChoices):
+        MANUAL  = 'manual',  'Manual Only'
+        WEEKLY  = 'weekly',  'Weekly (every Monday)'
+        MONTHLY = 'monthly', 'Monthly (1st of each month)'
+        YEARLY  = 'yearly',  'Yearly (1st Jan each year)'
+
+    hostel_prefix  = models.CharField(max_length=20, unique=True)
     current_seq    = models.PositiveIntegerField(default=1)
+    reset_period   = models.CharField(max_length=10, choices=ResetPeriod.choices, default=ResetPeriod.MANUAL)
+    last_period_key = models.CharField(max_length=20, blank=True,
+                                       help_text='Stores week/month/year key to detect period change')
     reset_at       = models.DateTimeField(null=True, blank=True)
     reset_by       = models.ForeignKey(
         User, null=True, blank=True, on_delete=models.SET_NULL, related_name='gp_resets'
@@ -749,7 +760,32 @@ class GatePassSequence(models.Model):
         db_table = 'gate_pass_sequences'
 
     def __str__(self):
-        return f'{self.hostel_prefix} → {self.current_seq}'
+        return f'{self.hostel_prefix} → {self.current_seq} ({self.reset_period})'
+
+    def get_current_period_key(self):
+        from django.utils import timezone as _tz
+        now = _tz.localtime(_tz.now())
+        if self.reset_period == self.ResetPeriod.WEEKLY:
+            return now.strftime('%Y-W%W')
+        elif self.reset_period == self.ResetPeriod.MONTHLY:
+            return now.strftime('%Y-%m')
+        elif self.reset_period == self.ResetPeriod.YEARLY:
+            return now.strftime('%Y')
+        return ''
+
+    def check_auto_reset(self):
+        """Auto-reset sequence if the configured period has rolled over."""
+        if self.reset_period == self.ResetPeriod.MANUAL:
+            return False
+        key = self.get_current_period_key()
+        if key and key != self.last_period_key:
+            self.current_seq = 1
+            self.last_period_key = key
+            from django.utils import timezone as _tz
+            self.reset_at = _tz.now()
+            self.reset_by = None
+            return True
+        return False
 
 
 class RoomPreference(models.Model):

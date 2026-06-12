@@ -32,7 +32,7 @@ from apps.hostel.models import (
     Semester, RoomAsset, LeaveApplication,
     AnnouncementCategory, AnnouncementAudience, Department,
     RoleModulePermission, CustomStaffRole, StaffProfile, STAFF_MODULES, STUDENT_MODULES, DEFAULT_ROLE_MODULES,
-    ROOM_CATEGORIES_GROUPED, ROOM_CATEGORY_CAPACITY, ROOM_CATEGORY_LABELS,
+    ROOM_CATEGORIES, ROOM_CATEGORIES_GROUPED, ROOM_CATEGORY_CAPACITY, ROOM_CATEGORY_LABELS,
     GatePassCategory, AcademicCalendarEvent,
     LeaveCategory, LeaveExtensionRequest,
     AssetType, Asset, AssetTransfer, AssetLog,
@@ -1284,9 +1284,8 @@ def room_occupancy_drill(request):
     all_floors   = Room.objects.filter(
         **(({'hostel': warden_hostel} if warden_hostel else {}))
     ).values_list('floor', flat=True).distinct().order_by('floor')
-    all_types    = Room.objects.values_list('room_type', flat=True).exclude(
-        room_type=''
-    ).distinct().order_by('room_type')
+    _used_types  = set(Room.objects.exclude(room_type='').values_list('room_type', flat=True).distinct())
+    all_types    = [(code, label) for code, label, *_ in ROOM_CATEGORIES if code in _used_types]
 
     # Status counts (scoped to hostel if warden)
     base = Room.objects.all()
@@ -8985,22 +8984,45 @@ def gp_sequence_reset(request):
     sequences = GatePassSequence.objects.all().order_by('hostel_prefix')
 
     if request.method == 'POST':
-        prefix = request.POST.get('hostel_prefix', '').strip()
-        if prefix:
+        prefix       = request.POST.get('hostel_prefix', '').strip()
+        reset_period = request.POST.get('reset_period', 'manual')
+        reset_now    = 'reset_now' in request.POST
+
+        if prefix == '__ALL__':
+            # Reset all existing sequences
+            updated = 0
+            for seq_obj in GatePassSequence.objects.all():
+                seq_obj.reset_period = reset_period
+                if reset_now:
+                    seq_obj.current_seq = 1
+                    seq_obj.reset_at    = timezone.now()
+                    seq_obj.reset_by    = request.user
+                    seq_obj.last_period_key = seq_obj.get_current_period_key()
+                seq_obj.save()
+                updated += 1
+            verb = f'reset to 00001 and period set to {reset_period}' if reset_now else f'period set to {reset_period}'
+            messages.success(request, f'All {updated} hostel sequences {verb}.')
+        elif prefix:
+            import re as _re
             seq_obj, _ = GatePassSequence.objects.get_or_create(
                 hostel_prefix=prefix, defaults={'current_seq': 1}
             )
-            seq_obj.current_seq = 1
-            seq_obj.reset_at = timezone.now()
-            seq_obj.reset_by = request.user
+            seq_obj.reset_period = reset_period
+            if reset_now:
+                seq_obj.current_seq = 1
+                seq_obj.reset_at    = timezone.now()
+                seq_obj.reset_by    = request.user
+                seq_obj.last_period_key = seq_obj.get_current_period_key()
             seq_obj.save()
-            messages.success(request, f'Gate pass sequence reset for {prefix}. Next GP will be {prefix}-00001.')
+            verb = f'reset to 00001 and period set to {reset_period}' if reset_now else f'period set to {reset_period}'
+            messages.success(request, f'{prefix} sequence {verb}.')
         return redirect('gp_sequence_reset')
 
     all_hostels = Hostel.objects.all().order_by('name')
     return render(request, 'admin/gp_sequence_reset.html', {
-        'sequences': sequences,
-        'all_hostels': all_hostels,
+        'sequences':     sequences,
+        'all_hostels':   all_hostels,
+        'reset_periods': GatePassSequence.ResetPeriod.choices,
     })
 
 

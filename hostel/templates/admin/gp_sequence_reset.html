@@ -6,7 +6,7 @@
 <div class="page-header">
   <div class="page-header-left">
     <h4>Gate Pass Sequence Reset</h4>
-    <p>Reset monthly GP numbering per hostel — old GP records are preserved</p>
+    <p>Configure auto-reset periods and manually reset GP numbering per hostel</p>
   </div>
   <a href="{% url 'gp_category_list' %}" class="btn btn-sm btn-outline-secondary">
     <i class="bi bi-arrow-left me-1"></i>Back
@@ -22,39 +22,85 @@
 {% endif %}
 
 <div class="row g-4">
-  {# ── Reset Form ── #}
+  {# ── Config Form ── #}
   <div class="col-md-5">
     <div class="card">
       <div class="card-header">
         <div class="card-header-left">
           <div class="ch-icon" style="background:#FEF3C7"><i class="bi bi-arrow-counterclockwise" style="color:#D97706"></i></div>
-          Reset Sequence
+          Reset Configuration
         </div>
       </div>
       <div class="card-body p-4">
-        <form method="post">
+        <form method="post" id="reset-form">
           {% csrf_token %}
+
+          {# Hostel selector #}
           <div class="mb-3">
-            <label class="form-label fw-600" style="font-size:13px">Select Hostel</label>
-            <select name="hostel_prefix" class="form-select" required
-                    onchange="this.form.querySelector('#preview').textContent = this.value ? 'GP-' + this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').split(' ')[0].slice(0,8) + '-00001' : ''">
+            <label class="form-label fw-600" style="font-size:13px">Select Hostel <span class="text-danger">*</span></label>
+            <select name="hostel_prefix" class="form-select" required onchange="updatePreview(this.value)">
               <option value="">— Choose Hostel —</option>
+              <option value="__ALL__" style="font-weight:700;color:#DC2626">⚡ All Hostels</option>
               {% for h in all_hostels %}
               <option value="GP-{{ h.name|upper|slice:':8' }}">{{ h.name }}</option>
               {% endfor %}
             </select>
           </div>
-          <div class="mb-3 p-3 rounded-3" style="background:#F0F9FF;border:1px solid #BAE6FD">
+
+          {# Auto-reset period #}
+          <div class="mb-3">
+            <label class="form-label fw-600" style="font-size:13px">Auto-Reset Period</label>
+            <div class="d-flex flex-wrap gap-2" id="period-chips">
+              {% for val, label in reset_periods %}
+              <label style="cursor:pointer">
+                <input type="radio" name="reset_period" value="{{ val }}"
+                       {% if val == 'manual' %}checked{% endif %}
+                       style="display:none" onchange="updatePeriodChips(this)">
+                <span class="period-chip" data-val="{{ val }}"
+                      style="display:inline-block;padding:6px 16px;border-radius:20px;font-size:12.5px;
+                             font-weight:600;border:2px solid;cursor:pointer;transition:all .15s;
+                             {% if val == 'manual' %}background:#EFF6FF;color:#1565C0;border-color:#1565C0;
+                             {% else %}background:#F8FAFC;color:#64748B;border-color:#CBD5E1;{% endif %}"
+                      onclick="this.previousElementSibling.checked=true;updatePeriodChips(this.previousElementSibling)">
+                  {{ label }}
+                </span>
+              </label>
+              {% endfor %}
+            </div>
+            <div style="font-size:11.5px;color:#64748B;margin-top:6px">
+              <i class="bi bi-info-circle me-1"></i>
+              Auto-reset will trigger automatically when the next GP is issued after the period rolls over.
+            </div>
+          </div>
+
+          {# Reset now checkbox #}
+          <div class="mb-3 p-3 rounded-3" style="background:#FFF7ED;border:1.5px solid #FED7AA">
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" name="reset_now" id="reset-now-cb"
+                     onchange="updatePreview(document.querySelector('[name=hostel_prefix]').value)">
+              <label class="form-check-label fw-600" for="reset-now-cb" style="font-size:13px">
+                Also reset numbering to 00001 right now
+              </label>
+            </div>
+            <div style="font-size:11.5px;color:#92400E;margin-top:4px">
+              Leave unchecked to only change the auto-reset period without resetting the counter.
+            </div>
+          </div>
+
+          {# Preview #}
+          <div class="mb-3 p-3 rounded-3" style="background:#F0F9FF;border:1px solid #BAE6FD" id="preview-box" style="display:none">
             <div style="font-size:12px;color:#0369A1;font-weight:600">Next GP ID after reset:</div>
             <div id="preview" style="font-size:18px;font-weight:800;color:#0F172A;margin-top:4px">—</div>
           </div>
+
           <div class="alert alert-warning border-0 rounded-3 mb-3" style="font-size:12.5px">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            <strong>Existing gate passes are NOT deleted.</strong> Only the counter resets — new GPs will start from 00001 for this hostel.
+            <strong>Existing gate passes are NEVER deleted.</strong> Only the counter resets.
           </div>
+
           <button type="submit" class="btn btn-warning w-100 fw-600"
-                  onclick="return confirm('Reset GP sequence for this hostel? Existing records are kept.')">
-            <i class="bi bi-arrow-counterclockwise me-2"></i>Reset Sequence
+                  onclick="return confirmReset()">
+            <i class="bi bi-arrow-counterclockwise me-2"></i>Apply Settings
           </button>
         </form>
       </div>
@@ -76,7 +122,8 @@
         <table class="table">
           <thead><tr>
             <th>Hostel Prefix</th>
-            <th>Next Seq #</th>
+            <th>Next GP #</th>
+            <th>Auto-Reset</th>
             <th>Last Reset</th>
             <th>Reset By</th>
           </tr></thead>
@@ -84,12 +131,28 @@
           {% for s in sequences %}
           <tr>
             <td><span style="font-family:monospace;font-weight:700;font-size:13px">{{ s.hostel_prefix }}</span></td>
-            <td><span class="badge" style="background:#EFF6FF;color:#1565C0;font-size:12px">{{ s.hostel_prefix }}-{{ s.current_seq|stringformat:"05d" }}</span></td>
+            <td>
+              <span class="badge" style="background:#EFF6FF;color:#1565C0;font-size:12px">
+                {{ s.hostel_prefix }}-{{ s.current_seq|stringformat:"05d" }}
+              </span>
+            </td>
+            <td>
+              {% if s.reset_period == 'manual' %}
+              <span style="font-size:12px;color:var(--text-3)">Manual only</span>
+              {% elif s.reset_period == 'weekly' %}
+              <span class="badge" style="background:#DCFCE7;color:#166534;font-size:11px">Weekly</span>
+              {% elif s.reset_period == 'monthly' %}
+              <span class="badge" style="background:#EFF6FF;color:#1565C0;font-size:11px">Monthly</span>
+              {% elif s.reset_period == 'yearly' %}
+              <span class="badge" style="background:#FDF4FF;color:#7E22CE;font-size:11px">Yearly</span>
+              {% endif %}
+            </td>
             <td style="font-size:12px;color:var(--text-2)">
               {% if s.reset_at %}{{ s.reset_at|date:"d M Y H:i" }}{% else %}—{% endif %}
             </td>
             <td style="font-size:12px;color:var(--text-2)">
-              {% if s.reset_by %}{{ s.reset_by.name|default:s.reset_by.email }}{% else %}—{% endif %}
+              {% if s.reset_by %}{{ s.reset_by.name|default:s.reset_by.email }}
+              {% elif s.reset_at %}Auto{% else %}—{% endif %}
             </td>
           </tr>
           {% endfor %}
@@ -107,4 +170,42 @@
     </div>
   </div>
 </div>
+
+<script>
+function updatePreview(val) {
+  const resetNow = document.getElementById('reset-now-cb').checked;
+  const box = document.getElementById('preview-box');
+  const el  = document.getElementById('preview');
+  if (!val || !resetNow) { el.textContent = '—'; return; }
+  if (val === '__ALL__') {
+    el.textContent = 'Each hostel → XX-00001';
+  } else {
+    el.textContent = val + '-00001';
+  }
+}
+
+function updatePeriodChips(radio) {
+  document.querySelectorAll('.period-chip').forEach(chip => {
+    const active = chip.dataset.val === radio.value;
+    chip.style.background     = active ? '#EFF6FF' : '#F8FAFC';
+    chip.style.color          = active ? '#1565C0' : '#64748B';
+    chip.style.borderColor    = active ? '#1565C0' : '#CBD5E1';
+  });
+}
+
+document.getElementById('reset-now-cb').addEventListener('change', function() {
+  updatePreview(document.querySelector('[name=hostel_prefix]').value);
+});
+
+function confirmReset() {
+  const hostel   = document.querySelector('[name=hostel_prefix]').value;
+  const period   = document.querySelector('[name=reset_period]:checked').value;
+  const resetNow = document.getElementById('reset-now-cb').checked;
+  if (!hostel) { alert('Please select a hostel.'); return false; }
+  const target = hostel === '__ALL__' ? 'ALL hostels' : hostel;
+  let msg = `Set auto-reset period to "${period}" for ${target}?`;
+  if (resetNow) msg += `\n\nThis will also immediately reset the GP counter to 00001.`;
+  return confirm(msg);
+}
+</script>
 {% endblock %}
