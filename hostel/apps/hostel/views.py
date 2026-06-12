@@ -8997,7 +8997,7 @@ def gp_sequence_reset(request):
             messages.success(request, f'Gate pass sequence reset for {prefix}. Next GP will be {prefix}-00001.')
         return redirect('gp_sequence_reset')
 
-    all_hostels = Hostel.objects.filter(is_active=True).order_by('name')
+    all_hostels = Hostel.objects.all().order_by('name')
     return render(request, 'admin/gp_sequence_reset.html', {
         'sequences': sequences,
         'all_hostels': all_hostels,
