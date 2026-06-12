@@ -791,6 +791,11 @@
        style="{% if request.resolver_match.url_name == 'gp_category_list' %}{% else %}color:rgba(255,215,0,.85){% endif %}">
       <i class="bi bi-pass-fill"></i> Gate Pass Config
     </a>
+    <a href="{% url 'gp_sequence_reset' %}"
+       class="s-link {% if request.resolver_match.url_name == 'gp_sequence_reset' %}active{% endif %}"
+       style="{% if request.resolver_match.url_name == 'gp_sequence_reset' %}{% else %}color:rgba(255,215,0,.85){% endif %}">
+      <i class="bi bi-arrow-counterclockwise"></i> GP Number Reset
+    </a>
     <a href="{% url 'leave_category_list' %}"
        class="s-link {% if request.resolver_match.url_name == 'leave_category_list' %}active{% endif %}"
        style="{% if request.resolver_match.url_name == 'leave_category_list' %}{% else %}color:rgba(255,215,0,.85){% endif %}">
