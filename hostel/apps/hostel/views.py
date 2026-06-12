@@ -5615,9 +5615,9 @@ def admin_dashboard_v2(request):
     for gp in gatepass_qs.filter(status='approved'):
         gp.check_overstay()
 
-    # QR-verified: exit scanned by guard but entry not yet scanned = physically outside right now
+    # Departed (exit_time set) but not yet returned (no entry_time) = physically outside right now
     students_out = gatepass_qs.filter(
-        exit_qr_scanned=True, entry_qr_scanned=False
+        exit_time__isnull=False, entry_time__isnull=True
     ).count()
 
     _room_alloc_qs = room_qs.annotate(
@@ -5696,7 +5696,7 @@ def admin_dashboard_v2(request):
             _af, status='approved', from_date__lte=today, to_date__gte=today
         ).distinct().count()
         row['out_now']        = GatePass.objects.filter(
-            _af, exit_qr_scanned=True, entry_qr_scanned=False
+            _af, exit_time__isnull=False, entry_time__isnull=True
         ).distinct().count()
 
     # Overall today totals for stat cards
@@ -5843,14 +5843,14 @@ def outsiders(request):
         af = Q(student__allocations__room__hostel=h, student__allocations__status='active')
 
         if filter_date:
-            # Historical: anyone whose exit QR was scanned on that date
+            # Historical: anyone who departed on that date (exit_time recorded)
             gp_qs = GatePass.objects.filter(
-                af, exit_qr_scanned=True, exit_time__date=filter_date,
+                af, exit_time__isnull=False, exit_time__date=filter_date,
             ).select_related('student', 'approved_by', 'exit_allowed_by', 'entry_allowed_by').distinct()
         else:
-            # Live: exit scanned but entry NOT yet scanned
+            # Live: departed (exit_time set) but not yet returned (no entry_time)
             gp_qs = GatePass.objects.filter(
-                af, exit_qr_scanned=True, entry_qr_scanned=False,
+                af, exit_time__isnull=False, entry_time__isnull=True,
             ).select_related('student', 'approved_by', 'exit_allowed_by').distinct()
 
         gp_list = list(gp_qs.order_by('student__name'))
