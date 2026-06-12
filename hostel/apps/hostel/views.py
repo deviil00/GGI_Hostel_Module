@@ -460,13 +460,21 @@ def add_student(request):
 
         defaults = {k: v for k, v in defaults.items() if v not in (None, '')}
 
-        student, created = Student.objects.update_or_create(
-            roll_number=roll, defaults=defaults
-        )
-        if created:
-            messages.success(request, f'Student "{name}" ({roll}) added successfully.')
-        else:
-            messages.info(request, f'Student "{name}" ({roll}) already exists — profile updated.')
+        existing = Student.objects.filter(roll_number=roll).first()
+        if existing:
+            messages.error(
+                request,
+                f'Roll number "{roll}" is already assigned to {existing.name}. '
+                f'Two students cannot share the same roll number.'
+            )
+            all_departments = list(Department.objects.filter(is_active=True).values_list('name', flat=True).order_by('name'))
+            return render(request, 'admin/add_student.html', {
+                'all_departments': all_departments,
+                'post': request.POST,
+            })
+
+        student = Student.objects.create(roll_number=roll, **defaults)
+        messages.success(request, f'Student "{name}" ({roll}) added successfully.')
         return redirect('student_detail', pk=student.pk)
 
     all_departments = list(Department.objects.filter(is_active=True).values_list('name', flat=True).order_by('name'))
