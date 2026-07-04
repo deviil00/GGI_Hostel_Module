@@ -8,6 +8,3 @@ qrcode[pil]==7.4.2
 python-decouple==3.8
 django-cors-headers==4.3.0
 reportlab==4.0.6
-gunicorn==21.2.0
-whitenoise==6.6.0
-dj-database-url==2.1.0
